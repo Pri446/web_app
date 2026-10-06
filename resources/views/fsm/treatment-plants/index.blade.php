@@ -297,7 +297,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             e.preventDefault();
                             var cql_param = getCQLParams();
                             window.location.href =
-                                "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
+                                "{{ route('gis.wfs') }}?service=WFS&version=1.0.0&request=GetFeature&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
                                 cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Treatment Plants.zip";
 
                         })
@@ -306,7 +306,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             e.preventDefault();
                             var cql_param = getCQLParams();
                             window.location.href =
-                                "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
+                                "{{ route('gis.wfs') }}?service=WFS&version=1.0.0&request=GetFeature&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
                                 cql_param + " &outputFormat=KML&format_options=filename:Treatment Plants.kml";
                         });
 

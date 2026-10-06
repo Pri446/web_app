@@ -130,7 +130,7 @@ $(document).ready(function(){
 
     $('#export_form').on('submit', function() {
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        var gurl = '<?php echo Config::get("constants.GEOSERVER_URL"); ?>';
+        var gurl = "{{ url('/gis/') }}";
         var gurl_wfs = gurl + 'wfs';
 
         var selectedWards = $('#ward').val();
@@ -153,7 +153,7 @@ $(document).ready(function(){
 
             var outputFormat = selectedFormat == 'kml' ? 'KML' : 'SHAPE-ZIP';
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName=" + layers.join(',') + "&CQL_FILTER=INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL" +
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + layers.join(',') + "&CQL_FILTER=INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL" +
     "&outputFormat=" + outputFormat;
 
             if(outputFormat == 'SHAPE-ZIP') {

@@ -254,7 +254,7 @@ $(function() {
 
     function initializeMap() {
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        var gurl = "<?php echo Config::get("constants.GEOSERVER_URL"); ?>/";
+        var gurl = "{{ url('/gis/') }}";
         var gurl_wms = gurl + 'wms';
 
         var googleLayerRoadmap = new ol.layer.Tile({

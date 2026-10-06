@@ -9,7 +9,9 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Fsm\ApplicationController;
 use App\Http\Controllers\Api\ApiServiceController;
 use App\Http\Controllers\MapsController;
-use App\Http\Controllers\Proxy\WMSProxyController;
+use App\Http\Controllers\GISProxyController;
+use App\Http\Controllers\GISExportController;
+use App\Http\Controllers\GISPrintController;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,6 +73,14 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+});
+
+Route::middleware('auth')->prefix('gis')->group(function () {
+    Route::get('/wms', [GISProxyController::class, 'wms'])->name('gis.wms');
+    Route::get('/wfs', [GISProxyController::class, 'wfs'])->name('gis.wfs');
+    Route::get('/export/{format}', [GISExportController::class, 'export'])
+        ->where('format', 'csv|kml|shp')->name('gis.export');
+    Route::post('/print', [GISPrintController::class, 'print'])->name('gis.print');
 });
 
 /**

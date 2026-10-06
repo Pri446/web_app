@@ -1953,17 +1953,17 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             // Geoserver workspace name from constants
             var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
             // URL of GeoServer
-            var gurl = "<?php echo Config::get("constants.GEOSERVER_URL"); ?>/";
+            var gurl = "{{ url('/gis') }}/";
             // URL of WMS
-            var gurl_wms = gurl + 'wms';
+            var gurl_wms = "{{ route('gis.wms') }}";
             // URL of WFS
-            var gurl_wfs = gurl + 'wfs';
+            var gurl_wfs = "{{ route('gis.wfs') }}";
             // Authentication Keys
-            var authkey = '<?php echo Config::get("constants.AUTH_KEY"); ?>';
+            var gurl_print = "{{ route('gis.print') }}";
             // BBOX Values
             var bboxstring = @json($bboxstring);
             // URL of GeoServer Legends
-            var gurl_legend = gurl_wms + "?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&BBOX="+@json($bboxstring)+"&LAYER=";
+            var gurl_legend = gurl_wms + "?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&BBOX="+@json($bboxstring)+"&LAYER=";
 
             // Get center from bbox string
             // Split the string into an array of numbers
@@ -4000,9 +4000,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             $('#' + toolBoxId).show();
 
                             vectorSource = new ol.source.Vector({
-                                url: '<?php echo Config::get("constants.GEOSERVER_URL"); ?>/ows?service=WFS&' +
+                                url: gurl_wfs + '?service=WFS&' +
                                     'version=1.1.0&request=GetFeature&typeName=<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>:' + geoServerLayer + '&' +
-                                    'CQL_FILTER=deleted_at is null&SRS=EPSG:4326&outputFormat=json&authkey=9499949e-6318-4ffd-8384-ed94c5d84770',
+                                    'CQL_FILTER=deleted_at is null&SRS=EPSG:4326&outputFormat=json',
                                 format: new ol.format.GeoJSON(),
                             });
 
@@ -5083,7 +5083,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         {
                             type: "WMS",
                             layers: alllayers,
-                            baseURL: gurl_wms + "?authkey=" + authkey,
+                            baseURL: gurl_wms,
                             format: "image/jpeg",
                             styles: allstyles,
                         }
@@ -5104,7 +5104,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
                 getDevices = async () => {
                             try {
-                                const fetchResponse = await fetch(encodeURI(`<?php echo Config::get("constants.GEOSERVER"); ?>/pdf/print.pdf?authkey`+ authkey + `&spec=` + JSON.stringify(json), { mode: 'no-cors' }));
+                                const fetchResponse = await fetch(gurl_print, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                    },
+                                    body: JSON.stringify({spec: json})
+                                });
+                                if (!fetchResponse.ok) throw new Error('Print failed.');
                                 const blob = await fetchResponse.blob();
                                 const link = document.createElement('a');
                                 link.href = window.URL.createObjectURL(blob);
@@ -7189,7 +7197,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 var format = new ol.format.WKT();
                 var geom = format.writeGeometry(geometry.clone().transform('EPSG:3857', 'EPSG:4326'));
 
-                var exportLink = gurl_wfs + '?request=GetFeature&service=WFS&version=1.0.0&authkey=' + authkey + '&typeName=' + workspace + ':' + selectedLayer + '&CQL_FILTER=deleted_at is null AND WITHIN(geom, ' + geom + ')';
+                var exportLink = gurl_wfs + '?request=GetFeature&service=WFS&version=1.0.0&typeName=' + workspace + ':' + selectedLayer + '&CQL_FILTER=deleted_at is null AND WITHIN(geom, ' + geom + ')';
 
                 csvdata(outputFormat, selectedLayer, exportLink);
             }
@@ -11084,7 +11092,7 @@ $.ajax({
                 });
 
                 var outputFormat, propertyName;
-                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":" + selectedLayer + "&CQL_FILTER=deleted_at is null AND INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))";
+                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":" + selectedLayer + "&CQL_FILTER=deleted_at is null AND INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))";
 
                 csvdata(outputFormat, selectedLayer, exportLink);
 
@@ -11453,7 +11461,7 @@ $.ajax({
 
             var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,owner_name,owner_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,owner_name,owner_contact,due_year,geom&outputFormat=" + outputFormat;
 
             if (format === 'csv') {
                 fetch(exportLink)
@@ -11524,7 +11532,7 @@ $.ajax({
 
                 var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_water_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=water_customer_id,bin,tax_code,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_water_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=water_customer_id,bin,tax_code,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
 
                 if (format === 'csv') {
                     fetch(exportLink)
@@ -11590,7 +11598,7 @@ $.ajax({
 
                 var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_swm_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=swm_customer_id,bin,tax_code,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_swm_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=swm_customer_id,bin,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
 
                 if (format === 'csv') {
                     fetch(exportLink)

@@ -30,4 +30,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'geoserver' => [
+        'url' => env('GEOSERVER_INTERNAL_URL', env('GEOSERVER_URL')),
+        'workspace' => env('GEOSERVER_WORKSPACE'),
+        'auth_key' => env('GEOSERVER_AUTH_KEY', env('AUTH_KEY')),
+    ],
+
+    'mapfish' => [
+        'print_url' => env('MAPFISH_PRINT_URL'),
+    ],
+
 ];

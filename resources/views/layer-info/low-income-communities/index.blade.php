@@ -158,7 +158,7 @@
                     e.preventDefault();
                     var cql_param = getCQLParams();
                     window.location.href =
-                        "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:low_income_communities_layer+&CQL_FILTER=" +
+                        "{{ route('gis.wfs') }}?service=WFS&version=1.0.0&request=GetFeature&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:low_income_communities_layer+&CQL_FILTER=" +
                         cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Low Income Community.zip";
 
                 })
@@ -168,7 +168,7 @@
                     var cql_param = getCQLParams();
 
                     window.location.href =
-                        "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:low_income_communities_layer+&CQL_FILTER=" +
+                        "{{ route('gis.wfs') }}?service=WFS&version=1.0.0&request=GetFeature&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:low_income_communities_layer+&CQL_FILTER=" +
                         cql_param +
                         " &outputFormat=KML&format_options=filename:Low Income Community.kml";
                 });

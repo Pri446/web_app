@@ -82,8 +82,8 @@ A dynamic form layout
                                                 pointGeomDrawer(
                                                     {
                                                         workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                        geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                        authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                        geoserverUrl:'{{ url('/gis/') }}',
+
                                                         mapID:'map'
                                                     }
                                                 )
@@ -103,8 +103,7 @@ A dynamic form layout
                                                     geomViewer(
                                                         {
                                                             workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                            geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                            authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                            geoserverUrl:'{{ url('/gis/') }}',
                                                             mapID:'map',
                                                             geom: '{{ $formField->inputValue }}'
                                                         }
@@ -248,8 +247,7 @@ A dynamic form layout
                                         pointGeomDrawer(
                                             {
                                                 workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                geoserverUrl:'{{ url('/gis/') }}',
                                                 mapID:'map',
                                                 geom: '{{ $formField->inputValue }}'
                                             }
@@ -274,8 +272,7 @@ A dynamic form layout
                                         polyGeomDrawer(
                                             {
                                                 workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                geoserverUrl:'{{ url('/gis/') }}',
                                                 mapID:'map',
                                                 geom: '{{ $formField->inputValue }}'
                                             }
@@ -300,8 +297,7 @@ A dynamic form layout
                                         geomViewer(
                                             {
                                                 workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                geoserverUrl:'{{ url('/gis/') }}',
                                                 mapID:'map',
                                                 geom: '{{ $formField->labelValue }}'
                                             }

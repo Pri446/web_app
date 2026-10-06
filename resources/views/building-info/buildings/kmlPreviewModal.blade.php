@@ -94,10 +94,9 @@
         var kmlSource;
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
         // URL of GeoServer
-        var gurl = "<?php echo Config::get("constants.GEOSERVER_URL"); ?>/";
+        var gurl = "{{ url('/gis/') }}";
         var gurl_wms = gurl + 'wms';
         var gurl_wfs = gurl + 'wfs';
-        var authkey = '<?php echo Config::get("constants.AUTH_KEY"); ?>';
         // URL of GeoServer Legends
         var gurl_legend = gurl_wms + "?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&BBOX=89.1281,23.502, 89.2068,23.5892&LAYER=";
 
