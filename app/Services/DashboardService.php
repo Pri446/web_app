@@ -12,9 +12,146 @@ use DateTime;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\BuildingInfo\Building;
+use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardService
 {
+    private const CACHE_VERSION_KEY = 'dashboard:data-version';
+
+    public function dashboardCacheTtl(): int
+    {
+        return max(1, (int) config('dashboard.cache_ttl_seconds', 180));
+    }
+
+    /**
+     * Every authorization and data-scope dimension is represented in the key.
+     * User ID is deliberately retained as a final isolation boundary.
+     */
+    public function dashboardCacheKey(User $user, array $filters = []): string
+    {
+        ksort($filters);
+
+        // Use direct, fixed-schema queries here. Calling Spatie's relationship
+        // methods during every request triggers costly model/schema discovery in
+        // this application and defeats warm-cache performance.
+        $roles = DB::table('auth.model_has_roles as user_roles')
+            ->join('auth.roles as roles', 'roles.id', '=', 'user_roles.role_id')
+            ->where('user_roles.model_id', $user->getKey())
+            ->where('user_roles.model_type', User::class)
+            ->orderBy('roles.name')
+            ->pluck('roles.name')
+            ->all();
+
+        $permissions = DB::table('auth.permissions as permissions')
+            ->where(function ($query) use ($user) {
+                $query->whereExists(function ($direct) use ($user) {
+                    $direct->selectRaw('1')
+                        ->from('auth.model_has_permissions as direct_permissions')
+                        ->whereColumn('direct_permissions.permission_id', 'permissions.id')
+                        ->where('direct_permissions.model_id', $user->getKey())
+                        ->where('direct_permissions.model_type', User::class);
+                })->orWhereExists(function ($rolePermission) use ($user) {
+                    $rolePermission->selectRaw('1')
+                        ->from('auth.role_has_permissions as role_permissions')
+                        ->join('auth.model_has_roles as user_roles', 'user_roles.role_id', '=', 'role_permissions.role_id')
+                        ->whereColumn('role_permissions.permission_id', 'permissions.id')
+                        ->where('user_roles.model_id', $user->getKey())
+                        ->where('user_roles.model_type', User::class);
+                });
+            })
+            ->orderBy('permissions.name')
+            ->pluck('permissions.name')
+            ->all();
+
+        $scope = [
+            'version' => Cache::get(self::CACHE_VERSION_KEY, 1),
+            'user_id' => $user->getKey(),
+            'service_provider_id' => $user->service_provider_id,
+            'treatment_plant_id' => $user->treatment_plant_id,
+            'roles' => $roles,
+            'permissions' => $permissions,
+            'locale' => app()->getLocale(),
+            'filters' => $filters,
+        ];
+
+        return 'dashboard:data:' . hash('sha256', json_encode($scope));
+    }
+
+    public function dashboardCacheHas(string $cacheKey): bool
+    {
+        return Cache::has($cacheKey);
+    }
+
+    public function rememberDashboardData(string $cacheKey, callable $resolver): array
+    {
+        return Cache::remember(
+            $cacheKey,
+            now()->addSeconds($this->dashboardCacheTtl()),
+            $resolver
+        );
+    }
+
+    public function rememberDashboardHtml(string $cacheKey, callable $resolver): string
+    {
+        $htmlKey = $cacheKey . ':authorized-html';
+        $entry = Cache::get($htmlKey);
+
+        if (is_array($entry) && isset($entry['html'], $entry['fresh_until'])) {
+            if ((int) $entry['fresh_until'] < now()->timestamp) {
+                // Serve the still-safe scoped response now, then refresh it after
+                // Laravel has sent the response to the browser.
+                app()->terminating(function () use ($htmlKey, $resolver): void {
+                    $lock = Cache::lock($htmlKey . ':refresh-lock', 60);
+                    if ($lock->get()) {
+                        try {
+                            $this->storeDashboardHtml($htmlKey, $resolver());
+                        } finally {
+                            $lock->release();
+                        }
+                    }
+                });
+            }
+
+            return $entry['html'];
+        }
+
+        $html = $resolver();
+        $this->storeDashboardHtml($htmlKey, $html);
+
+        return $html;
+    }
+
+    public function dashboardHtmlCacheHas(string $cacheKey): bool
+    {
+        return Cache::has($cacheKey . ':authorized-html');
+    }
+
+    private function storeDashboardHtml(string $htmlKey, string $html): void
+    {
+        Cache::put(
+            $htmlKey,
+            [
+                'html' => $html,
+                'fresh_until' => now()->addSeconds($this->dashboardCacheTtl())->timestamp,
+            ],
+            now()->addSeconds(max(
+                $this->dashboardCacheTtl(),
+                (int) config('dashboard.cache_stale_ttl_seconds', 1800)
+            ))
+        );
+    }
+
+    /**
+     * Portable invalidation for file, database and Redis cache drivers.
+     * Old entries become unreachable and expire naturally.
+     */
+    public function invalidateDashboardCache(): void
+    {
+        $version = (int) Cache::get(self::CACHE_VERSION_KEY, 1);
+        Cache::forever(self::CACHE_VERSION_KEY, $version + 1);
+    }
+
     //used to count building with Institution
     public function countBuildingsByUse($useName)
     {
@@ -380,7 +517,8 @@ class DashboardService
     {
         $chart = array();
         $query = "SELECT w.ward, round(CAST(sum(ST_Length(ST_TRANSFORM(ST_Intersection(sewers.geom,w.geom),32645))) as numeric ),2) as length
-        FROM layer_info.wards w, utility_info.sewers sewers
+        FROM layer_info.wards w
+        JOIN utility_info.sewers sewers ON ST_Intersects(sewers.geom, w.geom)
         WHERE sewers.deleted_at IS NULL
         GROUP BY w.ward
         ORDER BY w.ward";
@@ -1487,7 +1625,8 @@ class DashboardService
     {
         $chart = array();
         $query = "SELECT w.ward, round(CAST(sum(ST_Length(ST_TRANSFORM(ST_Intersection(roads.geom,w.geom),32645))) as numeric ),2) as length
-        FROM layer_info.wards w, utility_info.roads roads
+        FROM layer_info.wards w
+        JOIN utility_info.roads roads ON ST_Intersects(roads.geom, w.geom)
         WHERE roads.deleted_at IS NULL
         GROUP BY w.ward
         ORDER BY w.ward";
