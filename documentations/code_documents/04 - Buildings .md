@@ -1,6 +1,63 @@
-Version: V1.0.0
+Version: V1.1.0
 
 # Building IMS
+
+## Building Dashboard
+
+The Building Dashboard uses the shared shell-first dashboard loading pattern documented in `03 - Dashboard.md`.
+
+### Routes and Controller
+
+| Purpose | Route | Controller method |
+|---|---|---|
+| Dashboard shell | `GET /building-info/buildings/buildingdashboard` | `BuildingDashboardController@index` |
+| Dashboard content | `GET /building-info/buildings/buildingdashboard/content` | `BuildingDashboardController@content` |
+
+`app/Http/Controllers/BuildingInfo/BuildingDashboardController.php` applies authentication middleware in its constructor.
+
+`index()` returns `resources/views/dashboard/buildingDashboardShell.blade.php`. The shell displays the shared dashboard loader and requests the named `buildingdashboard.content` route.
+
+`content()` calls the private `buildDashboardData()` method, renders `resources/views/dashboard/buildingDashboard.blade.php`, and returns the result as JSON with the following contract:
+
+```json
+{
+    "status": "ok",
+    "html": "<rendered authorized dashboard content>"
+}
+```
+
+Unexpected server failures are logged and return a generic JSON error without exposing exception details.
+
+### Permission-Aware Queries
+
+`buildDashboardData()` checks the authenticated user's widget permissions before running the queries for that widget group. A developer adding a Building dashboard widget must:
+
+1. Define or reuse the correct permission.
+2. Check the permission before executing the widget query.
+3. Pass only the authorized values to the content view.
+4. Add feature tests for an authenticated authorized user and an unauthenticated request.
+
+The Building content response sets `Cache-Control: private, no-store`. It currently uses asynchronous loading but does not use the main dashboard's authorization-scoped HTML cache.
+
+Do not add a broad Building dashboard cache key. Any future cache must include and test every applicable role, permission, municipality or organizational scope, filter, and locale boundary.
+
+### Views and Loader
+
+| Purpose | File |
+|---|---|
+| Loading shell | `resources/views/dashboard/buildingDashboardShell.blade.php` |
+| Dashboard content | `resources/views/dashboard/buildingDashboard.blade.php` |
+| Shared loader | `resources/views/dashboard/_asyncDashboardLoader.blade.php` |
+
+Chart scripts in the content view must support initialization after their HTML has been inserted by the loader. They must not rely only on the initial page-load event.
+
+### Tests
+
+`tests/Feature/BuildingDashboardOptimizationTest.php` verifies:
+
+- The shell is returned before the dashboard content.
+- The content endpoint returns the expected JSON and HTML contract.
+- The shell and content endpoints require authentication.
 
 ## Buildings
 
