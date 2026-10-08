@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\Fsm\Feedback;
 use App\Models\Fsm\Application;
+use App\Services\Fsm\OperationalDataAccessService;
 use App\Models\User;
 use Auth;
 use App\Http\Requests\Fsm\FeedbackRequest;
@@ -31,8 +32,10 @@ class FeedbackController extends Controller{
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:List Feedbacks', ['only' => ['index']]);
+        $this->middleware('permission:List Feedbacks', ['only' => ['index', 'getData']]);
         $this->middleware('permission:View Feedback', ['only' => ['show']]);
+        $this->middleware('permission:Add Feedback', ['only' => ['createFeedback', 'store']]);
+        $this->middleware('permission:Edit Feedback', ['only' => ['edit', 'update']]);
         $this->middleware('permission:Delete Feedback', ['only' => ['destroy']]);
         $this->middleware('permission:Export Feedbacks', ['only' => ['export']]);
     }
@@ -58,22 +61,24 @@ class FeedbackController extends Controller{
     */
     public function getData(Request $request)
     {
-        if(Auth::user()->hasRole('Service Provider - Admin') || Auth::user()->hasRole('Service Provider - Help Desk'))
-        {
-            $feedbacksData = DB::table('fsm.feedbacks AS f')
-            ->join('auth.users AS u', 'f.user_id', '=', 'u.id')
+        $feedbacksData = DB::table('fsm.feedbacks AS f')
+            ->leftJoin('auth.users AS u', 'f.user_id', '=', 'u.id')
             ->join('fsm.applications AS a', 'f.application_id', '=', 'a.id')
+            ->leftJoin('fsm.emptyings AS e', function ($join) {
+                $join->on('e.application_id', '=', 'a.id')
+                    ->whereNull('e.deleted_at');
+            })
             ->select('f.created_at','f.id','f.application_id', 'u.username', 'a.ward')
-            ->whereNull('f.deleted_at')
-           ->where('a.service_provider_id','=',Auth::user()->service_provider_id);
-           
-        }
-        else
-        {
-            $feedbacksData = DB::table('fsm.feedbacks AS f')
-            ->join('fsm.applications AS a', 'f.application_id', '=', 'a.id')
-            ->select('f.created_at','f.id','f.application_id', 'a.ward')
             ->whereNull('f.deleted_at');
+
+        if (Auth::user()->hasRole('Service Provider - Help Desk')) {
+            $feedbacksData->where('a.service_provider_id', Auth::user()->service_provider_id ?? -1);
+        } else {
+            OperationalDataAccessService::scopeQuery(
+                $feedbacksData,
+                'a.service_provider_id',
+                'e.treatment_plant_id'
+            );
         }
 
         return Datatables::of($feedbacksData)
@@ -140,13 +145,11 @@ class FeedbackController extends Controller{
     */
     public function show($id)
     {
-        $feedback = Feedback::find($id);
-        if ($feedback) {
-            $page_title = __("Feedback Details");
-            return view('fsm.feedbacks.show', compact('page_title', 'feedback'));
-        } else {
-            abort(404);
-        }
+        $feedback = Feedback::findOrFail($id);
+        $this->authorizeFeedbackRecord($feedback);
+
+        $page_title = __("Feedback Details");
+        return view('fsm.feedbacks.show', compact('page_title', 'feedback'));
     }
     
     /**
@@ -157,7 +160,8 @@ class FeedbackController extends Controller{
     */
     public function createFeedback($id)
     {
-        $application = Application::find($id);
+        $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
 
         if ($application) {
             $feedback = new Feedback;
@@ -178,7 +182,8 @@ class FeedbackController extends Controller{
     */
     public function edit($id)
     {
-        $feedback = Feedback::find($id);
+        $feedback = Feedback::findOrFail($id);
+        $this->authorizeFeedbackRecord($feedback);
         if(Auth::user()->hasRole('Municipality - Help Desk') || Auth::user()->hasRole('Service Provider - Help Desk')) {
             if($feedback->user_id != Auth::user()->id) {
                 return redirect('fsm/application')->with('error',__('Cannot update Feedback not created by current User.'));
@@ -210,8 +215,12 @@ class FeedbackController extends Controller{
     public function update(FeedbackRequest $request, $id)
     {
 
-        $feedback = Feedback::find($id);
-        $application = Application::find($feedback->application_id);
+        $feedback = Feedback::findOrFail($id);
+        $this->authorizeFeedbackRecord($feedback);
+        $application = Application::findOrFail($feedback->application_id);
+
+        $targetApplication = Application::findOrFail($request->application_id);
+        OperationalDataAccessService::authorizeApplication($targetApplication);
         $feedback->application_id = $request->application_id? $request->application_id : null;
         $feedback->customer_name = $request->customer_name ? $request->customer_name : null;
         $feedback->customer_gender = $request->customer_gender ? $request->customer_gender : null;
@@ -236,7 +245,8 @@ class FeedbackController extends Controller{
     */
     public function store(FeedbackRequest $request)
     {
-        $application = Application::find($request->application_id);
+        $application = Application::findOrFail($request->application_id);
+        OperationalDataAccessService::authorizeApplication($application);
         // Check if feedback for the application already exists
         if (Feedback::where('application_id', $request->application_id)->exists() && $application->feedback_status) {
             return redirect('fsm/application')->with('error', __('Feedback for this application already exists.'));
@@ -267,7 +277,8 @@ class FeedbackController extends Controller{
     */
     public function destroy($id)
     {
-        $feedback = Feedback::find($id);
+        $feedback = Feedback::findOrFail($id);
+        $this->authorizeFeedbackRecord($feedback);
         $application_id = $feedback->application_id;
         if ($feedback) {
             if(Auth::user()->hasRole('Municipality - Help Desk') || Auth::user()->hasRole('Service Provider - Help Desk')) {
@@ -317,13 +328,23 @@ class FeedbackController extends Controller{
         $query = DB::table('fsm.feedbacks AS f')
             ->join('auth.users AS u', 'f.user_id', '=', 'u.id')
             ->join('fsm.applications AS a', 'f.application_id', '=', 'a.id')
+            ->leftJoin('fsm.emptyings AS e', function ($join) {
+                $join->on('e.application_id', '=', 'a.id')
+                    ->whereNull('e.deleted_at');
+            })
             ->select('f.*')
             ->whereNull('f.deleted_at')
             ->orderBy('f.id', 'asc');
 
-        if (!Auth::user()->hasRole('Super Admin') && !Auth::user()->hasRole('Municipality - Super Admin') && !Auth::user()->hasRole('Municipality - Help Desk') && !Auth::user()->hasRole('Municipality - Sanitation Department')) {
+        if (Auth::user()->hasRole('Service Provider - Help Desk')) {
             $query->where('a.service_provider_id','=',Auth::user()->service_provider_id);
-        } 
+        } else {
+            OperationalDataAccessService::scopeQuery(
+                $query,
+                'a.service_provider_id',
+                'e.treatment_plant_id'
+            );
+        }
         if ($application_id) {
             $query->where('f.application_id', $application_id);
         }
@@ -359,6 +380,13 @@ class FeedbackController extends Controller{
         });
 
         $writer->close();
+    }
+
+    /** Apply the agreed SP/TP segregation to a direct Feedback ID. */
+    private function authorizeFeedbackRecord(Feedback $feedback): void
+    {
+        $application = Application::findOrFail($feedback->application_id);
+        OperationalDataAccessService::authorizeApplication($application);
     }
 
 

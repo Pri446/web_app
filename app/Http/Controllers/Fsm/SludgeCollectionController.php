@@ -18,6 +18,7 @@ use App\Models\Fsm\Application;
 use App\Models\Fsm\VacutugType;
 use App\Http\Requests\Fsm\SludgeCollectionRequest;
 use App\Models\Fsm\ServiceProvider;
+use App\Services\Fsm\OperationalDataAccessService;
 use DB;
 use DataTables;
 use Carbon\Carbon;
@@ -34,9 +35,9 @@ class SludgeCollectionController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:List Sludge Collections', ['only' => ['index']]);
-        $this->middleware('permission:View Sludge Collection', ['only' => ['show']]);
-        $this->middleware('permission:Add Sludge Collection', ['only' => ['create', 'store']]);
+        $this->middleware('permission:List Sludge Collections', ['only' => ['index', 'getData']]);
+        $this->middleware('permission:View Sludge Collection', ['only' => ['show', 'showDetails']]);
+        $this->middleware('permission:Add Sludge Collection', ['only' => ['create', 'createLog', 'store', 'createSludgeCollection']]);
         $this->middleware('permission:Edit Sludge Collection', ['only' => ['edit', 'update']]);
         $this->middleware('permission:Delete Sludge Collection', ['only' => ['destroy']]);
         $this->middleware('permission:View Sludge Collection History', ['only' => ['history']]);
@@ -73,7 +74,7 @@ class SludgeCollectionController extends Controller
                 ->whereNull('fsm.sludge_collections_log.deleted_at')
                 ->where('fsm.sludge_collections_log.treatment_plant_id', Auth::user()->treatment_plant_id)
                 ->select('fsm.sludge_collections_log.*');
-        } else if (Auth::user()->hasRole('Service Provider - Admin')) {
+        } else if (OperationalDataAccessService::isServiceProviderUser(Auth::user())) {
             $sludgeCollection = SludgeCollectionLog::join('fsm.applications', function ($join) {
                 $join->on('fsm.sludge_collections_log.application_id', '=', 'fsm.applications.id')
                     ->whereNull('fsm.applications.deleted_at');
@@ -153,6 +154,7 @@ class SludgeCollectionController extends Controller
     {
         $page_title = __("Add Sludge Collection Log");
         $application = Application::findOrFail($application_id) ?? null;
+        OperationalDataAccessService::authorizeApplication($application);
         $emptying = Emptying::where('application_id', $application_id)->latest()->first() ?? null;
         if ($emptying) {
             $treatment_plant_id = $emptying->treatment_plant_id ?? null;
@@ -201,6 +203,15 @@ class SludgeCollectionController extends Controller
             // If it's a FormRequest, validate
             if (method_exists($request, 'validated')) {
                 $request->validated();
+            }
+
+            $application = Application::findOrFail($request->application_id);
+            OperationalDataAccessService::authorizeApplication($application);
+
+            if (OperationalDataAccessService::isServiceProviderUser(Auth::user())) {
+                $request->merge(['service_provider_id' => Auth::user()->service_provider_id]);
+            } elseif (OperationalDataAccessService::isTreatmentPlantUser(Auth::user())) {
+                $request->merge(['treatment_plant_id' => Auth::user()->treatment_plant_id]);
             }
 
             // -------------------------
@@ -381,7 +392,11 @@ foreach ($recipientIds as $userId) {
      */
     public function show($id)
     {
-        $sludgeCollection = SludgeCollectionLog::find($id);
+        $sludgeCollection = SludgeCollectionLog::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $sludgeCollection->service_provider_id,
+            $sludgeCollection->treatment_plant_id
+        );
 
         $applications = $sludgeCollection->applications;
         $service_provider_id = $applications['service_provider_id'];
@@ -413,7 +428,11 @@ foreach ($recipientIds as $userId) {
      */
     public function showDetails($id)
     {
-        $sludgeCollection = SludgeCollection::find($id);
+        $sludgeCollection = SludgeCollection::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $sludgeCollection->service_provider_id,
+            $sludgeCollection->treatment_plant_id
+        );
         $applications = $sludgeCollection->applications;
         $service_provider_id = $applications['service_provider_id'];
         $serviceProvider = ServiceProvider::withTrashed()
@@ -444,7 +463,11 @@ foreach ($recipientIds as $userId) {
      */
     public function edit($id)
     {
-        $sludgeCollection = SludgeCollectionLog::find($id);
+        $sludgeCollection = SludgeCollectionLog::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $sludgeCollection->service_provider_id,
+            $sludgeCollection->treatment_plant_id
+        );
         if (!(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department'))) {
             if ($sludgeCollection->created_at->diffInDays(today()) > 1) {
                 return redirect('fsm/sludge-collection')->with('error', __('Cannot edit Sludge Collection Information 24 hours after creation. Please contact Sanitation Department for support'));
@@ -483,7 +506,11 @@ foreach ($recipientIds as $userId) {
      */
     public function update(SludgeCollectionRequest $request, $id)
     {
-        $sludgeCollectionLog = SludgeCollectionLog::find($id);
+        $sludgeCollectionLog = SludgeCollectionLog::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $sludgeCollectionLog->service_provider_id,
+            $sludgeCollectionLog->treatment_plant_id
+        );
         $prev_total_time = $this->sumHms($sludgeCollectionLog->entry_time, $sludgeCollectionLog->exit_time);
         $prev_tipping_fee_amount = $sludgeCollectionLog->prev_tipping_fee_amount;
 
@@ -502,7 +529,9 @@ foreach ($recipientIds as $userId) {
         } else {
             $sludgeCollectionLog->treatment_plant_id = $request->treatment_plant_id ? $request->treatment_plant_id : null;
         }
-        $sludgeCollectionLog->service_provider_id = $request->service_provider_id ? $request->service_provider_id : null;
+        $sludgeCollectionLog->service_provider_id = OperationalDataAccessService::isServiceProviderUser(Auth::user())
+            ? Auth::user()->service_provider_id
+            : ($request->service_provider_id ?: null);
         $sludgeCollectionLog->user_id = Auth::user()->id;
         $sludgeCollectionLog->tipping_fee_amount = $request->tipping_fee_amount ? $request->tipping_fee_amount : null;
         $sludgeCollectionLog->tipping_fee_receipt_no = $request->tipping_fee_receipt_no ? $request->tipping_fee_receipt_no : null;
@@ -529,7 +558,9 @@ foreach ($recipientIds as $userId) {
             } else {
                 $sludgeCollection->treatment_plant_id = $request->treatment_plant_id ? $request->treatment_plant_id : null;
             }
-            $sludgeCollection->service_provider_id = $request->service_provider_id ? $request->service_provider_id : null;
+            $sludgeCollection->service_provider_id = OperationalDataAccessService::isServiceProviderUser(Auth::user())
+                ? Auth::user()->service_provider_id
+                : ($request->service_provider_id ?: null);
             $sludgeCollection->user_id = Auth::user()->id;
             $sludgeCollection->tipping_fee_amount = $request->tipping_fee_amount ? $request->tipping_fee_amount : null;
             $sludgeCollection->tipping_fee_receipt_no = $request->tipping_fee_receipt_no ? $request->tipping_fee_receipt_no : null;
@@ -549,6 +580,11 @@ foreach ($recipientIds as $userId) {
         if (!$sludgeCollectionLog) {
             return redirect('fsm/sludge-collection')->with('error', __('Failed to delete Sludge Collection.'));
         }
+
+        OperationalDataAccessService::authorizeRecord(
+            $sludgeCollectionLog->service_provider_id,
+            $sludgeCollectionLog->treatment_plant_id
+        );
 
         // Fetch latest sludge collection log for this application
         $latestSludgeCollection = SludgeCollectionLog::where('application_id', $sludgeCollectionLog->application_id)
@@ -609,7 +645,11 @@ foreach ($recipientIds as $userId) {
      */
     public function history($id)
     {
-        $sludgeCollection = SludgeCollectionLog::find($id);
+        $sludgeCollection = SludgeCollectionLog::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $sludgeCollection->service_provider_id,
+            $sludgeCollection->treatment_plant_id
+        );
         if ($sludgeCollection) {
             $page_title = __("Sludge Collection History");
             return view('fsm.sludge-collection.history', compact('page_title', 'sludgeCollection'));
@@ -667,6 +707,12 @@ foreach ($recipientIds as $userId) {
             )
             ->orderBy('sc.id')
             ->whereNull('sc.deleted_at');
+
+        OperationalDataAccessService::scopeQuery(
+            $query,
+            'sc.service_provider_id',
+            'sc.treatment_plant_id'
+        );
 
         if (!empty($application_id)) {
             $query->where('sc.application_id', $application_id);
