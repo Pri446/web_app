@@ -185,8 +185,7 @@ $('#filter-form').on('submit', function(e) {
         e.preventDefault();
         var cql_param = getCQLParams();
         window.globalLoader.download(
-            "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:water_samples_layer+&CQL_FILTER=" + cql_param +
-                " &outputFormat=SHAPE-ZIP&format_options=filename:Water Samples.zip",
+            "{{ route('gis.export', ['format' => 'shp']) }}?layer=water_samples_layer&filter=" + encodeURIComponent(cql_param),
             'Water Samples.zip',
             this
         ).catch(function () {});
@@ -198,8 +197,7 @@ $('#filter-form').on('submit', function(e) {
         var cql_param = getCQLParams();
 
         window.globalLoader.download(
-            "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:water_samples_layer+&CQL_FILTER=" + cql_param +
-                " &outputFormat=KML&format_options=filename:Water Samples.kml",
+            "{{ route('gis.export', ['format' => 'kml']) }}?layer=water_samples_layer&filter=" + encodeURIComponent(cql_param),
             'Water Samples.kml',
             this
         ).catch(function () {});

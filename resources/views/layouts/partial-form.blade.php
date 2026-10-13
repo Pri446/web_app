@@ -171,8 +171,7 @@ A dynamic form layout
                                                     pointGeomDrawer(
                                                         {
                                                             workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                            geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                            authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                            geoserverUrl: '{{ url('/gis') }}/',
                                                             mapID:'map'
                                                         }
                                                     )
@@ -191,8 +190,7 @@ A dynamic form layout
                                                         geomViewer(
                                                             {
                                                                 workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                                geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                                authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                               geoserverUrl: '{{ url('/gis') }}/',
                                                                 mapID:'map',
                                                                 geom: '{{ $formField->inputValue }}'
                                                             }
@@ -351,7 +349,15 @@ A dynamic form layout
                                 <script src="{{ asset('js/map-functions.js') }}"></script>
                                 <script>
                                     $(document).ready(function () {
-                                        pointGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}', authKey:'{{ Config::get("constants.AUTH_KEY") }}', mapID:'map', geom: '{{ $formField->inputValue }}' })
+                                        pointGeomDrawer(
+                                            {
+                                                workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
+                                                geoserverUrl: '{{ url('/gis') }}',
+                                                mapID:'map',
+                                                geom: '{{ $formField->inputValue }}'
+                                            }
+                                        )
+                                        pointGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl: '{{ url('/gis/') }}', mapID:'map', geom: '{{ $formField->inputValue }}' })
                                     });
                                 </script>
                             @endpush
@@ -369,7 +375,14 @@ A dynamic form layout
                                 <script src="{{ asset('js/map-functions.js') }}"></script>
                                 <script>
                                     $(document).ready(function () {
-                                        polyGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}', authKey:'{{ Config::get("constants.AUTH_KEY") }}', mapID:'map', geom: '{{ $formField->inputValue }}' })
+                                        polyGeomDrawer(
+                                            {
+                                                workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
+                                                geoserverUrl: '{{ url('/gis') }}/',
+                                                mapID:'map',
+                                                geom: '{{ $formField->inputValue }}'
+                                            }
+                                        )
                                     });
                                 </script>
                             @endpush
@@ -386,7 +399,14 @@ A dynamic form layout
                                 <script src="{{ asset('js/map-functions.js') }}"></script>
                                 <script>
                                     $(document).ready(function () {
-                                        geomViewer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}', authKey:'{{ Config::get("constants.AUTH_KEY") }}', mapID:'map', geom: '{{ $formField->labelValue }}' })
+                                        geomViewer(
+                                            {
+                                                workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
+                                                geoserverUrl: '{{ url('/gis') }}/',
+                                                mapID:'map',
+                                                geom: '{{ $formField->labelValue }}'
+                                            }
+                                        )
                                     });
                                 </script>
                             @endpush

@@ -181,14 +181,14 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
       e.preventDefault();
       var cql_param = getCQLParams();
      
-      window.location.href = "{{ Config::get("constants.GEOSERVER_URL") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName={{ Config::get("constants.GEOSERVER_WORKSPACE") }}:drains_layer+&CQL_FILTER=" + cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Drain Network.zip";
+      window.location.href = "{{ route('gis.export', ['format' => 'shp']) }}?layer=drains_layer&filter=" + encodeURIComponent(cql_param);
     })
 
     $("#export-kml").on("click", function(e) {
       e.preventDefault();
       var cql_param = getCQLParams();
      
-      window.location.href = "{{ Config::get("constants.GEOSERVER_URL") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName={{ Config::get("constants.GEOSERVER_WORKSPACE") }}:drains_layer+&CQL_FILTER=" + cql_param +" &outputFormat=KML&format_options=filename:Drain Network.kml";
+      window.location.href = "{{ route('gis.export', ['format' => 'kml']) }}?layer=drains_layer&filter=" + encodeURIComponent(cql_param);
      
     });
 
@@ -203,7 +203,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
       if (type) {
         cql_param += " AND cover_type ='" + type + "'";
       }
-      return encodeURI(cql_param);
+      return (cql_param);
 
     }
   });

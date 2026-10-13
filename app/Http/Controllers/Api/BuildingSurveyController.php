@@ -91,27 +91,28 @@ class BuildingSurveyController extends Controller
             $lat = $request->lat;
             $lng = $request->lng;
 
-            $workspace = config('constants.GEOSERVER_WORKSPACE');
-            $geoserverUrl = rtrim(config('constants.GEOSERVER_URL'), '/');
-            $authkey = config('constants.AUTH_KEY');
+            $workspace = config('services.geoserver.workspace');
+           $geoserverUrl = rtrim(
+                    config('services.geoserver.url'),
+                    '/'
+                );
 
-            $wfsUrl = $geoserverUrl . '/wfs';
-
-            $response = Http::timeout(20)->get($wfsUrl, [
+            $response = Http::timeout(20)->get($geoserverUrl . '/wfs', [
                 'service'      => 'WFS',
                 'version'      => '1.0.0',
                 'request'      => 'GetFeature',
                 'typeName'     => $workspace . ':buildings_layer',
                 'outputFormat' => 'application/json',
                 'CQL_FILTER'   => "INTERSECTS(geom,POINT($lng $lat))",
-                'authkey'      => $authkey,
+                // Server-side only; never send this from mobile/browser.
+                'authkey' => config('services.geoserver.auth_key'),
             ]);
 
             if (!$response->successful()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to query GeoServer.',
-                    'geoserver_response' => $response->body(),
+                    'response_body' => $response->body(),
                 ], 500);
             }
 
@@ -344,7 +345,7 @@ class BuildingSurveyController extends Controller
             $wms = WmsLink::all()->where('name', '=', $layer)->pluck('link', 'name');
             return response()->json([
                 'success' => true,
-                'baseUrl' => config("constants.GEOSERVER_URL"),
+                'baseUrl' => route('gis.wms'),
                 'data' => $wms,
                 'bbox'    => config('constants.GEOSERVER_BBOX'),
                 'width'   => config('constants.GEOSERVER_WIDTH'),
