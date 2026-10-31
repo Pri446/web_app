@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Imports\TaxImport;
 use App\Models\TaxPaymentInfo\TaxPayment;
 use App\Models\User;
 use App\Services\PiiEncryptionService;
@@ -50,6 +51,42 @@ class PropertyTaxPiiTest extends TestCase
         $this->assertStringStartsWith('enc:v1:', $attributes['owner_name']);
         $this->assertStringStartsWith('enc:v1:', $attributes['owner_contact']);
         $this->assertSame('Tax Owner', app(PiiEncryptionService::class)->decrypt($attributes['owner_name']));
+    }
+
+    public function test_csv_import_encrypts_owner_fields_before_database_insert(): void
+    {
+        // Reproduce the important part of Laravel Excel's import pipeline:
+        // normalize a CSV row through map(), then let model() create the
+        // TaxPayment instance that will later be included in the batch insert.
+        $import = new TaxImport();
+        $mappedRow = $import->map([
+            'tax_code' => 'TAX-IMPORT-1',
+            'owner_name' => 'Imported Tax Owner',
+            'owner_contact' => '9800000000',
+            'last_payment_date' => '8/21/2022',
+        ]);
+
+        $record = $import->model($mappedRow);
+        $attributes = $record->getAttributes();
+
+        // getAttributes() reads the raw values that Eloquent will send to the
+        // database. The enc:v1 prefix proves that neither imported PII value is
+        // still plaintext at the database-write boundary.
+        $this->assertStringStartsWith('enc:v1:', $attributes['owner_name']);
+        $this->assertStringStartsWith('enc:v1:', $attributes['owner_contact']);
+
+        // Decrypt the raw ciphertext in the test to prove it is valid and maps
+        // back to the original CSV values, rather than merely having a prefix.
+        $encryption = app(PiiEncryptionService::class);
+        $this->assertSame(
+            'Imported Tax Owner',
+            $encryption->decrypt($attributes['owner_name'])
+        );
+        $this->assertSame(
+            '9800000000',
+            $encryption->decrypt($attributes['owner_contact'])
+        );
+        $this->assertSame('2022-08-21', $attributes['last_payment_date']);
     }
 
     public function test_presenter_masks_and_reveals_explicitly(): void

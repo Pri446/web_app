@@ -192,18 +192,27 @@ class TaxPaymentController extends Controller
                     Storage::disk('importtax')->delete('/' . $filename);
                     //deletes if already exists
                 }
-                $stored = $request->file('csvfile')->storeAs('/', $filename, 'importtax');
+                $stored = $request->file('csvfile')->storeAs('', $filename, 'importtax');
 
                 if ($stored)
                 {
-                    $storage = Storage::disk('importtax')->path('/');
-                    $location = preg_replace('/\\\\/', '', $storage);
-
-                    $file_selection = Storage::disk('importtax')->listContents();
-                    $filename = $file_selection[0]['basename'];
+                    // storeAs() already returns the path of the exact file that
+                    // was stored. Use that path directly instead of scanning the
+                    // entire import directory with listContents().
+                    //
+                    // This is important for two reasons:
+                    // 1. Flysystem v3 requires listContents($path), so the old
+                    //    zero-argument call throws an ArgumentCountError.
+                    // 2. Selecting the first directory entry could import an
+                    //    older/unrelated file when more than one file exists.
+                    //
+                    // disk()->path() also returns a valid native Windows path.
+                    // Do not remove backslashes: doing that turns a valid path
+                    // such as E:\\app\\storage\\file.csv into an invalid one.
+                    $filePath = Storage::disk('importtax')->path($stored);
 
                     //checking csv file has all heading row keys
-                    $headings = (new HeadingRowImport)->toArray($location.$filename);
+                    $headings = (new HeadingRowImport)->toArray($filePath);
                     $heading_row_errors = array();
                     if (!in_array("tax_code", $headings[0][0])) {
                         $heading_row_errors['tax_code'] = "Heading row : tax_code is required";
@@ -223,7 +232,10 @@ class TaxPaymentController extends Controller
                     \DB::statement('TRUNCATE TABLE taxpayment_info.tax_payments RESTART IDENTITY');
                     #\DB::statement('ALTER SEQUENCE IF exists taxpayment_info.tax_payments_id_seq RESTART WITH 1');
                     $import = new TaxImport();
-                    $import->import($location.$filename);
+                    // TaxImport returns a TaxPayment model for every CSV row.
+                    // TaxPayment's owner_name and owner_contact mutators encrypt
+                    // these values before Eloquent prepares the batch insert.
+                    $import->import($filePath);
 
                     $message = __('Successfully Imported Building Tax Payments From CSV.');
                     \DB::statement("select taxpayment_info.fnc_taxpaymentstatus()");
