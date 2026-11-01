@@ -1,0 +1,63 @@
+<?php
+
+return [
+    'label' => 'Resource Planning and Management',
+    'color' => '#BF4E14',
+    'groups' => [
+        'Financing Frameworks and Resource Allocation' => [
+            'RPM-1a.1' => 'Budget line exists for urban sanitation',
+            'RPM-1a.2' => 'An objective framework exists to allocate financial resources to lower level governments or authorities for sanitation',
+            'RPM-1a.3' => 'Financing framework is followed in practice',
+            'RPM-1a.4' => 'Resources are allocated to meet targets in sanitation service provision-safe containment',
+            'RPM-1a.5' => 'Resources are allocated to meet targets in sanitation service provision-safe collection & transport',
+            'RPM-1a.6' => 'Resources are allocated to meet targets in sanitation service provision-safe treatment & disposal',
+            'RPM-1a.7' => 'Resources are allocated to meet targets in sanitation service provision-safe reuse',
+            'RPM-1a.8' => 'Financing framework allocates resources to prioritize service delivery for the poor',
+            'RPM-1a.9' => 'Financing framework allocates dedicated resources to meet the sanitation needs of vulnerable population groups',
+            'RPM-1a.10' => 'Resources allocated are disbursed on time',
+        ],
+        'City Resource Allocation and Utilization' => [
+            'RPM-1b.1' => 'City level resources are allocated to meet targets in sanitation service provision-safe containment',
+            'RPM-1b.2' => 'City level resources are allocated to meet targets in sanitation service provision-safe collection & transport',
+            'RPM-1b.3' => 'City level resources are allocated to meet targets in sanitation service provision-safe treatment & disposal',
+            'RPM-1b.4' => 'City level resources are allocated to meet targets in sanitation service provision-safe reuse',
+            'RPM-1b.5' => 'City level resources are allocated to meet pro-poor targets',
+            'RPM-1b.6' => 'City level resources are allocated to meet the sanitation needs of vulnerable groups',
+            'RPM-1b.7' => 'City level resources allocated are utilized for budgeted purposes',
+        ],
+        'National and State Budget Decision Making' => [
+            'RPM-2a.1' => 'National/state level decision-making process for budget allocation is transparent',
+            'RPM-2a.2' => 'National/state level decision-making process for budget allocation is inclusive',
+            'RPM-2a.3' => 'National/state level decision-making for budget allocation is based on city sanitation strategies',
+        ],
+        'City Budget Decision Making' => [
+            'RPM-2b.1' => 'City level decision-making process for budget allocation is transparent',
+            'RPM-2b.2' => 'City level decision-making process for budget allocation is inclusive',
+            'RPM-2b.3' => 'City level decision-making for budget allocation is based on city sanitation strategies',
+        ],
+        'Investment Appraisal and Feasibility' => [
+            'RPM-3.1' => 'Sanitation service authority evaluates different investment options to meet service delivery gaps',
+            'RPM-3.2' => 'While calculating investment costs, sanitation service authority accounts for all project related capital, operations, maintenance, and replacement costs on a full lifecycle cost basis using accounting and monitoring data from service authority',
+            'RPM-3.3' => 'When planning for new investments, sanitation service authority undertakes an assessment of the impact of the new investments on overall utility system costs and revenues using data from service authorities and other stakeholders',
+            'RPM-3.4' => 'Feasibility assessment includes considerations of potential ecological and environmental impacts',
+            'RPM-3.5' => 'Feasibility assessment includes considerations of energy requirements for effective functioning of the system, including energy availability and cost',
+            'RPM-3.6' => 'Feasibility assessment includes considerations of water requirements for effective functioning of the system, including water availability and cost',
+        ],
+        'Citywide Sanitation Strategy and Evidence-based Planning' => [
+            'RPM-4.1' => 'The city has an integrated city sanitation strategy developed/updated in the past five years',
+            'RPM-4.2' => 'The city sanitation strategy covers all households, including those in LICs and densely populated peri-urban areas',
+            'RPM-4.3' => 'The city sanitation strategy is developed based on representative surveys on city service level data',
+            'RPM-4.4' => 'Sanitation investments are made based on the integrated citywide sanitation plan',
+            'RPM-4.5' => 'Sanitation budgets are allocated based on a needs assessment',
+            'RPM-4.6' => 'Sanitation authority has conducted an assessment of the baseline condition of existing infrastructure and service delivery gaps',
+            'RPM-4.7' => 'Sanitation authority has conducted an assessment of the baseline condition of existing infrastructure and service delivery gaps in informal settlements and low-income service areas',
+            'RPM-4.8' => 'Sex-disaggregated data is collected for sanitation planning and investment',
+            'RPM-4.9' => 'Sex-disaggregated data is actively used for sanitation planning and investment',
+            'RPM-4.10' => 'Budget allocation is responsive to the differential needs of women based on sex-disaggregated data',
+            'RPM-4.11' => 'Data by income groups is collected for sanitation planning and investment',
+            'RPM-4.12' => 'Data by income groups is actively used for sanitation planning and investment',
+            'RPM-4.13' => 'Data by ethnic or social groups is collected for sanitation planning and investment',
+            'RPM-4.14' => 'Data by ethnic or social groups is actively used for sanitation planning and investment',
+        ],
+    ],
+];

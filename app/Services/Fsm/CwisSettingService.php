@@ -9,6 +9,7 @@ use Yajra\DataTables\DataTables;
 use App\Models\Fsm\TreatmentPlantPerformanceTest;
 use App\Models\Fsm\CwisSetting;
 use App\Models\Fsm\Nsd;
+use Illuminate\Support\Facades\DB;
 
 class CwisSettingService
 {
@@ -40,21 +41,17 @@ class CwisSettingService
 
     public function storeOrUpdate($data)
     {
-        $performance_test = CwisSetting::where('category', 'cwis_setting')->get();
-        $updates = [
-            "average_water_consumption_lpcd" => $data['average_water_consumption_lpcd'],
-            "waste_water_conversion_factor" => $data['waste_water_conversion_factor'],
-            "greywater_conversion_factor_connected_to_sewer" => $data['greywater_conversion_factor_connected_to_sewer'],
-            "greywater_conversion_factor_not_connected_to_sewer" => $data['greywater_conversion_factor_not_connected_to_sewer'],
-            "fs_generation_from_containment_not_connected_to_sewer_lpcd" => $data['fs_generation_from_containment_not_connected_to_sewer_lpcd'],
-            "fs_generation_from_permeable_or_unlined_pit_lpcd" => $data['fs_generation_from_permeable_or_unlined_pit_lpcd']
-        ];
-        foreach ($updates as $key => $value) {
-            $setting = $performance_test->where('name', $key)->first();
-            if ($setting) {
+        $performance_test = CwisSetting::where('category', 'cwis_setting')->whereNull('deleted_at')->get();
+        $updates = array_intersect_key($data, array_flip(array_merge(['active_country'], array_keys(config('cwis_safety_settings')))));
+        DB::transaction(function () use ($updates, $performance_test) {
+            foreach ($updates as $key => $value) {
+                $setting = $performance_test->where('name', $key)->first();
+                if (!$setting) {
+                    throw new \RuntimeException('Missing CWIS setting: ' . $key . '. Run the CWIS settings migration first.');
+                }
                 $setting->value = $value;
                 $setting->save();
             }
-        }
+        });
     }
 }

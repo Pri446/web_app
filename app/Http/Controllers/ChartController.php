@@ -18,6 +18,27 @@ class ChartController extends Controller
     }
     public function downloadPDF(Request $request)
     {
+        $accountabilityIndicators = collect();
+        $accountabilityValues = collect();
+        $rpmIndicators = collect();
+        $rpmValues = collect();
+        $countryLabel = null;
+        $reportingYear = null;
+        $pdfAllowedCodes = null;
+        if ($request->filled('year')) {
+            abort_unless($request->user() && $request->user()->can('List CWIS'), 403);
+            $validated = $request->validate(['year' => ['required', 'integer', 'between:1,9999']]);
+            $reportingYear = (int) $validated['year'];
+            $indicators = app(\App\Services\Cwis\CwisIndicatorService::class);
+            $country = $indicators->activeCountry();
+            $countryLabel = __(\App\Services\Cwis\CwisIndicatorService::COUNTRIES[$country]);
+            $catalogue = $indicators->forCountry($country);
+            $pdfAllowedCodes = $catalogue->pluck('indicator_code');
+            $accountabilityIndicators = $catalogue->where('outcome', 'accountability');
+            $accountabilityValues = $indicators->resultsForCountry($reportingYear, $country)->pluck('data_value', 'indicator_code');
+            $rpmIndicators = $catalogue->where('outcome', 'rpm');
+            $rpmValues = $accountabilityValues;
+        }
         $eq1 = $request->input('eq1');
         $sf3d = $request->input('sf3d');
         $base64Image = $request->input('chartImage');
@@ -122,12 +143,18 @@ class ChartController extends Controller
         $base64safety9Image = $request->input('sf9Image');
         $imageDatasf9 = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64safety9Image));
         $encodedDatasf9 = base64_encode($imageDatasf9); 
-        $html = View::make('cwis.cwis-dashboard.chart-layout.cwis-pdf-layout',compact('eq1','encodedDatasf1a','encodedDatasf1b','encodedDatasf1c','encodedDatasf1d',
+        $html = View::make('cwis.cwis-dashboard.chart-layout.cwis-pdf-layout',compact('pdfAllowedCodes','eq1','encodedDatasf1a','encodedDatasf1b','encodedDatasf1c','encodedDatasf1d',
         'encodedDatasf1e','encodedDatasf1f','encodedDatasf1g','encodedDatasf2a','encodedDatasf2b','encodedDatasf2c'
         ,'encodedDatasf3a','encodedDatasf3b','encodedDatasf3c','sf3d'
         ,'encodedDatasf4a','encodedDatasf4b','encodedDatasf4d'
         ,'encodedDatasf5',
         'encodedDatasf6', 'encodedDatasf7', 'encodedDatass1','encodedDatasf9'
+        ))->render();
+        $html .= View::make('cwis.cwis-dashboard.chart-layout.accountability-pdf-cards', compact(
+            'accountabilityIndicators', 'accountabilityValues', 'countryLabel', 'reportingYear'
+        ))->render();
+        $html .= View::make('cwis.cwis-dashboard.chart-layout.rpm-pdf-cards', compact(
+            'rpmIndicators', 'rpmValues', 'countryLabel', 'reportingYear'
         ))->render();
 
         // Generate a unique filename for the PDF

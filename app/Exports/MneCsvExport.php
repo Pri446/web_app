@@ -29,26 +29,19 @@ class MneCsvExport implements FromView, WithEvents, WithColumnWidths, ShouldAuto
     {
         $years = $this->year;
     
-        // Use LEFT JOIN to include all records from data_source even if data_value is null
-        $data_query = "
-            SELECT 
-                ds.outcome, 
-                ds.indicator_code, 
-                ds.label, 
-                dc.year, 
-                dc.data_value 
-            FROM 
-                cwis.data_source ds
-            LEFT JOIN 
-                cwis.data_cwis dc ON dc.indicator_code = ds.indicator_code AND dc.year = ?
-            WHERE 
-                ds.indicator_code IS NOT NULL
-            ORDER BY
-                ds.id
-        ";
-    
-        // Use parameter binding to prevent SQL injection
-        $results = DB::select($data_query, [$years]);
+        // Keep mapped indicators visible even when that country/year has no saved result.
+        $indicators = app(\App\Services\Cwis\CwisIndicatorService::class);
+        $country = $indicators->activeCountry();
+        $saved = $indicators->resultsForCountry($years, $country);
+        $results = $indicators->forCountry($country)->map(function ($indicator) use ($saved, $years) {
+            $row = clone $indicator;
+            $row->year = $years;
+            $row->data_value = $saved->get($row->indicator_code)->data_value ?? null;
+            return $row;
+        });
+        foreach ($results as $result) {
+            $result->data_value = \App\Support\CwisValueFormatter::format($result->data_value);
+        }
    
         return view('exports.CWIS_', compact('results', 'years'));
     }

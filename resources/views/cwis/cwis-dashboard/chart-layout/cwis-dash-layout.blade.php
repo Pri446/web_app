@@ -88,6 +88,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         .input:checked+.label+.panel {
             display: none;
         }
+        #tab-accountability:checked + .label + .panel,
+        #tab-rpm:checked + .label + .panel {
+            display: block;
+            padding: 16px 0;
+        }
     }
 
     .select-dropdown,
@@ -340,6 +345,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         });
     });
 </script>
+<p id="cwis-dashboard-country">{{ __('Country') }}: <strong>{{ $countryLabel }}</strong></p>
+@if($resultCountryMismatch)
+    <div class="alert alert-info" role="status">{{ __('Saved results for this year belong to another country selection. No values are shown for the selected country until its results are generated.') }}</div>
+@endif
 @if(isset($noDataMessage))
         <div class="alert alert-warning">
             {{ $noDataMessage }}
@@ -349,23 +358,75 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
     <input class="input" name="tabs" type="radio" id="tab-1" checked="checked" />
     <label class="label" for="tab-1">{{ __('All') }}</label>
     <div class="panel">
-        <h1>{{__('Equity')}}</h1>
-        @include('cwis.cwis-dashboard.chart-layout.equity-layout')
-        <h1>{{__('Safety')}}</h1>
-        @include('cwis.cwis-dashboard.chart-layout.safety-layout')
+        @if($equityIndicators->isNotEmpty())
+            <h1>{{__('Equity')}}</h1>
+            @include('cwis.cwis-dashboard.chart-layout.country-equity-cards')
+        @endif
+        @if($safetyIndicators->isNotEmpty())
+            <h1>{{__('Safety')}}</h1>
+            @include('cwis.cwis-dashboard.chart-layout.safety-layout')
+        @endif
+        @if($sustainabilityIndicators->isNotEmpty())
+            <h1>{{__('Sustainability')}}</h1>
+            @include('cwis.cwis-dashboard.chart-layout.country-sustainability-cards')
+        @endif
+        @if($responsibilityIndicators->isNotEmpty())
+            <h1>{{ __('Responsibility') }}</h1>
+            @include('cwis.cwis-dashboard.chart-layout.country-responsibility-cards')
+        @endif
+        @if($accountabilityIndicators->isNotEmpty())
+            <h1>{{ __('Accountability') }}</h1>
+            @include('cwis.cwis-dashboard.chart-layout.country-accountability-cards')
+        @endif
+        @if($rpmIndicators->isNotEmpty())
+            <h1>{{ __('Resource Planning and Management') }}</h1>
+            @include('cwis.cwis-dashboard.chart-layout.country-rpm-cards')
+        @endif
     </div>
+    @if($equityIndicators->isNotEmpty())
     <input class="input" name="tabs" type="radio" id="tab-2" />
     <label class="label" for="tab-2">{{__('Equity')}}</label>
     <div class="panel">
-        @include('cwis.cwis-dashboard.chart-layout.seperate-chart-layout.equity-card')
+        @include('cwis.cwis-dashboard.chart-layout.country-equity-cards')
     </div>
+    @endif
+    @if($safetyIndicators->isNotEmpty())
     <input class="input" name="tabs" type="radio" id="tab-4" />
     <label class="label" for="tab-4">{{__('Safety')}}</label>
     <div class="panel">
         <br>
         @include('cwis.cwis-dashboard.chart-layout.seperate-chart-layout.safety-card')
     </div>
+    @endif
     
+    @if($sustainabilityIndicators->isNotEmpty())
+    <input class="input" name="tabs" type="radio" id="tab-sustainability" />
+    <label class="label" for="tab-sustainability">{{ __('Sustainability') }}</label>
+    <div class="panel">
+        @include('cwis.cwis-dashboard.chart-layout.country-sustainability-cards')
+    </div>
+    @endif
+    @if($responsibilityIndicators->isNotEmpty())
+    <input class="input" name="tabs" type="radio" id="tab-responsibility" />
+    <label class="label" for="tab-responsibility">{{ __('Responsibility') }}</label>
+    <div class="panel">
+        @include('cwis.cwis-dashboard.chart-layout.country-responsibility-cards')
+    </div>
+    @endif
+    @if($accountabilityIndicators->isNotEmpty())
+    <input class="input" name="tabs" type="radio" id="tab-accountability" />
+    <label class="label" for="tab-accountability">{{ __('Accountability') }}</label>
+    <div class="panel">
+        @include('cwis.cwis-dashboard.chart-layout.country-accountability-cards')
+    </div>
+    @endif
+    @if($rpmIndicators->isNotEmpty())
+    <input class="input" name="tabs" type="radio" id="tab-rpm" />
+    <label class="label" for="tab-rpm">{{ __('RPM') }}</label>
+    <div class="panel">
+        @include('cwis.cwis-dashboard.chart-layout.country-rpm-cards')
+    </div>
+    @endif
     <div class="select-dropdown">
         <select style="text-align: center;" id="cwis-year-select">
             <option value="">{{__('Select year')}}</option>
@@ -416,7 +477,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2; // Adjust font size relative to canvas size
 
         // Draw the percentage value onto the temporary canvas with the calculated font size
-         var dataValue = "{{ $sf1a[0]->data_value }}";
+         var dataValue = @json($sf1a->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue; // Extract percentage value
         tempCtx.fillStyle = '#29ab87'; // Set color for the percentage text
         tempCtx.font = fontSize + 'px Arial'; // Set font size dynamically
@@ -439,7 +500,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf1bCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf1b[0]->data_value }}";
+         var dataValue = @json($sf1b->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -462,8 +523,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf1cCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-        var dataValue = "{{ $sf1c[0]->data_value }}";
-         var dataValue = "{{ $sf1c[0]->data_value }}";
+        var dataValue = @json($sf1c->first()->data_value ?? __('No data'));
+         var dataValue = @json($sf1c->first()->data_value ?? __('No data'));
         var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
 
 
@@ -488,7 +549,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf1dCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf1d[0]->data_value }}";
+         var dataValue = @json($sf1d->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -511,7 +572,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf1eCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf1e[0]->data_value }}";
+         var dataValue = @json($sf1e->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -534,7 +595,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf1fCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf1f[0]->data_value }}";
+         var dataValue = @json($sf1f->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -557,7 +618,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf1gCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf1g[0]->data_value }}";
+         var dataValue = @json($sf1g->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -580,7 +641,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf2cCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf2c[0]->data_value }}";
+         var dataValue = @json($sf2c->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -603,7 +664,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf2aCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf2a[0]->data_value }}";
+         var dataValue = @json($sf2a->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -626,7 +687,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf2bCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf2b[0]->data_value }}";
+         var dataValue = @json($sf2b->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -649,7 +710,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf3cCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf3c[0]->data_value }}";
+         var dataValue = @json($sf3c->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -672,7 +733,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf3aCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf3[0]->data_value }}";
+         var dataValue = @json($sf3->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -695,7 +756,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf3bCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2; // Adjust font size relative to canvas size
         // Draw the percentage value
-         var dataValue = "{{ $sf3b[0]->data_value }}";
+         var dataValue = @json($sf3b->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -718,7 +779,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf4dCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2; // Adjust font size relative to canvas size
         // Draw the percentage value
-         var dataValue = "{{ $sf4d[0]->data_value }}";
+         var dataValue = @json($sf4d->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -741,7 +802,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf4aCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2; // Adjust font size relative to canvas size
         // Draw the percentage value
-         var dataValue = "{{ $sf4a[0]->data_value }}";
+         var dataValue = @json($sf4a->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -764,7 +825,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf4bCanvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2; // Adjust font size relative to canvas size
         // Draw the percentage value
-         var dataValue = "{{ $sf4b[0]->data_value }}";
+         var dataValue = @json($sf4b->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -787,7 +848,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf5Canvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf5[0]->data_value }}";
+         var dataValue = @json($sf5->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -810,7 +871,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf6Canvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf6[0]->data_value }}";
+         var dataValue = @json($sf6->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -833,7 +894,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         tempCtx.drawImage(sf7Canvas, 0, 0);
         var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
         // Draw the percentage value
-         var dataValue = "{{ $sf7[0]->data_value }}";
+         var dataValue = @json($sf7->first()->data_value ?? __('No data'));
          var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
         tempCtx.fillStyle = '#29ab87';
         tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -856,7 +917,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
             tempCtx.drawImage(sf9Canvas, 0, 0);
             var fontSize = Math.min(tempCanvas.width, tempCanvas.height) * 0.2;
             // Draw the percentage value
-            var dataValue = "{{ $sf9[0]->data_value }}";
+            var dataValue = @json($sf9->first()->data_value ?? __('No data'));
             var percentText = (!isNaN(parseFloat(dataValue)) && isFinite(dataValue)) ? dataValue + '%' : dataValue;
             tempCtx.fillStyle = '#29ab87';
             tempCtx.font = fontSize + 'px Arial'; // Customize font size and style as needed
@@ -870,30 +931,34 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         function downloadPDF() {
             $('#loader-overlay').show();
             // Ensure all generateSafety functions are defined elsewhere
-            var safety1aImage = generateSafetyImage();
-            var safety1bImage = generateSafety1bImage();
-            var safety1cImage = generateSafety1cImage();
-            var safety1dImage = generateSafety1dImage();
-            var safety1eImage = generateSafety1eImage();
-            var safety1fImage = generateSafety1fImage();
-            var safety1gImage = generateSafety1gImage();
-            var safety2aImage = generateSafety2aImage();
-            var safety2bImage = generateSafety2bImage();
-            var safety2cImage = generateSafety2cImage();
-            var safety3aImage = generateSafety3aImage();
-            var safety3bImage = generateSafety3bImage();
-            var safety3cImage = generateSafety3cImage();
-            var safety4aImage = generateSafety4aImage();
-            var safety4bImage = generateSafety4bImage();
-            var safety4dImage = generateSafety4dImage();
-            var sf5Image = generateSafety5Image();
-            var sf6Image = generateSafety6Image();
-            var sf7Image = generateSafety7Image();
-            var sf9Image = generateSafety9Image();
+            var pdfSafetyCodes = @json($safetyIndicators->pluck('indicator_code')->values());
+            function safetyImage(code, render) {
+                return pdfSafetyCodes.includes(code) ? render() : '';
+            }
+            var safety1aImage = safetyImage('SF-1a', generateSafetyImage);
+            var safety1bImage = safetyImage('SF-1b', generateSafety1bImage);
+            var safety1cImage = safetyImage('SF-1c', generateSafety1cImage);
+            var safety1dImage = safetyImage('SF-1d', generateSafety1dImage);
+            var safety1eImage = safetyImage('SF-1e', generateSafety1eImage);
+            var safety1fImage = safetyImage('SF-1f', generateSafety1fImage);
+            var safety1gImage = safetyImage('SF-1g', generateSafety1gImage);
+            var safety2aImage = safetyImage('SF-2a', generateSafety2aImage);
+            var safety2bImage = safetyImage('SF-2b', generateSafety2bImage);
+            var safety2cImage = safetyImage('SF-2c', generateSafety2cImage);
+            var safety3aImage = safetyImage('SF-3', generateSafety3aImage);
+            var safety3bImage = safetyImage('SF-3b', generateSafety3bImage);
+            var safety3cImage = safetyImage('SF-3c', generateSafety3cImage);
+            var safety4aImage = safetyImage('SF-4a', generateSafety4aImage);
+            var safety4bImage = safetyImage('SF-4b', generateSafety4bImage);
+            var safety4dImage = safetyImage('SF-4d', generateSafety4dImage);
+            var sf5Image = safetyImage('SF-5', generateSafety5Image);
+            var sf6Image = safetyImage('SF-6', generateSafety6Image);
+            var sf7Image = safetyImage('SF-7', generateSafety7Image);
+            var sf9Image = safetyImage('SF-9', generateSafety9Image);
 
             // Fix: Ensure these values are properly passed from PHP to JavaScript
-            var sf3d = {!! json_encode(html_entity_decode($sf3e[0]->data_value)) !!};
-            var eq1 = {!! json_encode(html_entity_decode($eq1[0]->data_value)) !!};
+            var sf3d = {!! json_encode(html_entity_decode($sf3e->first()->data_value ?? '')) !!};
+            var eq1 = {!! json_encode(html_entity_decode($eq1->first()->data_value ?? '')) !!};
 
             // Use AJAX to send the image data to the server
             fetch('/cwis/chart/download-pdf', {
@@ -903,6 +968,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     },
                     body: JSON.stringify({
+                        year: @json($selectedYear),
                         eq1: eq1,
                         safety1aImage: safety1aImage,
                         safety1bImage: safety1bImage,

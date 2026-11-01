@@ -29,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        $this->loadMigrationsFrom(database_path('migrations/cwis/equity'));
         if (env('APP_ENV') === 'production') {
             URL::forceScheme('https');
         }

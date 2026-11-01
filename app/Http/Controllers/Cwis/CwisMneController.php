@@ -42,7 +42,13 @@ class CwisMneController extends Controller
             ->orderby('year', 'desc')
             ->pluck('year');
     
-        $data = cwis_mne::where('year', $year)->pluck('data_value', 'indicator_code');
+        $indicatorService = app(\App\Services\Cwis\CwisIndicatorService::class);
+        $country = $indicatorService->activeCountry();
+        $countryLabel = __(\App\Services\Cwis\CwisIndicatorService::COUNTRIES[$country]);
+        $countryIndicators = $indicatorService->forCountry($country);
+        $data = $indicatorService->resultsForCountry((int) $year, $country)->pluck('data_value', 'indicator_code');
+        $resultCountryMismatch = cwis_mne::where('year', $year)->exists()
+            && $indicatorService->resultCountry((int) $year) !== $country;
     
         // Check for NaN, nan, or na values
         $hasInvalidValues = false;
@@ -63,8 +69,19 @@ class CwisMneController extends Controller
     
         // Flag to show the Add CWIS Data button if no data is available
         $show_add_cwis_button = cwis_mne::count("year") === 0;
+        $indicatorService = app(\App\Services\Cwis\CwisIndicatorService::class);
+        $equityIndicators = $indicatorService->forCountry($indicatorService->activeCountry())->where('outcome', 'equity');
+        $workflow = app(\App\Services\Cwis\CwisEquityWorkflowService::class);
+        $country = $indicatorService->activeCountry();
+        $generationYear = $show_add_cwis_button ? $minyear : $slugyear->first();
+        $canGenerateNextYear = $show_add_cwis_button || ($pickyear->first() < now()->year
+            && !Auth::user()->hasRole('Municipality - Executive'));
+        $equityApprovalMissing = $canGenerateNextYear && $generationYear && $workflow->requiresManualInputs($country)
+            && !$workflow->approvedSubmission((int) $generationYear,$country);
+        $equitySource = DB::table('cwis.equity_submissions')->where('reporting_year',$generationYear)
+            ->where('country_code',$country)->whereNull('deleted_at')->orderByDesc('id')->first();
     
-        return view('cwis/cwis-df-mne.index', compact('pickyear', 'page_title', 'year', 'slugyear', 'show_add_cwis_button', 'data', 'hasInvalidValues','minyear'));
+        return view('cwis/cwis-df-mne.index', compact('pickyear', 'page_title', 'year', 'slugyear', 'show_add_cwis_button', 'data', 'hasInvalidValues','minyear', 'equityIndicators', 'equityApprovalMissing', 'equitySource', 'country', 'countryLabel', 'countryIndicators', 'resultCountryMismatch', 'generationYear'));
     }
     
 
@@ -111,7 +128,16 @@ class CwisMneController extends Controller
     public function cwis($year)
     {
 
-        $result = DB::select(DB::raw('select * from insert_data_into_cwis_table(' . $year . ');'));
+        $validated = validator(['year' => $year], [
+            'year' => ['required', 'integer'],
+        ])->validate();
+        $country = app(\App\Services\Cwis\CwisIndicatorService::class)->activeCountry();
+        app(\App\Services\Cwis\CwisEquityWorkflowService::class)->requireApproval((int) $validated['year'], $country);
+        app(\App\Services\Cwis\CwisSustainabilityWorkflowService::class)->requireApproval((int) $validated['year'], $country);
+        app(\App\Services\Cwis\CwisResponsibilityWorkflowService::class)->requireApproval((int) $validated['year'], $country);
+        app(\App\Services\Cwis\CwisAccountabilityWorkflowService::class)->requireApproval((int) $validated['year'], $country);
+        app(\App\Services\Cwis\CwisRpmWorkflowService::class)->requireApproval((int) $validated['year'], $country);
+        $result = DB::select('select public.generate_cwis_with_rpm(?);', [$validated['year']]);
         return response()->json($result);
     }
     public function store(Request $request, cwis_mne $cwis_mne)
@@ -180,42 +206,19 @@ class CwisMneController extends Controller
 
     public function createIndex(Request $request)
     {
+        $validated = $request->validate(['year' => ['required', 'integer']]);
+        $year = $validated['year'];
 
-        $currentYear = date('Y');
-        $newsurveyear = cwis_mne::latest()->selectRaw("year + 1 as newyear")->limit(1)->get();
         $page_title = __("Data Framework for Monitoring and Evaluation");
+        $this->cwis($year);
+        $indicatorService = app(\App\Services\Cwis\CwisIndicatorService::class);
+        $country = $indicatorService->activeCountry();
+        $countryLabel = __(\App\Services\Cwis\CwisIndicatorService::COUNTRIES[$country]);
+        $countryIndicators = $indicatorService->forCountry($country);
+        $data = $indicatorService->resultsForCountry((int) $year, $country)->pluck('data_value', 'indicator_code');
 
-        // Fetch unique indicator codes
-        $indicator_list = DataSource::orderBy('indicator_code')
-        ->groupBy('indicator_code')
-        ->pluck('indicator_code');
-        $indicator_count = count($indicator_list);
-
-        $indicators = [];
-
-        for ($i = 0; $i < $indicator_count; $i++) {
-            // Fetch details for each indicator code
-            $indicators[$i] = DataSource::select('label', 'outcome', 'indicator_code')
-            ->where('indicator_code', $indicator_list[$i])
-                ->orderBy('id')
-                ->get();
-        }
-
-        $disabledIndicators = [];
-
-        $year = $request->year;
-      
-        $cwisResult = $this->cwis($year);
-        $data = cwis_mne::where('year', $year)->pluck('data_value', 'indicator_code');
-      
         return view('cwis/cwis-df-mne.create', compact(
-            'newsurveyear',
-            'page_title',
-            'indicator_count',
-            'indicators',
-            'cwisResult',
-            'year',
-            'data'
+            'page_title', 'year', 'data', 'country', 'countryLabel', 'countryIndicators'
         ));
     }
 

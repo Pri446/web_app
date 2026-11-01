@@ -131,6 +131,7 @@ class TreatmentPlantService
      */
     public function storeOrUpdate($id, $data)
     {
+        return DB::transaction(function () use ($id, $data) {
         if (is_null($id)) {
             $treatmentPlant = new TreatmentPlant();
             $treatmentPlant->name = $data['name'] ? $data['name'] : null;
@@ -146,7 +147,7 @@ class TreatmentPlantService
             }
             $treatmentPlant->save();
         } else {
-            $treatmentPlant = TreatmentPlant::find($id);
+            $treatmentPlant = TreatmentPlant::whereKey($id)->lockForUpdate()->firstOrFail();
             $treatmentPlant->name = $data['name'] ? $data['name'] : null;
             $treatmentPlant->location = $data['location'] ? $data['location'] : null;
             $treatmentPlant->capacity_per_day = $data['capacity_per_day'] ? $data['capacity_per_day'] : null;
@@ -158,6 +159,28 @@ class TreatmentPlantService
 
             $treatmentPlant->save();
         }
+        if (!empty($data['cwis_removed_annual'])) {
+            $treatmentPlant->annualSustainability()->whereIn('id', $data['cwis_removed_annual'])->delete();
+        }
+        foreach ($data['cwis_annual'] ?? [] as $row) {
+            $hasValues = false;
+            foreach (array_keys(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES) as $column) {
+                if (isset($row[$column]) && $row[$column] !== '') { $hasValues = true; }
+            }
+            if (!$hasValues && empty($row['id'])) { continue; }
+            $annual = !empty($row['id'])
+                ? $treatmentPlant->annualSustainability()->whereKey($row['id'])->lockForUpdate()->firstOrFail()
+                : $treatmentPlant->annualSustainability()->firstOrNew(['data_year' => $row['data_year']]);
+            $annual->data_year = $row['data_year'];
+            foreach (array_keys(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES) as $column) {
+                $annual->$column = isset($row[$column]) && $row[$column] !== '' ? $row[$column] : null;
+            }
+            if (!$annual->exists) { $annual->created_by = Auth::id(); }
+            $annual->updated_by = Auth::id();
+            $annual->save();
+        }
+        return $treatmentPlant;
+        });
     }
 
     /**
@@ -168,14 +191,14 @@ class TreatmentPlantService
      */
     public function download($data)
     {
-            $searchData = $data['searchData'] ? $data['searchData'] : null;
+            $searchData = $data['searchData'] ?? null;
             // $trtpltid = $data['trtpltid'] ? $data['trtpltid'] : null;
-            $name = $data['name'] ? $data['name'] : null;
-            $capacity_per_day = $data['capacity_per_day'] ? $data['capacity_per_day'] : null;
-            $caretaker_name = $data['caretaker_name'] ? $data['caretaker_name'] : null;
-            $caretaker_number = $data['caretaker_number'] ? $data['caretaker_number'] : null;
-            $status = $data['status'] ? $data['status'] : null;
-            $type = $data['type'] ? $data['type'] : null;
+            $name = $data['name'] ?? null;
+            $capacity_per_day = $data['capacity_per_day'] ?? null;
+            $caretaker_name = $data['caretaker_name'] ?? null;
+            $caretaker_number = $data['caretaker_number'] ?? null;
+            $status = $data['status'] ?? null;
+            $type = $data['type'] ?? null;
     
 
             $columns = [
@@ -185,8 +208,10 @@ class TreatmentPlantService
             __('Caretaker Number'),
             __('Status'),
             __('Treatment Plant Type'),
+            __('Data Year'),
+            ...array_map('__', array_values(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES)),
         ];
-            $query = TreatmentPlant::select( 'name', 'capacity_per_day', 'caretaker_name', 'caretaker_number', 'status','type')
+            $query = TreatmentPlant::with('annualSustainability')->select('id', 'name', 'capacity_per_day', 'caretaker_name', 'caretaker_number', 'status','type')
                 ->whereNull('deleted_at');
 
 
@@ -216,9 +241,10 @@ class TreatmentPlantService
                 ->setBackgroundColor(Color::rgb(228, 228, 228))
                 ->build();
 
+            return response()->streamDownload(function () use ($query, $columns, $style) {
             $writer = WriterFactory::create(Type::CSV);
 
-            $writer->openToBrowser('Treatment Plants.csv')
+            $writer->openToFile('php://output')
                 ->addRowWithStyle($columns, $style); //Top row of excel
              
                 $query->chunk(5000, function ($treatmentPlant) use ($writer) {
@@ -251,10 +277,21 @@ class TreatmentPlantService
                                 break;
                         }
                 
-                        $writer->addRow($values);
+                        $annualRows = $data->annualSustainability;
+                        if ($annualRows->isEmpty()) {
+                            $writer->addRow(array_merge($values, [null, null, null, null, null]));
+                        }
+                        foreach ($annualRows as $annual) {
+                            $annualValues = [$annual->data_year];
+                            foreach (array_keys(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES) as $column) {
+                                $annualValues[] = $annual->$column;
+                            }
+                            $writer->addRow(array_merge($values, $annualValues));
+                        }
                     }
-                    $writer->close();
                 });
+                $writer->close();
+            }, 'Treatment Plants.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
 
 
         }
