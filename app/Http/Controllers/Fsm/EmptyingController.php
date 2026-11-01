@@ -163,6 +163,7 @@ class EmptyingController extends Controller
         $emptying = Emptying::findOrFail($id);
         $application = Application::with('emptying')
             ->findOrFail($emptying->application_id);
+        $application_id = $application->id;
         $is_anf = (bool) $application->is_anf;
 
         if( !(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department')) )
@@ -184,6 +185,7 @@ class EmptyingController extends Controller
             'indexAction',
             'emptying',
             'application',
+            'application_id',
             'is_anf'
         ));
     }
