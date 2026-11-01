@@ -34,7 +34,7 @@ class CwisAccountabilityDataRequest extends FormRequest
         foreach ($keys as $key) {
             $rules['answers.' . $key] = [$complete ? 'required' : 'nullable', Rule::in(['Yes', 'No'])];
             $rules['evidence.' . $key] = $this->input('answers.' . $key) === 'Yes'
-                ? ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'] : ['prohibited'];
+                ? \App\Support\CwisEvidence::uploadRules() : ['prohibited'];
         }
         return $rules;
     }
