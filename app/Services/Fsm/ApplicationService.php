@@ -26,6 +26,7 @@ use App\Models\UtilityInfo\Roadline;
 use Carbon\Carbon;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
 use Venturecraft\Revisionable\Revision;
@@ -2184,8 +2185,10 @@ class ApplicationService
             throw new \Exception(__('This application is not an Address Not Found (ANF) application or has already been resolved.'));
         }
 
-        // Find containment by code field
-        $containment = Containment::where('id', $containmentCode)->firstOrFail();
+        // Find containment by id or public_id
+        $containment = Str::isUuid($containmentCode)
+            ? Containment::where('public_id', $containmentCode)->firstOrFail()
+            : Containment::where('id', $containmentCode)->firstOrFail();
 
         // Check no duplicate containment in applications table (covers both not started and in-progress multi-trip)
         $alreadyExists = Application::where('containment_id', $containment->id)
@@ -2198,7 +2201,9 @@ class ApplicationService
             throw new \Exception(__('Error! This containment already has a running application.'));
         }
 
-        $building = Building::where('bin', $bin)->firstOrFail();
+        $building = Str::isUuid($bin)
+            ? Building::where('public_id', $bin)->firstOrFail()
+            : Building::where('bin', $bin)->firstOrFail();
 
         // Ensure the containment belongs to the selected building
         if (!$building->containments()->where('containments.id', $containment->id)->exists()) {

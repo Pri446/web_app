@@ -14,6 +14,7 @@ use App\Models\BuildingInfo\Building;
 use App\Models\BuildingInfo\Owner;
 use App\Models\BuildingInfo\SanitationSystem;
 use App\Models\Fsm\Containment;
+use App\Models\Fsm\Application;
 use App\Models\Fsm\ContainmentType;
 use App\Helpers\KeywordMatcher;
 
@@ -38,6 +39,9 @@ use Carbon\Carbon;
 use App\Models\Fsm\BuildToilet;
 use App\Services\OwnerPiiPresenter;
 use App\Services\OwnerPiiAuditService;
+use App\Services\ApplicationPiiAccessService;
+use App\Services\Fsm\OperationalDataAccessService;
+use Illuminate\Support\Str;
 use App\Services\PiiAccessService;
 use Illuminate\Support\Facades\Auth;
 
@@ -51,6 +55,7 @@ class BuildingController extends Controller
     protected BuildingStructureService $buildingStructureService;
     protected OwnerPiiPresenter $ownerPiiPresenter;
     protected PiiAccessService $piiAccessService;
+    protected ApplicationPiiAccessService $applicationPiiAccessService;
     protected OwnerPiiAuditService $ownerPiiAuditService;
     private $points;
 
@@ -58,6 +63,7 @@ class BuildingController extends Controller
         BuildingStructureService $buildingStructureService,
         OwnerPiiPresenter $ownerPiiPresenter,
         PiiAccessService $piiAccessService,
+        ApplicationPiiAccessService $applicationPiiAccessService,
         OwnerPiiAuditService $ownerPiiAuditService
     ) {
         $this->middleware('auth');
@@ -87,12 +93,13 @@ class BuildingController extends Controller
         );
         $this->middleware(
             'pii.no-cache',
-            ['only' => ['index', 'getData', 'show', 'edit']]
+            ['only' => ['index', 'getData', 'show', 'edit', 'listContainments', 'mapLookup']]
         );
 
         $this->buildingStructureService = $buildingStructureService;
         $this->ownerPiiPresenter = $ownerPiiPresenter;
         $this->piiAccessService = $piiAccessService;
+        $this->applicationPiiAccessService = $applicationPiiAccessService;
         $this->ownerPiiAuditService = $ownerPiiAuditService;
     }
     public function getData(Request $request)
@@ -604,33 +611,137 @@ class BuildingController extends Controller
     {
         return ($this->buildingStructureService->fetchHouseNumberAll());
     }
-    public function listContainments(Building $building)
+    public function listContainments($id)
     {
-        if ($building) {
-            $title = __('Containments Connected to Building') . ': ' . $building->bin;
-            $containments = $building->containments->toArray();
+        $building = ($id instanceof Building) ? $id : (
+            Str::isUuid($id)
+                ? Building::where('public_id', $id)->first()
+                : Building::where('bin', $id)->first()
+        );
 
-            $popContentsHtml = empty($containments)
-                ? __('No Containment Found.')
-                : $this->popUpContentHtml($containments);
-
-            return [
-                'title' => $title,
-                'popContentsHtml' => $popContentsHtml,
-            ];
+        if (!$building) {
+            return response()->json(['message' => __('Building not found.')], 404);
         }
+
+        return $this->buildingMapLookupPayload($building);
+    }
+
+    public function mapLookup(Request $request)
+    {
+        $validated = $request->validate([
+            'bin' => ['required', 'string', 'max:100'],
+            'application_id' => ['nullable', 'integer'],
+        ]);
+
+        $building = Building::where('bin', $validated['bin'])->firstOrFail();
+        $applicationPiiUnlocked = false;
+        $applicationId = isset($validated['application_id'])
+            ? (int) $validated['application_id']
+            : null;
+
+        if ($applicationId !== null) {
+            $application = Application::findOrFail($applicationId);
+            OperationalDataAccessService::authorizeApplication($application);
+            $user = $request->user();
+
+            $applicationPiiUnlocked = $user
+                && $user->can('Add Application')
+                && $this->applicationPiiAccessService->isUnlocked(
+                    $user,
+                    'owner_lookup',
+                    ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+                );
+        }
+
+        return $this->buildingMapLookupPayload(
+            $building,
+            $applicationPiiUnlocked,
+            $applicationId
+        );
+    }
+
+    private function buildingMapLookupPayload(
+        Building $building,
+        bool $applicationPiiUnlocked = false,
+        ?int $applicationId = null
+    ): array
+    {
+        $buildingPiiUnlocked = $this->ownerPiiIsUnlocked($building, 'view');
+        $piiUnlocked = $applicationPiiUnlocked || $buildingPiiUnlocked;
+        $ownerPii = [
+            'owner_name' => null,
+            'owner_gender' => null,
+        ];
+
+        if ($piiUnlocked && $building->Owners) {
+            $plaintext = $this->ownerPiiPresenter->presentPlaintext(
+                $building->Owners
+            );
+            $ownerPii['owner_name'] = $plaintext['owner_name'];
+            $ownerPii['owner_gender'] = $plaintext['owner_gender'];
+
+            $usingApplicationGrant = $applicationPiiUnlocked;
+            $this->ownerPiiAuditService->record(
+                $usingApplicationGrant
+                    ? 'application_owner_pii_lookup_viewed'
+                    : 'pii_viewed',
+                true,
+                Auth::user(),
+                $usingApplicationGrant ? null : (string) $building->public_id,
+                [
+                    'surface' => 'emptying_locate_building',
+                    'application_id' => $applicationId,
+                    'building_public_id' => (string) $building->public_id,
+                ],
+                $usingApplicationGrant
+                    ? $this->applicationPiiAccessService->authenticationMethod(
+                        Auth::user(),
+                        'owner_lookup',
+                        ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+                    )
+                    : $this->piiAccessService->authenticationMethod(
+                        Auth::user(),
+                        'view',
+                        (string) $building->public_id
+                    )
+            );
+        }
+
+        $containments = $building->containments->map(function ($containment) {
+            return [
+                'id' => $containment->id,
+                'public_id' => $containment->public_id,
+                'type' => optional($containment->containmentType)->type,
+            ];
+        })->values()->all();
+
+        $popContentsHtml = empty($containments)
+            ? __('No Containment Found.')
+            : $this->popUpContentHtml($containments);
+
+        return [
+            'title' => __('Containments Connected to Building') . ': ' . $building->bin,
+            'popContentsHtml' => $popContentsHtml,
+            'containments' => $containments,
+            'building_bin' => $building->bin,
+            'building_public_id' => $building->public_id,
+            'owner_pii_locked' => !$piiUnlocked,
+            'owner_name' => $ownerPii['owner_name'],
+            'owner_gender' => $ownerPii['owner_gender'],
+        ];
     }
 
     public function popUpContentHtml($containments)
     {
         $tbody = '<tbody>';
         foreach ($containments as $row1) {
-            $tbody .= '<tr>';
+            $containmentPublicId = (string) ($row1['public_id'] ?? '');
+            $tbody .= '<tr data-containment-public-id="' . e($containmentPublicId) . '">';
             $tbody .= '<td>' . $row1['id'] . '</td>';
-            $tbody .= '<td>' . $row1['containment_type']['type'] . '</td>';
+            $tbody .= '<td>' . ($row1['containment_type']['type'] ?? ($row1['type'] ?? '-')) . '</td>';
             $tbody .= '<td class="text-center">
                         <a title="' . e(__('Containment Detail')) . '"
-                           href="' . action("Fsm\ContainmentController@show", ['containment' => $row1['public_id']]) . '"
+                           href="' . action("Fsm\ContainmentController@show", ['containment' => $containmentPublicId]) . '"
                            class="btn btn-info btn-sm mb-1">
                            <i class="fa fa-info-circle" aria-hidden="true"></i>
                         </a>

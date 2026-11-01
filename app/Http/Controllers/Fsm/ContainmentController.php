@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Box\Spout\Common\Type;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 use App\Models\Fsm\Containment;
 use App\Models\UtilityInfo\Drain;
@@ -85,8 +86,13 @@ class ContainmentController extends Controller
     }
 
     // Data table for containments of particular building Only
-    public function getContainment(Request $request, Building $building)
+    public function getContainment(Request $request, $id)
     {
+        $building = ($id instanceof Building) ? $id : (
+            Str::isUuid($id)
+                ? Building::where('public_id', $id)->firstOrFail()
+                : Building::where('bin', $id)->firstOrFail()
+        );
         $request->merge(['id' => $building->bin, 'building_public_id' => $building->public_id]);
         return ($this->containmentService->fetchBuildingContainmentData($request));
     }
@@ -95,12 +101,16 @@ class ContainmentController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function createContainment(Request $request, Building $building)
+    public function createContainment(Request $request, $id)
     {
+        $building = ($id instanceof Building) ? $id : (
+            Str::isUuid($id)
+                ? Building::where('public_id', $id)->firstOrFail()
+                : Building::where('bin', $id)->firstOrFail()
+        );
         $page_title = __("Add Containment");
         $id = $building->bin;
         $containment_building = $building;
-
 
         $containment_type = ContainmentType::pluck('type', 'id');
         $sewer_code = SewerLine::pluck('code', 'code')->all();
@@ -115,8 +125,14 @@ class ContainmentController extends Controller
      * @return \Illuminate\Http\Response
      */
     // stores containment data added from buildings ->edit page -> add new containment to building button
-    public function storeContainment(ContainmentRequest $request, Building $building)
+    public function storeContainment(ContainmentRequest $request, $id)
     {
+        $building = ($id instanceof Building) ? $id : (
+            Str::isUuid($id)
+                ? Building::where('public_id', $id)->firstOrFail()
+                : Building::where('bin', $id)->firstOrFail()
+        );
+
         try {
             $request->bin = $building->bin;
             // storing new containment
@@ -128,9 +144,13 @@ class ContainmentController extends Controller
                 $containmentId = $request->containment_id;
                 if ($containmentId) {
                     $applicationService = app(\App\Services\Fsm\ApplicationService::class);
-                    $applicationService->resolveAnf((int) $request->application_id, $id, $containmentId);
+                    $applicationService->resolveAnf((int) $request->application_id, $building->bin, $containmentId);
                 }
                 DB::commit();
+                $application = Application::find($request->application_id);
+                if ($application && $application->emptying()->exists()) {
+                    return redirect()->route('emptying.edit', $application->emptying->id)->with('success', __("Containment created and linked to application successfully"));
+                }
                 return redirect()->route('emptying.create-id', $request->application_id)->with('success', __("Containment created and linked to application successfully"));
             }
 

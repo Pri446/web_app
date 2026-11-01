@@ -66,6 +66,9 @@
 <script src="{{ asset('/js/ol.js') }}"></script>
 <script src="https://unpkg.com/ol-layerswitcher@3.8.3"></script>
 <script>
+var anfBuildingMapLookupUrl = @json(route('buildings.map-lookup'));
+var anfCreateContainmentUrl = @json(action('Fsm\ContainmentController@createContainment', ['__BUILDING_PUBLIC_ID__']));
+
 $('#locateBuildingModal').on('shown.bs.modal', function () {
     if (window.anfMap) {
         window.anfMap.updateSize();
@@ -159,6 +162,9 @@ var extentMaxLat = 27.78;
     + '?service=WFS&version=1.0.0&request=GetFeature'
     + '&typeName=' + encodeURIComponent(workspace + ':buildings_layer')
     + '&outputFormat=application/json'
+    + '&propertyName=' + encodeURIComponent(
+        'bin,ward,house_number,road_code,structure_type_name,floor_count,building_sanitation_system,geom'
+    )
     + '&CQL_FILTER=' + encodeURIComponent(
         'INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
     );
@@ -167,11 +173,30 @@ var extentMaxLat = 27.78;
         if (data.features && data.features.length > 0) {
             var props = data.features[0].properties;
             var bin = props.bin;
-            $.getJSON('{{ url("/building-info/buildings") }}/' + bin + '/listContainments', function (res) {
-                 console.log('listContainments response:', res);
+
+            if (!bin) {
+                alert('{{ __('Unable to identify the selected building.') }}');
+                return;
+            }
+
+            $.ajax({
+                url: anfBuildingMapLookupUrl,
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    bin: bin,
+                    application_id: {{ $application_id }}
+                }
+            }).done(function (res) {
+                props.bin = res.building_bin;
+                props.public_id = res.building_public_id;
+                props.owner_pii_locked = res.owner_pii_locked;
+                props.owner_name = res.owner_name;
+                props.owner_gender = res.owner_gender;
                 showAnfPopup(props, res);
-            }).fail(function () {
-                showAnfPopup(props, null);
+            }).fail(function (xhr) {
+                console.error('Unable to load the selected building:', xhr.responseText);
+                alert('{{ __('Unable to load the selected building. Please try again.') }}');
             });
         } else {
             // No building — show popup with option to add
@@ -213,71 +238,101 @@ function showNoBuilding(lat, lng) {
 
     $('#anf-popup').html(html).show();
 }
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function showAnfPopup(building, containmentRes) {
     var html = '';
-    var hasContainments = containmentRes && containmentRes.popContentsHtml &&
-                          containmentRes.popContentsHtml !== 'No Containment Found.';
-
-    // Extract containment ID from the HTML (first <td> content)
+    var hasContainments = false;
     var containmentId = null;
-    if (hasContainments) {
-        var tempDiv = document.createElement('div');
-        tempDiv.innerHTML = containmentRes.popContentsHtml;
-        var firstTd = tempDiv.querySelector('tbody tr td:first-child');
-        containmentId = firstTd ? firstTd.textContent.trim() : null;
+
+    if (containmentRes) {
+        if (containmentRes.containments && Array.isArray(containmentRes.containments) && containmentRes.containments.length > 0) {
+            hasContainments = true;
+            containmentId = containmentRes.containments[0].public_id;
+        }
     }
 
-  if (!hasContainments) {
-    const currentUrl = new URL(window.location.href);
+    var applicationId = '{{ $application_id }}';
+    var buildingPublicId = building.public_id;
+    var ownerDisplay = '********';
 
-    let applicationId = currentUrl.searchParams.get('application_id');
-
-    if (!applicationId) {
-        const pathParts = window.location.pathname.split('/').filter(Boolean);
-        applicationId = pathParts[pathParts.length - 1];
+    if (building.owner_pii_locked === false) {
+        var ownerName = escapeHtml(building.owner_name || '-');
+        var ownerGender = escapeHtml(building.owner_gender || '');
+        ownerDisplay = ownerName + (ownerGender ? ' (' + ownerGender + ')' : '');
     }
-    console.log('applicationId:', applicationId);
 
-    html = `<div class="p-3">
-        <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2">
-            <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
-            <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
-        </div>
-        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${escapeHtml(building.owner_name ?? '-')} (${escapeHtml(building.owner_gender ?? '-')})</p>
-        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
-        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
-        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
-        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
-        <div class="alert alert-warning py-1 small mb-2">⚠ {{__('No containment linked to this building')}}.</div>
-        <a href="/fsm/containments/${building.bin}/create?application_id=${applicationId}" class="btn btn-warning btn-sm btn-block">
-            + {{__('Add Containment')}}
-        </a>
-    </div>`;
-} else {
-    html = `<div class="p-3">
-        <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2">
-            <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
-            <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
-        </div>
-        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${escapeHtml(building.owner_name ?? '-')} (${escapeHtml(building.owner_gender ?? '-')})</p>
-        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
-        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
-        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
-        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
-        <h6 class="font-weight-bold border-bottom pb-1 mb-2">🚽 {{__('Containments')}}</h6>
-        <div class="mb-2 small">${containmentRes.popContentsHtml}</div>
-        <button class="btn btn-success btn-sm btn-block"
-            onclick="selectAnfBuilding('${building.bin}', '${containmentId}')">
-            ✔ {{__('Select This Building')}}
-        </button>
-    </div>`;
-}
+    var addContainmentUrl = anfCreateContainmentUrl.replace(
+        '__BUILDING_PUBLIC_ID__',
+        encodeURIComponent(buildingPublicId)
+    );
+
+    if (!hasContainments) {
+        html = `<div class="p-3">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2">
+                <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
+                <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
+            </div>
+            <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${ownerDisplay}</p>
+            <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${escapeHtml(building.ward ?? '-')} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
+            <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
+            <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${escapeHtml(building.floor_count ?? '-')}</p>
+            <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
+            <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
+            <div class="alert alert-warning py-1 small mb-2">⚠ {{__('No containment linked to this building')}}.</div>
+            <a href="${addContainmentUrl}?application_id=${encodeURIComponent(applicationId)}" class="btn btn-warning btn-sm btn-block">
+                + {{__('Add Containment')}}
+            </a>
+        </div>`;
+    } else {
+        html = `<div class="p-3">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2">
+                <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
+                <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
+            </div>
+            <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${ownerDisplay}</p>
+            <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${escapeHtml(building.ward ?? '-')} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
+            <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
+            <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${escapeHtml(building.floor_count ?? '-')}</p>
+            <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
+            <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
+            <h6 class="font-weight-bold border-bottom pb-1 mb-2">🚽 {{__('Containments')}}</h6>
+            <div class="mb-2 small" id="anf-containments-table-wrapper">${containmentRes.popContentsHtml}</div>
+            <button id="anf-select-building-btn" class="btn btn-success btn-sm btn-block"
+                onclick="selectAnfBuilding('${buildingPublicId}', '${containmentId}')">
+                ✔ {{__('Select This Building')}}
+            </button>
+        </div>`;
+    }
     $('#anf-popup').html(html).show();
+
+    if (hasContainments) {
+        $('#anf-containments-table-wrapper table tbody tr:first').addClass('table-primary');
+        $('#anf-containments-table-wrapper table tbody tr').css('cursor', 'pointer').on('click', function () {
+            $('#anf-containments-table-wrapper table tbody tr').removeClass('table-primary');
+            $(this).addClass('table-primary');
+            var containmentPublicId = $(this).attr('data-containment-public-id');
+            if (containmentPublicId) {
+                $('#anf-select-building-btn').attr('onclick', "selectAnfBuilding('" + buildingPublicId + "', '" + containmentPublicId + "')");
+            }
+        });
+    }
 }
-function selectAnfBuilding(bin, containmentId) {
+function selectAnfBuilding(buildingPublicId, containmentPublicId) {
     var applicationId = {{ $application_id }};
+
+    if (!containmentPublicId) {
+        alert('{{ __('Please select a containment.') }}');
+        return;
+    }
 
     $.ajax({
         url: '{{ route("application.resolve-anf", $application_id) }}',
@@ -285,8 +340,8 @@ function selectAnfBuilding(bin, containmentId) {
         data: {
             _token: '{{ csrf_token() }}',
             _method: 'PATCH',
-            bin: bin,
-            containment_id: containmentId ?? ''
+            bin: buildingPublicId,
+            containment_id: containmentPublicId
         },
         success: function (res) {
             if (res.status) {
@@ -299,11 +354,18 @@ function selectAnfBuilding(bin, containmentId) {
                         window.location.reload();
                     }
                 });
+            } else {
+                alert(res.message || 'Error saving building selection.');
             }
         },
         error: function (xhr) {
             console.error('Failed to resolve ANF:', xhr.responseText);
-            alert('Error saving building selection. Please try again.');
+            var msg = 'Error saving building selection. Please try again.';
+            try {
+                var json = JSON.parse(xhr.responseText);
+                if (json.message) msg = json.message;
+            } catch (e) {}
+            alert(msg);
         }
     });
 }
