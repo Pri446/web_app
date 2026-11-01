@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
 
         // CWIS
         $this->call(CwisSettingsSeeder::class);
-        $this->call(CwisDataSourceSeeder::class);
+        $this->call(\Database\Seeders\Cwis\Equity\CwisDataSourceSeeder::class);
 
         // Multilingual
         $this->call(LanguageSeeder::class);

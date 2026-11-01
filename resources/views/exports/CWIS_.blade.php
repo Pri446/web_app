@@ -20,7 +20,7 @@
         @foreach ($results as $result)
             <tr>
                 <td>{{ $result->label}}</td>
-                <td> {{ $result->outcome }}</td>
+                <td> {{ $result->outcome === 'rpm' ? __('Resource Planning and Management') : $result->outcome }}</td>
                 <td>{{ $result->data_value }}</td>
             </tr>
         @endforeach

@@ -19,6 +19,11 @@ class TreatmentPlant extends Model
     protected $table = 'fsm.treatment_plants';
     protected $primaryKey = 'id';
 
+    public function annualSustainability()
+    {
+        return $this->hasMany(TreatmentPlantAnnualSustainability::class, 'treatment_plant_id')->orderByDesc('data_year');
+    }
+
      public function users()
      {
          return $this->hasMany('App\Models\User', 'treatment_plant_id', 'id');
