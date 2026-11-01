@@ -65,7 +65,7 @@ class CwisIndicatorDataRequest extends FormRequest
                 ? [($approvalReview || $field->required_on_submit) && $this->input('save_mode') === 'submitted' ? 'required' : 'nullable', Rule::in(['Yes', 'No'])]
                 : ['prohibited'];
             $rules['evidence.' . $field->input_name] = $applicable && $this->input('policies.' . $field->input_name) === 'Yes'
-                ? ['nullable', 'file', 'max:10240'] : ['prohibited'];
+                ? \App\Support\CwisEvidence::uploadRules() : ['prohibited'];
         }
         if ($this->route('submission')) {
             $record = DB::table('cwis.equity_submissions')->where('id', $this->route('submission'))->first();
