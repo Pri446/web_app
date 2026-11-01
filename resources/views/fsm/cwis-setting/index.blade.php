@@ -14,9 +14,9 @@
     <div class="card">
 
         <div class="card-body">
-            {!! Form::model([
-                'method' => 'PATCH',
-                'action' => ['Fsm\CwisSettingController@update'],
+            {!! Form::open([
+                'method' => 'POST',
+                'action' => ['Fsm\CwisSettingController@store'],
                 'class' => 'form-horizontal',
                 'id' => 'editForm',
             ]) !!}
@@ -26,42 +26,40 @@
                 </div>
             </div>
             
-            @php
-                $units = [
-                    'average_water_consumption_lpcd' => 'liters/day',
-                    'waste_water_conversion_factor' => 'liters/day',
-                    'greywater_conversion_factor_connected_to_sewer' => '%',
-                    'greywater_conversion_factor_not_connected_to_sewer' => '%',
-                    'fs_generation_from_containment_not_connected_to_sewer_lpcd' => 'liters/day',
-                    'fs_generation_from_permeable_or_unlined_pit_lpcd' => 'liters/day',
-                                     
-                ];
-
-                $abbreviations = [
-                    'average_water_consumption_lpcd' => __('Average Water Consumption (LPCD)'),
-                    'waste_water_conversion_factor' => __('Waste Water Conversion Factor (%)'),
-                    'greywater_conversion_factor_connected_to_sewer' => __('Greywater Conversion Factor Connected To Sewer (%)'),
-                    'greywater_conversion_factor_not_connected_to_sewer' => __('Greywater Conversion Factor Not Connected To Sewer (%)'),
-                    'fs_generation_from_containment_not_connected_to_sewer_lpcd' => __('FS Generation From Containment Not Connected To Sewer (LPCD)'),
-                    'fs_generation_from_permeable_or_unlined_pit_lpcd' => __('FS Generation From Permeable/ Unlined Pit (LPCD)')
-                ];
-            @endphp
-
-            @foreach (['average_water_consumption_lpcd', 'waste_water_conversion_factor', 'greywater_conversion_factor_connected_to_sewer','greywater_conversion_factor_not_connected_to_sewer','fs_generation_from_containment_not_connected_to_sewer_lpcd','fs_generation_from_permeable_or_unlined_pit_lpcd'] as $key)
+            <div class="form-group row">
+                {!! Form::label('active_country', __('Country'), ['class' => 'col-sm-3 control-label']) !!}
+                <div class="col-sm-3">
+                    {!! Form::select('active_country', array_map('__', $countries), old('active_country', $data['active_country'] ?? 'ALL'), ['class' => 'form-control', 'required' => true]) !!}
+                </div>
+            </div>
+            @foreach ($parameters as $key => $parameter)
                 <div class="form-group row">
                     {!! Form::label(
                         $key,
-                        isset($abbreviations[$key])
-                            ? $abbreviations[$key]
-                            : ucwords(str_replace('_', ' ', $key)) . ' (' . $units[$key] . ')',
+                        __($parameter['label']),
                         ['class' => 'col-sm-3 control-label' ],
                     ) !!}
                     <div class="col-sm-3">
-                        {!! Form::number($key, $data[$key], [
+                        {!! Form::number($key, old($key, $data[$key] ?? null), [
                             'class' => 'form-control',
-                            'placeholder' => str_replace('Lpcd', '(LPCD)', ucwords(str_replace('_', ' ', $key))) ,
-                            'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\../g, '$1')"
+                            'required' => true,
+                            'min' => $parameter['min'],
+                            'max' => $parameter['max'],
+                            'step' => 'any',
                         ]) !!}
+                    </div>
+                </div>
+            @endforeach
+            <h6 class="mt-4 mb-3">{{ __('Legacy Parameters (Not Used by Revised Formulas)') }}</h6>
+            @foreach ([
+                'fs_generation_from_containment_not_connected_to_sewer_lpcd' => 'FS Generation From Containment Not Connected to Sewer (LPCD)',
+                'fs_generation_from_permeable_or_unlined_pit_lpcd' => 'FS Generation From Permeable/Unlined Pit (LPCD)',
+                'greywater_conversion_factor_connected_to_sewer' => 'Greywater Conversion Factor Connected to Sewer (%)',
+            ] as $key => $label)
+                <div class="form-group row">
+                    <label for="legacy-{{ $key }}" class="col-sm-3 control-label">{{ __($label) }}</label>
+                    <div class="col-sm-3">
+                        <input id="legacy-{{ $key }}" class="form-control" value="{{ $data[$key] ?? '' }}" readonly data-legacy-setting>
                     </div>
                 </div>
             @endforeach
@@ -72,19 +70,16 @@
             <button type="submit" id="saveButton" class="btn btn-info" style="display: none;">{{__('Save')}}</button>
             @endcan
         </div><!-- /.box-footer -->
-    </div>
     {!! Form::close() !!}
     </div>
-
-
-    </div><!-- /.box -->
 @stop
 @push('scripts')
 <script>
     $(document).ready(function() {
         // Function to toggle readonly attribute
         function toggleReadOnly(readonly) {
-            $('input').prop('readonly', readonly);
+            $('#editForm input:not([type=hidden]):not([data-legacy-setting])').prop('readonly', readonly);
+            $('#editForm select').prop('disabled', readonly);
         }
 
         // Initially set form fields as read-only
@@ -92,7 +87,7 @@
 
         // Edit button click event
         $('#editButton').click(function() {
-            $('input').removeAttr('readonly');
+            toggleReadOnly(false);
             $('#editButton').hide();
             $('#saveButton').show();
 
@@ -104,7 +99,7 @@
         var hasErrors = $('.alert-danger').length > 0;
 
         if (hasErrors) {
-            $('input').removeAttr('readonly');
+            toggleReadOnly(false);
             $('#editButton').hide();
             $('#saveButton').show();
         } else {

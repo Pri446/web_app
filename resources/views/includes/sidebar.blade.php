@@ -408,6 +408,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="{{ route('cwis.generator-data.index') }}" class="nav-link {{ request()->is('cwis/generator-data', 'cwis/generator-data/*') ? 'active' : '' }}">
+                            <i class="nav-icon far fa-circle"></i>
+                            <p>{{ __('CWIS Indicator Data') }}</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ action('Fsm\CwisSettingController@index') }}" class="nav-link {{ request()->is('fsm/cwis-setting','fsm/cwis-setting/*') ? 'active' : '' }}">
                         <i class="nav-icon fa-solid fa-gear "style="font-size: 14px;"></i>
                             <p>{{__('CWIS Setting')}}</p>

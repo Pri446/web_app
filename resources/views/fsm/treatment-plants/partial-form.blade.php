@@ -118,6 +118,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         </div>
     </div>
 
+    @include('fsm.treatment-plants.cwis-annual-form')
+
     @if(!isset($treatmentPlant))
     <div class="form-group row required">
         {!! Form::label('', __('Click to set Latitude and Longitude'), ['class' => 'col-sm-3 control-label']) !!}

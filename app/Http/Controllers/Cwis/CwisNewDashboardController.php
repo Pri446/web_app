@@ -97,10 +97,26 @@ class CwisNewDashboardController extends Controller
         $presentYears = cwis_mne::distinct()->orderBy('year', 'desc')->pluck('year');
         $latestYear = cwis_mne::orderBy('year', 'desc')->pluck('year')->first();
         $selectedYear = $request->year ?? $latestYear;
+        $indicatorService = app(\App\Services\Cwis\CwisIndicatorService::class);
+        $country = $indicatorService->activeCountry();
+        $countryLabel = __(\App\Services\Cwis\CwisIndicatorService::COUNTRIES[$country]);
+        $countryIndicators = $indicatorService->forCountry($country);
+        $allowedIndicatorCodes = $countryIndicators->pluck('indicator_code');
+        $equityIndicators = $countryIndicators->where('outcome', 'equity');
+        $safetyIndicators = $countryIndicators->where('outcome', 'safety');
+        $sustainabilityIndicators = $countryIndicators->where('outcome', 'sustainability');
+        $responsibilityIndicators = $countryIndicators->where('outcome', 'responsibility');
+        $accountabilityIndicators = $countryIndicators->where('outcome', 'accountability');
+        $rpmIndicators = $countryIndicators->where('outcome', 'rpm');
+        $savedResults = $indicatorService->resultsForCountry((int) $selectedYear, $country);
+        $data = $savedResults->pluck('data_value', 'indicator_code');
+        $resultCountryMismatch = cwis_mne::where('year', $selectedYear)->exists()
+            && $indicatorService->resultCountry((int) $selectedYear) !== $country;
     
         // Define indicator codes and their corresponding variable names
         $indicatorCodes = [
             'EQ-1' =>'eq1',
+            'SF-1' => 'sf1',
             'SF-1a' => 'sf1a',
             'SF-1b' => 'sf1b',
             'SF-1c' => 'sf1c',
@@ -131,15 +147,12 @@ class CwisNewDashboardController extends Controller
     
         // Process each indicator
         foreach ($indicatorCodes as $code => $varName) {
-            $queryResult = cwis_mne::where('year', $selectedYear)
-                ->where('indicator_code', $code)
-                ->select(['data_value'])
-                ->get();
+            $queryResult = $savedResults->has($code) ? collect([$savedResults->get($code)]) : collect();
     
             $results[$varName] = $queryResult;
     
-            foreach ($queryResult as $data) {
-                $dataValue = strtolower($data->data_value);
+            foreach ($queryResult as $resultRow) {
+                $dataValue = strtolower($resultRow->data_value);
                 if ($dataValue === 'nan' || $dataValue === 'na') {
                     $hasInvalidValues = true; // Set flag if invalid value found
                 }
@@ -151,7 +164,7 @@ class CwisNewDashboardController extends Controller
         }
 
         // Check if there's no data
-        $noDataMessage = !$hasData
+        $noDataMessage = $presentYears->isEmpty()
             ? "Dashboard cannot be displayed because there is no data for the selected year."
             : null;
     
@@ -160,7 +173,7 @@ class CwisNewDashboardController extends Controller
             'cwis.cwis-dashboard.chart-layout.cwis-dash-layout',
             array_merge(
                 $results,
-                compact('presentYears', 'latestYear', 'noDataMessage', 'hasInvalidValues')
+                compact('presentYears', 'latestYear', 'noDataMessage', 'hasInvalidValues', 'country', 'countryLabel', 'equityIndicators', 'safetyIndicators', 'sustainabilityIndicators', 'responsibilityIndicators', 'accountabilityIndicators', 'rpmIndicators', 'allowedIndicatorCodes', 'data', 'resultCountryMismatch', 'selectedYear')
             )
         );
     }
