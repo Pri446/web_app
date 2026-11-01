@@ -62,7 +62,7 @@
                                         <div class="col-md-2">
                                             <select class="form-control" id="ward" name="ward">
                                                 <option value="">{{ __('All Wards') }}</option>
-                                                @for ($i = 1; $i <= 16; $i++)
+                                                @for ($i = 1; $i <= 8; $i++)
                                                     <option value="{{ $i }}" {{ request('ward') == $i ? 'selected' : '' }}>
                                                         {{ $i }}
                                                     </option>
