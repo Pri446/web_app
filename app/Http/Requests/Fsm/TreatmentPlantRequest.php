@@ -6,6 +6,7 @@ namespace App\Http\Requests\Fsm;
 use Illuminate\Foundation\Http\FormRequest;
 use App\Models\User;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rule;
 
 class TreatmentPlantRequest extends FormRequest
 {
@@ -68,6 +69,17 @@ class TreatmentPlantRequest extends FormRequest
             $rules['geom'] = 'nullable';
         }
 
+        $rules['cwis_annual'] = ['nullable', 'array', 'max:127'];
+        $plant = $this->route('treatment_plant') ?? $this->route('id');
+        $plantId = $plant instanceof \Illuminate\Database\Eloquent\Model ? $plant->getKey() : (int) $plant;
+        $rules['cwis_annual.*'] = ['array:id,data_year,' . implode(',', array_keys(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES))];
+        $rules['cwis_annual.*.id'] = ['nullable', 'integer', 'distinct', Rule::exists(\App\Models\Fsm\TreatmentPlantAnnualSustainability::class, 'id')->where('treatment_plant_id', $plantId)];
+        $rules['cwis_removed_annual'] = ['nullable', 'array', 'max:127'];
+        $rules['cwis_removed_annual.*'] = ['required', 'integer', 'distinct', Rule::exists(\App\Models\Fsm\TreatmentPlantAnnualSustainability::class, 'id')->where('treatment_plant_id', $plantId)];
+        $rules['cwis_annual.*.data_year'] = ['required', 'integer', 'distinct', 'between:1900,' . now()->year];
+        foreach (array_keys(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES) as $column) {
+            $rules['cwis_annual.*.' . $column] = ['nullable', 'numeric', 'min:0', 'regex:/^\d{1,15}(\.\d{1,3})?$/'];
+        }
         return $rules;
     }
 
@@ -132,6 +144,37 @@ class TreatmentPlantRequest extends FormRequest
      */
     public function withValidator($validator)
     {
+        $validator->after(function ($validator) {
+            $rows = $this->input('cwis_annual', []);
+            if (!is_array($rows)) { return; }
+            foreach ($rows as $index => $row) {
+                if (!is_array($row)) { continue; }
+                if (!empty($row['id']) && filter_var($row['id'], FILTER_VALIDATE_INT) !== false) {
+                    $removed = $this->input('cwis_removed_annual', []);
+                    $removed = is_array($removed) ? array_map('intval', $removed) : [];
+                    if (in_array((int) $row['id'], $removed, true)) {
+                        $validator->errors()->add('cwis_annual.' . $index . '.id', __('A removed data year cannot also be updated.'));
+                    }
+                    $plant = $this->route('treatment_plant') ?? $this->route('id');
+                    $plantId = $plant instanceof \Illuminate\Database\Eloquent\Model ? $plant->getKey() : (int) $plant;
+                    if (filter_var($row['data_year'] ?? null, FILTER_VALIDATE_INT) !== false && \Illuminate\Support\Facades\DB::table('cwis.treatment_plant_annual_sustainability')
+                        ->where('treatment_plant_id', $plantId)->where('data_year', $row['data_year'])
+                        ->where('id', '<>', $row['id'])->whereNotIn('id', $removed)->exists()) {
+                        $validator->errors()->add('cwis_annual.' . $index . '.data_year', __('Data already exists for this plant and year.'));
+                    }
+                }
+                foreach (['effluent', 'biosolids'] as $kind) {
+                    $generated = $row['treated_' . $kind . '_generated_volume'] ?? null;
+                    $reused = $row['treated_' . $kind . '_reused_volume'] ?? null;
+                    if (is_numeric($reused) && ($generated === null || $generated === '')) {
+                        $validator->errors()->add('cwis_annual.' . $index . '.treated_' . $kind . '_generated_volume', __('Generated volume is required when reused volume is entered.'));
+                    }
+                    if (is_numeric($generated) && is_numeric($reused) && $reused > $generated) {
+                        $validator->errors()->add('cwis_annual.' . $index . '.treated_' . $kind . '_reused_volume', __('Reused volume cannot exceed generated volume.'));
+                    }
+                }
+            }
+        });
         $validator->addExtension('latitude_longitude', function ($attribute, $value, $parameters, $validator) {
             // Check if both latitude and longitude are missing
             if (!$this->filled('latitude') || !$this->filled('longitude')) {
@@ -140,6 +183,15 @@ class TreatmentPlantRequest extends FormRequest
 
             return true;
         });
+    }
+
+    public function attributes()
+    {
+        $attributes = ['cwis_annual.*.data_year' => __('Data Year'), 'cwis_annual.*.id' => __('Annual Data Record'), 'cwis_removed_annual.*' => __('Removed Data Year')];
+        foreach (\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES as $column => $label) {
+            $attributes['cwis_annual.*.' . $column] = __($label);
+        }
+        return $attributes;
     }
 
 }
