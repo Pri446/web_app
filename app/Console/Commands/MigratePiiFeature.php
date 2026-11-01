@@ -23,6 +23,9 @@ class MigratePiiFeature extends Command
         'database/migrations/2026_09_07_000001_add_pii_pin_hash_to_auth_users.php',
         'database/migrations/2026_09_08_000001_create_owner_pii_audit_logs_table.php',
         'database/migrations/2026_09_08_000002_drop_pii_pin_hash_from_auth_users.php',
+        // Owner ciphertext must have unrestricted TEXT storage before the
+        // existing-owner encryption backfill is run after this schema command.
+        'database/migrations/2026_09_29_000001_change_building_owner_pii_columns_to_text.php',
         'database/migrations/2026_09_30_000001_change_application_customer_pii_columns_to_text.php',
         'database/migrations/2026_10_01_000001_change_property_tax_owner_pii_columns_to_text.php',
         'database/migrations/2026_10_09_000001_create_pii_key_backup_downloads_table.php',
