@@ -303,8 +303,22 @@ class OwnerPiiExportControllerTest extends TestCase
             : Mockery::mock(User::class)->makePartial();
 
         if ($canExportAll !== null) {
-            // Full-export authorization is checked independently from the
-            // base permissions granted by Gate::before in this unit test.
+            // These full-export tests use a partial User mock because they must
+            // independently control the result of the trusted-role check below.
+            //
+            // The controller first calls $user->can(...) for the ordinary
+            // Building PII permissions. Allow those checks directly on the
+            // mock. Otherwise Spatie Permission tries to load the mock's
+            // `roles` Eloquent relationship and the test fails before reaching
+            // the full-export authorization rule that it is intended to test.
+            //
+            // This does not bypass the behavior under test: hasAnyRole() is
+            // still mocked separately with $canExportAll. Therefore the tests
+            // continue to prove that only an approved administrative role can
+            // request an export of the complete owner dataset.
+            $user->shouldReceive('can')
+                ->andReturn(true);
+
             $user->shouldReceive('hasAnyRole')
                 ->once()
                 ->andReturn($canExportAll);
