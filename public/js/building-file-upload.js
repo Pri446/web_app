@@ -133,6 +133,7 @@
         var feedback = document.getElementById('imageFileFeedback');
         var hint = document.getElementById('fileSizeHintImg');
         var file = input.files && input.files[0];
+        var originalSize = file ? file.size : 0;
 
         if (!file) {
             setHintStatus(hint, 'default');
@@ -197,7 +198,13 @@
 
             showImagePreview(uploadFile);
             setHintStatus(hint, 'success');
-            setFeedback(feedback, '', true);
+            setFeedback(
+                feedback,
+                uploadFile !== file
+                    ? 'Image optimized from ' + formatBytes(originalSize) + ' to ' + formatBytes(uploadFile.size) + '.'
+                    : 'Image ready for upload (' + formatBytes(uploadFile.size) + ').',
+                true
+            );
         } catch (error) {
             clearInput(input);
             setHintStatus(hint, 'error');
@@ -271,6 +278,10 @@
         var imageInput = document.getElementById('house_image');
         var kmlInput = document.getElementById('geom');
         var form = imageInput ? imageInput.form : (kmlInput ? kmlInput.form : null);
+
+        if (imageInput) {
+            imageInput.addEventListener('change', handleImageChange);
+        }
 
         if (kmlInput) {
             kmlInput.addEventListener('change', handleKmlChange);
