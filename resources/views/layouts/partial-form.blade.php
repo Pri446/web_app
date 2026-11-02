@@ -91,21 +91,21 @@ A dynamic form layout
                         <div id="anf-address-fields" style="display:none;">
                             <input type="hidden" name="is_anf" id="is_anf" value="0">
 
-                            <div class="form-group row required">
+                            <div class="form-group row">
                                 {!! Form::label('anf_ward', __('Ward Number'), ['class' => 'col-sm-4 col-form-label']) !!}
                                 <div class="col-sm-4">
                                     {!! Form::select('anf_ward', $anfWardOptions ?? [], null, ['class' => 'form-control', 'placeholder' => __('Ward Number'), 'id' => 'anf_ward']) !!}
                                 </div>
                             </div>
 
-                            <div class="form-group row required">
+                            <div class="form-group row">
                                 {!! Form::label('anf_locality', __('Locality Name'), ['class' => 'col-sm-4 col-form-label']) !!}
                                 <div class="col-sm-4">
                                     {!! Form::text('anf_locality', null, ['class' => 'form-control', 'placeholder' => __('Locality Name'), 'id' => 'anf_locality']) !!}
                                 </div>
                             </div>
 
-                            <div class="form-group row required">
+                            <div class="form-group row">
                                 {!! Form::label('anf_nearest_locality', __('Nearest Landmark'), ['class' => 'col-sm-4 col-form-label']) !!}
                                 <div class="col-sm-4">
                                     {!! Form::text('anf_nearest_locality', null, ['class' => 'form-control', 'placeholder' => __('Nearest Landmark'), 'id' => 'anf_nearest_locality']) !!}
@@ -213,7 +213,7 @@ A dynamic form layout
 @else
     @foreach($formFields as $formField)
     <div class="col-sm-12 col-md-8 col-lg-8">
-        <div class="form-group row @if($formField->required) required @endif" @if(!empty($formField->hidden)) @if($formField->hidden === true) style="display: none" @endif @endif>
+        <div id="{{ $formField->inputId }}_form_group" class="form-group row @if($formField->required) required @endif" @if(!empty($formField->hidden)) @if($formField->hidden === true) style="display: none" @endif @endif>
             {!! Form::label($formField->labelFor,$formField->label,['class' => $formField->labelClass,'disabled' => $formField->disabled]) !!}
             <div class="col-sm-4">
                 @if($formField->inputType === 'text')

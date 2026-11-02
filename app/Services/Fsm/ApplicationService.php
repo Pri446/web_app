@@ -764,7 +764,6 @@ class ApplicationService
                     inputId: 'anf_ward',
                     selectValues: Ward::orderBy('ward')->pluck('ward', 'ward')->toArray(),
                     selectedValue: old('anf_ward', $application->ward),
-                    required: true,
                     placeholder: __('Ward Number')
                 ),
                 new FormField(
@@ -773,7 +772,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_locality',
                     inputValue: old('anf_locality', $application->anf_locality),
-                    required: true,
                     placeholder: __('Locality Name')
                 ),
                 new FormField(
@@ -782,7 +780,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_nearest_locality',
                     inputValue: old('anf_nearest_locality', $application->anf_nearest_locality),
-                    required: true,
                     placeholder: __('Nearest Landmark')
                 ),
             ]
@@ -1644,6 +1641,12 @@ class ApplicationService
                 'containment_id',
             ]));
 
+            // This attribute is intentionally assigned explicitly because it
+            // is not mass assignable on the Application model. Without this,
+            // the edit form appeared to accept a new capacity but the saved
+            // application retained its previous vehicle size.
+            $application->desludging_vehicle_size = $request->input('desludging_vehicle_size');
+
             if (!$isAnf) {
                 $building = Building::where('bin', '=', $application->bin)->firstOrFail();
                 $application->containment_id = $request->containment_id ?? $application->containment_id;
@@ -2119,9 +2122,10 @@ class ApplicationService
 
     public function getNextServiceProviderId(?int $capacity = null): ?int
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true);
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order');
 
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
@@ -2132,9 +2136,11 @@ class ApplicationService
 
     public function getNextServiceProviderName(?string $capacity = null): ?string
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true)->with('service_provider');
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order')
+            ->with('service_provider');
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
         }

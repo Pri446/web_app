@@ -317,6 +317,8 @@ class EmptyingService
             // Always render the final-trip fields. The create page controls
             // their visibility from the current form values, allowing the
             // operator to change No. of Trips without reloading the page.
+                $hideFinalTripFields = (int) $application->trip_count !== ((int) $emptying->trip_no + 1);
+
                 $this->createFormFields[] = new FormField(
                     label: __('Receipt Number'),
                     labelFor: 'receipt_number',
@@ -324,7 +326,7 @@ class EmptyingService
                     inputId: 'receipt_number',
                     required: true,
                     placeholder: __('Receipt Number'),
-                    hidden: false
+                    hidden: $hideFinalTripFields
                 );
 
                 $this->createFormFields[] = new FormField(
@@ -334,7 +336,8 @@ class EmptyingService
                     inputId: 'total_cost',
                     required: true,
                     placeholder: __('Total Cost'),
-                    oninput: "this.value = this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;"
+                    oninput: "this.value = this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;",
+                    hidden: $hideFinalTripFields
                 );
 
                 $this->createFormFields[] = new FormField(
@@ -344,6 +347,7 @@ class EmptyingService
                     inputId: 'house_image',
                     required: true,
                     placeholder: __('House Image'),
+                    hidden: $hideFinalTripFields
                 );
 
                 $this->createFormFields[] = new FormField(
@@ -353,6 +357,7 @@ class EmptyingService
                     inputId: 'receipt_image',
                     required: true,
                     placeholder: __('Receipt Image'),
+                    hidden: $hideFinalTripFields
                 );
         } else {
 
@@ -529,6 +534,7 @@ class EmptyingService
                     inputId: 'receipt_number',
                     required: true,
                     placeholder: __('Receipt Number'),
+                    hidden: true
 
                 ),
                 new FormField(
@@ -538,7 +544,8 @@ class EmptyingService
                     inputId: 'total_cost',
                     required: true,
                     placeholder: __('Total Cost'),
-                    oninput: "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;"
+                    oninput: "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;",
+                    hidden: true
                 ),
                 new FormField(
                     label: __('House Image'),
@@ -547,6 +554,7 @@ class EmptyingService
                     inputId: 'house_image',
                     required: true,
                     placeholder: __('House Image'),
+                    hidden: true
                 ),
                 new FormField(
                     label: __('Receipt Image'),
@@ -555,6 +563,7 @@ class EmptyingService
                     inputId: 'receipt_image',
                     required: true,
                     placeholder: __('Receipt Image'),
+                    hidden: true
                 ),
                 new FormField(
                     label: __('Comments (if any)'),
