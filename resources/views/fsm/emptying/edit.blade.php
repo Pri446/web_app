@@ -573,12 +573,6 @@ function selectAnfBuilding(buildingPublicId, containmentPublicId) {
             onAddressChange();
         }
         $('#address').on('change', onAddressChange);
-        $('#house_image').on('change', function() {
-            handleImagePreview(this, 'houseImagePreview', 'fileSizeHintImg', 'houseImageFeedback');
-        });
-        $('#receipt_image').on('change', function() {
-            handleImagePreview(this, 'receiptImagePreview', 'fileSizeRintImg', 'receiptImageFeedback');
-        });
     });
 </script>
 
@@ -643,5 +637,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
+<script src="{{ asset('js/emptying-image-upload.js') }}?v={{ filemtime(public_path('js/emptying-image-upload.js')) }}"></script>
 
 @endpush

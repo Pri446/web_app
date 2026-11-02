@@ -49,6 +49,7 @@ function resetDataTable(dataTable) {
 
     var activeControl = null;
     var activeSpinner = null;
+    var activeInputWrapper = null;
     var lastTrigger = null;
 
     function isManagedPath(pathname) {
@@ -98,7 +99,12 @@ function resetDataTable(dataTable) {
         activeSpinner.className = 'fas fa-spinner fa-spin global-loader-spinner';
         activeSpinner.setAttribute('aria-hidden', 'true');
         if (activeControl.tagName === 'INPUT') {
-            activeControl.insertAdjacentElement('afterend', activeSpinner);
+            activeInputWrapper = document.createElement('span');
+            activeInputWrapper.className = 'global-loader-input-wrapper';
+            activeControl.parentNode.insertBefore(activeInputWrapper, activeControl);
+            activeInputWrapper.appendChild(activeControl);
+            activeInputWrapper.appendChild(activeSpinner);
+            activeSpinner.style.color = window.getComputedStyle(activeControl).color;
         } else {
             activeControl.appendChild(activeSpinner);
         }
@@ -108,6 +114,10 @@ function resetDataTable(dataTable) {
     function hide() {
         if (activeSpinner) {
             activeSpinner.remove();
+        }
+        if (activeInputWrapper && activeControl && activeInputWrapper.parentNode) {
+            activeInputWrapper.parentNode.insertBefore(activeControl, activeInputWrapper);
+            activeInputWrapper.remove();
         }
         if (activeControl) {
             activeControl.removeAttribute('aria-disabled');
@@ -122,6 +132,7 @@ function resetDataTable(dataTable) {
         }
         activeControl = null;
         activeSpinner = null;
+        activeInputWrapper = null;
         lastTrigger = null;
     }
 

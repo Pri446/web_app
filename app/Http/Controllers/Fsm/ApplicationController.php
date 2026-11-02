@@ -589,7 +589,6 @@ class ApplicationController extends Controller
         ]);
 
         $capacity = $data['capacity'];
-        $svc->ServiceProviderOrder($capacity);
 
         return response()->json([
             'next_id'   => $svc->getNextServiceProviderId($capacity),
