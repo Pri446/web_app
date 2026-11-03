@@ -34,14 +34,14 @@ class PropertyTaxPiiExportService
 
         if ($csv === '' || strlen($csv) > $maximumBytes) {
             throw ValidationException::withMessages([
-                'tax_code_file' => __('The Tax Code list CSV is empty or too large.'),
+                'bin_file' => __('The BIN list CSV is empty or too large.'),
             ]);
         }
 
         $handle = fopen('php://temp', 'w+b');
         if ($handle === false || fwrite($handle, $csv) === false) {
             throw ValidationException::withMessages([
-                'tax_code_file' => __('The Tax Code list CSV could not be read.'),
+                'bin_file' => __('The BIN list CSV could not be read.'),
             ]);
         }
         rewind($handle);
@@ -59,7 +59,7 @@ class PropertyTaxPiiExportService
         $header = fgetcsv($handle);
         if (!is_array($header)) {
             throw ValidationException::withMessages([
-                'tax_code_file' => __('The Tax Code list is empty.'),
+                'bin_file' => __('The BIN list is empty.'),
             ]);
         }
 
@@ -67,58 +67,58 @@ class PropertyTaxPiiExportService
             $value = preg_replace('/^\xEF\xBB\xBF/', '', (string) $value);
             return strtolower(trim($value));
         }, $header);
-        $codeIndex = array_search('tax_code', $header, true);
+        $binIndex = array_search('bin', $header, true);
 
-        if ($codeIndex === false) {
+        if ($binIndex === false) {
             throw ValidationException::withMessages([
-                'tax_code_file' => __('The CSV must contain a tax_code header.'),
+                'bin_file' => __('The CSV must contain a bin header.'),
             ]);
         }
 
-        $codes = [];
+        $bins = [];
         $rowNumber = 1;
-        $maximumCodes = max(1, (int) config('pii.export.max_tax_codes', 5000));
+        $maximumBins = max(1, (int) config('pii.export.max_bins', 5000));
 
         while (($row = fgetcsv($handle)) !== false) {
             $rowNumber++;
-            $code = strtoupper(trim((string) ($row[$codeIndex] ?? '')));
+            $bin = strtoupper(trim((string) ($row[$binIndex] ?? '')));
 
-            if ($code === '' && $this->rowIsEmpty($row)) {
+            if ($bin === '' && $this->rowIsEmpty($row)) {
                 continue;
             }
 
-            if ($code === ''
-                || strlen($code) > 100
-                || preg_match('/^[A-Z0-9_-]+$/', $code) !== 1) {
+            if ($bin === ''
+                || strlen($bin) > 100
+                || preg_match('/^[A-Z0-9_-]+$/', $bin) !== 1) {
                 throw ValidationException::withMessages([
-                    'tax_code_file' => __(sprintf(
-                        'The Tax Code on CSV row %d is invalid.',
+                    'bin_file' => __(sprintf(
+                        'The BIN value on CSV row %d is invalid.',
                         $rowNumber
                     )),
                 ]);
             }
 
-            $codes[$code] = true;
-            if (count($codes) > $maximumCodes) {
+            $bins[$bin] = true;
+            if (count($bins) > $maximumBins) {
                 throw ValidationException::withMessages([
-                    'tax_code_file' => __(sprintf(
-                        'The CSV may contain no more than %d unique Tax Codes.',
-                        $maximumCodes
+                    'bin_file' => __(sprintf(
+                        'The CSV may contain no more than %d unique BIN values.',
+                        $maximumBins
                     )),
                 ]);
             }
         }
 
-        if ($codes === []) {
+        if ($bins === []) {
             throw ValidationException::withMessages([
-                'tax_code_file' => __('The CSV does not contain any Tax Codes.'),
+                'bin_file' => __('The CSV does not contain any BIN values.'),
             ]);
         }
 
-        return array_keys($codes);
+        return array_keys($bins);
     }
 
-    public function rowsForTaxCodes(array $codes): array
+    public function rowsForBins(array $bins): array
     {
         $records = DB::table('taxpayment_info.tax_payments AS tax')
             ->leftJoin('building_info.buildings AS building', 'building.tax_code', '=', 'tax.tax_code')
@@ -129,42 +129,61 @@ class PropertyTaxPiiExportService
                 'tax.last_payment_date',
                 'building.bin',
             ])
-            ->whereIn(DB::raw('UPPER(tax.tax_code)'), $codes)
+            ->whereIn(DB::raw('UPPER(building.bin)'), $bins)
             ->get()
             ->keyBy(function ($record) {
-                return strtoupper((string) $record->tax_code);
+                return strtoupper((string) $record->bin);
             });
 
         $rows = [];
         $exportedCount = 0;
 
-        foreach ($codes as $code) {
-            $record = $records->get($code);
+        foreach ($bins as $bin) {
+            $record = $records->get($bin);
             if (!$record) {
-                $rows[] = [$code, '', '', '', '', 'not_found'];
+                $rows[] = ['', $bin, '', '', '', 'not_found'];
                 continue;
             }
 
-            $rows[] = [
-                $this->escapeSpreadsheetValue($code),
-                $this->escapeSpreadsheetValue($record->bin),
-                $this->escapeSpreadsheetValue(
-                    $this->encryption->decrypt($record->owner_name)
-                ),
-                $this->escapeSpreadsheetValue(
-                    $this->encryption->decrypt($record->owner_contact)
-                ),
-                $this->escapeSpreadsheetValue((string) $record->last_payment_date),
-                $record->bin ? 'matched' : 'unmatched',
-            ];
+            $rows[] = $this->rowForRecord($record);
             $exportedCount++;
         }
 
         return [
             'rows' => $rows,
-            'requested_count' => count($codes),
+            'requested_count' => count($bins),
             'exported_count' => $exportedCount,
-            'missing_count' => count($codes) - $exportedCount,
+            'missing_count' => count($bins) - $exportedCount,
+        ];
+    }
+
+    public function rowsForAllRecords(): array
+    {
+        $query = DB::table('taxpayment_info.tax_payments AS tax')
+            ->leftJoin('building_info.buildings AS building', 'building.tax_code', '=', 'tax.tax_code')
+            ->select([
+                'tax.tax_code',
+                'tax.owner_name',
+                'tax.owner_contact',
+                'tax.last_payment_date',
+                'building.bin',
+            ]);
+        $recordCount = (clone $query)->count();
+
+        // Stream one decrypted record at a time so a full authorized export
+        // does not keep the complete plaintext dataset in PHP memory.
+        $rows = $query
+            ->orderBy('tax.tax_code')
+            ->cursor()
+            ->map(function ($record): array {
+                return $this->rowForRecord($record);
+            });
+
+        return [
+            'rows' => $rows,
+            'requested_count' => $recordCount,
+            'exported_count' => $recordCount,
+            'missing_count' => 0,
         ];
     }
 
@@ -184,5 +203,21 @@ class PropertyTaxPiiExportService
         return $value !== '' && preg_match('/^[=+\-@\t\r]/', $value) === 1
             ? "'" . $value
             : $value;
+    }
+
+    private function rowForRecord($record): array
+    {
+        return [
+            $this->escapeSpreadsheetValue((string) $record->tax_code),
+            $this->escapeSpreadsheetValue((string) $record->bin),
+            $this->escapeSpreadsheetValue(
+                $this->encryption->decrypt($record->owner_name)
+            ),
+            $this->escapeSpreadsheetValue(
+                $this->encryption->decrypt($record->owner_contact)
+            ),
+            $this->escapeSpreadsheetValue((string) $record->last_payment_date),
+            $record->bin ? 'matched' : 'unmatched',
+        ];
     }
 }
