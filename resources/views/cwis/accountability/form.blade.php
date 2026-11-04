@@ -45,7 +45,7 @@
                             <div id="evidence-{{ $key }}" class="mt-2" @if($answer !== 'Yes') hidden @endif>
                                 @include('cwis.generator-data.saved-evidence', ['documentRoute' => 'cwis.accountability.document'])
                                 <label for="file-{{ $key }}">{{ $saved && $saved->document_path ? __('Replace Evidence (Optional)') : __('Evidence') }}</label>
-                                <input id="file-{{ $key }}" type="file" class="form-control-file @error('evidence.'.$key) is-invalid @enderror" name="evidence[{{ $key }}]" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" @if($answer !== 'Yes') disabled @endif>
+                                <input id="file-{{ $key }}" type="file" class="form-control-file @error('evidence.'.$key) is-invalid @enderror" name="evidence[{{ $key }}]" accept="{{ \App\Support\CwisEvidence::UPLOAD_ACCEPT }}" @if($answer !== 'Yes') disabled @endif>
                                 @error('evidence.'.$key)<div class="text-danger">{{ $message }}</div>@enderror
                             </div>
                         </td></tr>
