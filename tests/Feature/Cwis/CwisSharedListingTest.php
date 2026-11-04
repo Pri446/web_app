@@ -38,7 +38,12 @@ class CwisSharedListingTest extends TestCase
         foreach ([$admin, $sanitation] as $viewer) {
             $this->actingAs($viewer);
             $this->get('/cwis/generator-data')->assertOk()->assertViewHas('country','ALL')
-                ->assertViewHas('year', function ($year) { return $year === null; })->assertSee('#data-table th', false);
+                ->assertViewHas('year', function ($year) { return $year === null; })->assertSee('#data-table th', false)
+                ->assertViewHas('page_title', 'CWIS Indicator Generation Data')
+                ->assertSee('CWIS Indicator Generation Data')
+                ->assertDontSee('Submission ID')
+                ->assertDontSee("{ data: 'id', name: 'id' }", false)
+                ->assertSee("order: [[0, 'desc'], [3, 'desc']]", false);
             $this->get('/cwis/generator-data/' . $expected[0] . '?country_code=ALL')
                 ->assertOk()->assertSee('#indicator-detail-back:hover', false)
                 ->assertSee('color: #fff !important;', false);
