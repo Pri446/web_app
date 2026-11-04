@@ -626,75 +626,66 @@ function selectAnfBuilding(buildingPublicId, containmentPublicId) {
             onAddressChange();
         }
         $('#address').on('change', onAddressChange);
-        $('#house_image').on('change', function() {
-            handleImagePreview(this, 'houseImagePreview', 'fileSizeHintImg', 'houseImageFeedback');
-        });
-        $('#receipt_image').on('change', function() {
-            handleImagePreview(this, 'receiptImagePreview', 'fileSizeRintImg', 'receiptImageFeedback');
-        });
     });
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const tripCountField =
-        document.querySelector('#trip_count:not([type="hidden"])') ||
-        document.querySelector('input[name="trip_count"]:not([type="hidden"])') ||
-        document.getElementById('trip_count');
-    const tripNoField =
-        document.querySelector('#trip_no:not([type="hidden"])') ||
-        document.querySelector('input[name="trip_no"]:not([type="hidden"])') ||
-        document.getElementById('trip_no');
-    const receiptFieldIds = ['receipt_number', 'total_cost', 'house_image', 'receipt_image'];
+function toggleEmptyingFinalTripFields() {
+    const tripCountField = document.querySelector('[name="trip_count"]:not([type="hidden"])');
+    const currentTripField = document.querySelector('[name="trip_no"]:not([type="hidden"])');
+    const finalTripFieldIds = ['receipt_number', 'total_cost', 'house_image', 'receipt_image'];
 
-    function getWrapper(el) {
-        return el?.closest('.form-group, .form-field, .mb-3, .row') || el?.parentElement || el;
-    }
-    function showNode(node, show) {
-        if (!node) return;
-        node.style.display = show ? '' : 'none';
-    }
-    function clearFieldValue(field) {
-        if (!field) return;
-        if (['text', 'number'].includes(field.type) || field.tagName === 'TEXTAREA') field.value = '';
-        if (field.type === 'file') {
-            field.value = '';
-            const label = field.closest('.custom-file')?.querySelector('.custom-file-label');
-            if (label) label.textContent = 'Choose file';
-            if (field.id === 'house_image') {
-                handleImagePreview(field, 'houseImagePreview', 'fileSizeHintImg', 'houseImageFeedback');
-            } else if (field.id === 'receipt_image') {
-                handleImagePreview(field, 'receiptImagePreview', 'fileSizeRintImg', 'receiptImageFeedback');
-            }
-        }
-    }
-    function getCurrentTripCount() {
-        const raw = tripCountField?.value?.trim() ?? document.getElementById('trip_count_hidden')?.value?.trim() ?? '';
-        const val = parseInt(raw, 10);
-        return Number.isFinite(val) ? val : null;
-    }
-    function getCurrentTripNo() {
-        const raw = tripNoField?.value?.trim() ?? document.getElementById('trip_no_hidden')?.value?.trim() ?? '';
-        const val = parseInt(raw, 10);
-        return Number.isFinite(val) ? val : 0;
-    }
-    function toggleReceiptFields() {
-        const tripCount = getCurrentTripCount();
-        const emptyingTripNo = getCurrentTripNo();
-        const show = tripCount !== null && tripCount === emptyingTripNo;
-        receiptFieldIds.forEach(id => {
-            const field = document.getElementById(id);
-            const wrapper = getWrapper(field);
-            showNode(wrapper || field, show);
-            if (!show) clearFieldValue(field);
-        });
-    }
-    toggleReceiptFields();
-    ['input', 'change', 'keyup', 'blur'].forEach(evt => {
-        tripCountField.addEventListener(evt, toggleReceiptFields);
-        if (tripNoField) tripNoField.addEventListener(evt, toggleReceiptFields);
+    if (!tripCountField || !currentTripField) return;
+
+    const tripValue = field => {
+        const rawValue = String(field.value || '').trim();
+        const value = Number.parseInt(rawValue, 10);
+
+        return Number.isInteger(value) && value > 0 ? value : null;
+    };
+
+    const numberOfTrips = tripValue(tripCountField);
+    const currentTripNumber = tripValue(currentTripField);
+    const isFinalTrip = numberOfTrips !== null && numberOfTrips === currentTripNumber;
+
+    finalTripFieldIds.forEach(id => {
+        const field = document.getElementById(id);
+        const wrapper = document.getElementById(`${id}_form_group`);
+        if (!field || !wrapper) return;
+
+        wrapper.hidden = false;
+        wrapper.classList.remove('d-none');
+        wrapper.style.setProperty('display', isFinalTrip ? 'flex' : 'none', 'important');
+        field.disabled = !isFinalTrip;
+        field.required = isFinalTrip;
     });
-});
+}
+
+function initializeFinalTripFields() {
+    toggleEmptyingFinalTripFields();
+
+    document.addEventListener('input', event => {
+        if (event.target.matches('[name="trip_count"], [name="trip_no"]')) {
+            toggleEmptyingFinalTripFields();
+        }
+    });
+
+    document.addEventListener('change', event => {
+        if (event.target.matches('[name="trip_count"], [name="trip_no"]')) {
+            toggleEmptyingFinalTripFields();
+        }
+    });
+
+    window.setTimeout(toggleEmptyingFinalTripFields, 0);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeFinalTripFields);
+} else {
+    initializeFinalTripFields();
+}
 </script>
+
+<script src="{{ asset('js/emptying-image-upload.js') }}?v={{ filemtime(public_path('js/emptying-image-upload.js')) }}"></script>
 
 @endpush

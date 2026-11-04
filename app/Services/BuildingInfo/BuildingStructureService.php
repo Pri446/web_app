@@ -37,6 +37,7 @@ use App\Models\BuildingInfo\SanitationSystemTechnology;
 use Intervention\Image\Facades\Image;
 use App\Services\OwnerPiiPresenter;
 use App\Helpers\ImageOptimizationHelper;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class BuildingStructureService
 {
@@ -1047,11 +1048,18 @@ class BuildingStructureService
             foreach (Owner::select(['bin', 'owner_name'])->cursor() as $owner) {
                 $ownerName = $owner->getAttributes()['owner_name'] ?? null;
 
-                if ($this->ownerPiiPresenter->ownerNameContains(
-                    $ownerName,
-                    $ownerNameSearch
-                )) {
-                    $matchingOwnerBins[] = $owner->bin;
+                try {
+                    if ($this->ownerPiiPresenter->ownerNameContains(
+                        $ownerName,
+                        $ownerNameSearch
+                    )) {
+                        $matchingOwnerBins[] = $owner->bin;
+                    }
+                } catch (DecryptException $exception) {
+                    // Fail closed for legacy/invalid PII. The encryption
+                    // verification command reports the affected rows without
+                    // exposing their values.
+                    continue;
                 }
             }
 
@@ -1139,9 +1147,15 @@ class BuildingStructureService
                 }
             })
             ->editColumn('owner_name', function ($model) use ($revealOwnerPii) {
-                return $revealOwnerPii
-                    ? $this->ownerPiiPresenter->presentPlaintextValue($model->owner_name)
-                    : $this->ownerPiiPresenter->maskFully($model->owner_name);
+                if (!$revealOwnerPii) {
+                    return $this->ownerPiiPresenter->maskFully($model->owner_name);
+                }
+
+                try {
+                    return $this->ownerPiiPresenter->presentPlaintextValue($model->owner_name);
+                } catch (DecryptException $exception) {
+                    return $this->ownerPiiPresenter->maskFully($model->owner_name);
+                }
             })
             ->addColumn('action', function ($model) {
 

@@ -346,7 +346,7 @@ class BuildingSurveyController extends Controller
             $wms = WmsLink::all()->where('name', '=', $layer)->pluck('link', 'name');
             return response()->json([
                 'success' => true,
-                'baseUrl' => route('gis.wms'),
+                'baseUrl' => route('mobile.gis.wms'),
                 'data' => $wms,
                 'bbox'    => config('constants.GEOSERVER_BBOX'),
                 'width'   => config('constants.GEOSERVER_WIDTH'),

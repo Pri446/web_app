@@ -141,8 +141,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         $('#owner-details-card').slideUp(200);
         $('#owner-details-card input, #owner-details-card select').prop('disabled', true);
 
-        // Enable & require ANF fields
-        $('#anf_ward, #anf_locality, #anf_nearest_locality').prop('disabled', false).prop('required', true);
+        // ANF address details are optional.
+        $('#anf_ward, #anf_locality, #anf_nearest_locality').prop('disabled', false).prop('required', false);
 
         // Clear Applicant Details ONLY when user explicitly toggled the checkbox
         if (isUserToggle) {
