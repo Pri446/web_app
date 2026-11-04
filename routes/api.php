@@ -59,6 +59,8 @@ Route::group([
     'name' => 'protected-api-routes',
     'middleware' => 'auth:sanctum'
 ],function (){
+    Route::get('gis/wms', [\App\Http\Controllers\GISProxyController::class, 'wms'])
+        ->name('mobile.gis.wms');
     /*
     |
     | Logout---------------------------------------------------------------
@@ -160,7 +162,7 @@ Route::group([
         Route::post('/buildings/save', [BuildingApiController::class, 'storeBuildingDataMobile']);
         Route::get('/map/building-by-point', [BuildingSurveyController::class, 'locateBuildingByPoint']);
     });
-   // Write endpoints — force JSON on validation/auth/throttle failures
+   // Write endpoints â€” force JSON on validation/auth/throttle failures
     Route::middleware([
         'auth:sanctum',
         'force.json',
