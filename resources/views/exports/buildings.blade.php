@@ -18,7 +18,7 @@
     <tbody>
     @foreach($rows as $row)
         <tr>
-            <td>{{ $row['StructureType'] }}</td>
+            <td>{{ $row['Structure Type'] }}</td>
             <td>{{ $row['Buildings'] }}</td>
             <td>{{ $row['Sewer Network'] }}</td>
             <td>{{ $row['Drain Network'] }}</td>
