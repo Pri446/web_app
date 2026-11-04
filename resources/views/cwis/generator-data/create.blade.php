@@ -88,7 +88,7 @@
                                                     <small class="d-block text-muted">{{ __('Existing Evidence') }}: {{ $savedEvidence[$policyKey] }}</small>
                                                 @endif
                                                 <label for="evidence-{{ $index }}" class="font-weight-normal mt-2 mb-1">{{ __('Evidence') }}</label>
-                                                <input type="file" id="evidence-{{ $index }}" name="evidence[{{ $policyKey }}]" class="form-control-file" aria-describedby="evidence-hint-{{ $index }}" disabled>
+                                                <input type="file" id="evidence-{{ $index }}" name="evidence[{{ $policyKey }}]" class="form-control-file" accept="{{ \App\Support\CwisEvidence::UPLOAD_ACCEPT }}" aria-describedby="evidence-hint-{{ $index }}" disabled>
                                                 <small id="evidence-hint-{{ $index }}" class="d-block text-muted mt-1">{{ __($evidence) }}. {{ __('The document must support the selected answer.') }}</small>
                                                 @error('evidence.' . $policyKey)<div class="text-danger">{{ $message }}</div>@enderror
                                             </div>
