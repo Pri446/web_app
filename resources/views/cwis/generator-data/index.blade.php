@@ -60,7 +60,6 @@
             <table id="data-table" class="table table-bordered table-striped dtr-inline" width="100%">
                 <thead>
                     <tr>
-                        <th>{{ __('Submission ID') }}</th>
                         <th>{{ __('Year') }}</th>
                         <th>{{ __('Service Outcome') }}</th>
                         <th>{{ __('Status') }}</th>
@@ -148,14 +147,13 @@
                 }
             },
             columns: [
-                { data: 'id', name: 'id' },
                 { data: 'year', name: 'year' },
                 { data: 'service_outcome', name: 'service_outcome', orderable: false, searchable: false },
                 { data: 'status_label', name: 'status' },
                 { data: 'updated_at', name: 'updated_at' },
                 { data: 'action', name: 'action', orderable: false, searchable: false }
             ],
-            order: [[0, 'desc']]
+            order: [[0, 'desc'], [3, 'desc']]
         });
         $('#filter-form').on('submit', function (e) {
             e.preventDefault();
