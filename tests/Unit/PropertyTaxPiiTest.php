@@ -111,18 +111,18 @@ class PropertyTaxPiiTest extends TestCase
         $this->assertFalse($access->isUnlocked($user));
     }
 
-    public function test_export_parser_deduplicates_tax_codes(): void
+    public function test_export_parser_deduplicates_bins(): void
     {
         $service = app(PropertyTaxPiiExportService::class);
         $this->assertSame(
-            ['TAX-1', 'TAX-2'],
-            $service->parseCsvText("tax_code\nTAX-1\nTAX-2\nTAX-1\n")
+            ['B001', 'B002'],
+            $service->parseCsvText("bin\nB001\nB002\nB001\n")
         );
     }
 
-    public function test_export_parser_requires_tax_code_header(): void
+    public function test_export_parser_requires_bin_header(): void
     {
         $this->expectException(ValidationException::class);
-        app(PropertyTaxPiiExportService::class)->parseCsvText("bin\nB001\n");
+        app(PropertyTaxPiiExportService::class)->parseCsvText("tax_code\nTAX-1\n");
     }
 }

@@ -67,6 +67,14 @@ class TaxPaymentController extends Controller
             && $user->can('View Property Tax Owner PII')
             && $user->can('Unlock Property Tax Owner PII')
             && $user->can('Export Property Tax Owner PII');
+        // Full-dataset export is intentionally narrower than selected-BIN
+        // export because Property Tax records have no municipality row scope.
+        $canExportAllPropertyTaxPii = $canExportPropertyTaxPii
+            && $user->hasAnyRole([
+                'Super Admin',
+                'Municipality - Super Admin',
+                'Municipality - IT Admin',
+            ]);
         $propertyTaxPiiUnlockSeconds = $propertyTaxPiiUnlocked
             ? $this->piiAccess->secondsRemaining($user)
             : 0;
@@ -78,6 +86,7 @@ class TaxPaymentController extends Controller
             'propertyTaxPiiUnlocked',
             'canUnlockPropertyTaxPii',
             'canExportPropertyTaxPii',
+            'canExportAllPropertyTaxPii',
             'propertyTaxPiiUnlockSeconds'
         ));
     }
