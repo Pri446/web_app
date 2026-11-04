@@ -154,6 +154,30 @@ php artisan db:seed --class="Database\Seeders\Cwis\Equity\CwisFormFieldsSeeder"
 
 Review every pending migration before using the default migrate command. To run only this directory, use --path=database/migrations/cwis/equity; that explicit path excludes other outcome migrations. Existing IMIS schemas and legacy calculation helpers are prerequisites. This reorganization does not modify migration-history rows, delete submissions or regenerate results. Editing an SQL file later does not rerun an already-applied migration; subsequent function changes require an update migration. Namespaced seeder class names must be used in deployment scripts.
 
+### Indicator Generation Data Listing
+
+The shared listing is titled CWIS Indicator Generation Data. Its displayed columns are Year, Service Outcome, Status, Updated At and Actions. Submission IDs remain internal identifiers used for source relationships and View/Approve routes; they are not shown as a shared sequence because separate outcome tables may contain the same ID. The default DataTables order is year descending, followed by updated_at descending.
+
+### Evidence Upload Validation
+
+All five evidence-upload forms accept PDF, DOC and DOCX only, up to 5 MB per new or replacement file (Laravel max:5120 KB). App\\Support\\CwisEvidence provides the shared upload rules and file-picker accept types. Request validation enforces the restriction for draft, submitted and approval-review uploads; file-picker filtering alone is not a security check. Existing saved attachments are retained and reused when no replacement is supplied. Configure PHP and web-server limits for the complete multipart request, including multiple files.
+
+### Safely Managed Sanitation Counts
+
+SF-0a, SF-0b and SF-0c are operational Safety counts, not additional manual form inputs. They use cwis.safety_buildings(year), which filters eligible non-deleted buildings by construction year and returns one row per building after aggregating the existing service-chain classification.
+
+| **Indicator** | **Source fields** | **Calculation** |
+| ------------- | ----------------- | --------------- |
+| SF-0a | building_info.buildings.bin and the derived safe classification | Count distinct safely managed buildings |
+| SF-0b | building_info.buildings.household_with_private_toilet | Sum private-toilet households in safely managed buildings |
+| SF-0c | building_info.buildings.population_with_private_toilet | Sum private-toilet population in safely managed buildings |
+
+Each has a cwis.calculate_sf_0* function and public.update_data_into_cwis_table_sf_0*_newsan(year) updater. The new 2026_11_04_000001_install_cwis_safety_count_indicators.php migration loads database/sql/cwis_safety_counts.sql, saves the old master definition, and adds the three updater calls through cwis.dispatch_safety_counts(year). It registers catalogue entries and inherits current SF-1a country mappings. It does not regenerate saved results.
+
+The All and Safety dashboard views show the mapped counts as three green number cards, not doughnuts. PDF includes saved count cards; catalogue-driven monitoring and Excel include the new entries after generation. Unknown/negative private totals return No data; an empty eligible set returns zero. The catalogue becomes 142 entries, including 25 Safety indicators. The full stated 159 target still needs 17 additional specifications.
+
+The subsequent 2026_11_04_000002_align_cwis_emptying_status_helper.php migration backs up and repairs the legacy classification helper when fsm.applications.emptying_status is an integer. It uses IN (1, 2) rather than IS TRUE and preserves the helper's boolean result column without altering the source table or application records.
+
 ## KPI Dashboard
 
 The KPI dashboard incorporates charts (using Chart.js) and cards (using HTML and CSS) to visualize key performance indicator data. This section delves into the implementation of the bar chart.

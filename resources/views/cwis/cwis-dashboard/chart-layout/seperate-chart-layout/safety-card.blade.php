@@ -215,6 +215,7 @@
     }
 </style>
 <div class="hi">
+    @include('cwis.cwis-dashboard.chart-layout.safety-count-cards')
     <div class="safety safety1">
         @include('cwis.cwis-dashboard.chart-layout.safety-main-card', ['chartId' => 'sf1MainTab'])
     

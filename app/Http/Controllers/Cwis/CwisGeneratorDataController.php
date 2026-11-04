@@ -91,7 +91,7 @@ class CwisGeneratorDataController extends Controller
         })->unique()->sortDesc()->values();
 
         return view('cwis.generator-data.index', $data + [
-            'page_title' => __('CWIS Generator Data'),
+            'page_title' => __('CWIS Indicator Generation Data'),
             'inputOutcomes' => $inputOutcomes,
             'inputYearsByOutcome' => $inputYearsByOutcome,
             'availableInputYears' => $availableInputYears,

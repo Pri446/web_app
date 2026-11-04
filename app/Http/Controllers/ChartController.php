@@ -22,6 +22,8 @@ class ChartController extends Controller
         $accountabilityValues = collect();
         $rpmIndicators = collect();
         $rpmValues = collect();
+        $safetyCountIndicators = collect();
+        $safetyCountValues = collect();
         $countryLabel = null;
         $reportingYear = null;
         $pdfAllowedCodes = null;
@@ -38,6 +40,8 @@ class ChartController extends Controller
             $accountabilityValues = $indicators->resultsForCountry($reportingYear, $country)->pluck('data_value', 'indicator_code');
             $rpmIndicators = $catalogue->where('outcome', 'rpm');
             $rpmValues = $accountabilityValues;
+            $safetyCountIndicators = $catalogue->where('outcome', 'safety')->whereIn('indicator_code', ['SF-0a', 'SF-0b', 'SF-0c']);
+            $safetyCountValues = $accountabilityValues;
         }
         $eq1 = $request->input('eq1');
         $sf3d = $request->input('sf3d');
@@ -155,6 +159,10 @@ class ChartController extends Controller
         ))->render();
         $html .= View::make('cwis.cwis-dashboard.chart-layout.rpm-pdf-cards', compact(
             'rpmIndicators', 'rpmValues', 'countryLabel', 'reportingYear'
+        ))->render();
+
+        $html .= View::make('cwis.cwis-dashboard.chart-layout.safety-count-pdf-cards', compact(
+            'safetyCountIndicators', 'safetyCountValues', 'countryLabel', 'reportingYear'
         ))->render();
 
         // Generate a unique filename for the PDF
