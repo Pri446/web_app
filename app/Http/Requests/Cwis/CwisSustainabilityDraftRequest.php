@@ -48,18 +48,20 @@ class CwisSustainabilityDraftRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (!$this->route() || $this->route()->getActionMethod() !== 'approve') { return; }
+            if ($this->input('save_mode') !== 'submitted' && (!$this->route() || $this->route()->getActionMethod() !== 'approve')) { return; }
             $record = \Illuminate\Support\Facades\DB::table('cwis.sustainability_submissions')
                 ->where('id', $this->route('submission'))->where('country_code', app(CwisIndicatorService::class)->activeCountry())->first();
-            abort_unless($record, 404);
-            abort_unless(in_array($record->status, ['draft', 'submitted'], true), 403);
-            foreach (app(CwisSustainabilityFormService::class)->fields($record->country_code)['campaigns'] as $code => $label) {
+            if ($this->route('submission')) {
+                abort_unless($record, 404);
+                abort_unless(in_array($record->status, ['draft', 'submitted'], true), 403);
+            }
+            foreach (app(CwisSustainabilityFormService::class)->fields(app(CwisIndicatorService::class)->activeCountry())['campaigns'] as $code => $label) {
                 $key = str_replace('.', '_', $code);
                 if ($this->input('campaigns.' . $key) !== 'Yes' || $this->hasFile('evidence.' . $key)) { continue; }
                 $path = \Illuminate\Support\Facades\DB::table('cwis.sustainability_campaigns')
-                    ->where('submission_id', $record->id)->where('indicator_code', $code)->value('document_path');
+                    ->where('submission_id', $record->id ?? 0)->where('indicator_code', $code)->value('document_path');
                 if (!$path || !\Illuminate\Support\Facades\Storage::disk('local')->exists($path)) {
-                    $validator->errors()->add('evidence.' . $key, __(':indicator requires an evidence document before approval.', ['indicator' => __($label)]));
+                    $validator->errors()->add('evidence.' . $key, __(':indicator requires an evidence document before submission or approval.', ['indicator' => __($label)]));
                 }
             }
         });

@@ -24,7 +24,9 @@ class CwisSavedEvidenceTest extends TestCase
     public static function outcomes(): array
     {
         return [['sustainability', 'campaigns', 'SS-4_1', 'sustainability_campaigns'],
-            ['responsibility', 'answers', 'RS-1a_1', 'responsibility_answers']];
+            ['responsibility', 'answers', 'RS-1a_1', 'responsibility_answers'],
+            ['accountability', 'answers', 'AC-1a_1', 'accountability_answers'],
+            ['rpm', 'answers', 'RPM-1a_1', 'rpm_answers']];
     }
 
     private function payload(string $outcome, string $key): array
@@ -33,8 +35,10 @@ class CwisSavedEvidenceTest extends TestCase
             ->where('country_code', 'BD')->pluck('reporting_year'))->first();
         $this->assertNotNull($year);
         $payload = ['year' => $year, 'country_code' => 'BD', 'save_mode' => 'draft'];
-        $questions = $outcome === 'responsibility'
-            ? app(\App\Services\Cwis\CwisResponsibilityFormService::class)->questions('BD') : config('cwis_sustainability.campaigns');
+        $services = ['responsibility' => \App\Services\Cwis\CwisResponsibilityFormService::class,
+            'accountability' => \App\Services\Cwis\CwisAccountabilityFormService::class,
+            'rpm' => \App\Services\Cwis\CwisRpmFormService::class];
+        $questions = isset($services[$outcome]) ? app($services[$outcome])->questions('BD') : config('cwis_sustainability.campaigns');
         foreach ($questions as $code => $label) { $payload[$key][str_replace('.', '_', $code)] = 'No'; }
         if ($outcome === 'sustainability') {
             foreach (config('cwis_sustainability.financial_sections') as $section) {
@@ -47,6 +51,25 @@ class CwisSavedEvidenceTest extends TestCase
     private function pdf(string $name = 'saved-mandate.pdf')
     {
         return UploadedFile::fake()->createWithContent($name, "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF");
+    }
+
+    /** @dataProvider outcomes */
+    public function test_submitting_two_yes_answers_requires_both_documents(string $outcome, string $key, string $code, string $table): void
+    {
+        $payload = $this->payload($outcome, $key);
+        $keys = array_slice(array_keys($payload[$key]), 0, 2);
+        foreach ($keys as $question) { $payload[$key][$question] = 'Yes'; }
+        $payload['evidence'][$keys[0]] = $this->pdf();
+        $payload['save_mode'] = 'submitted';
+        $this->post('/cwis/' . $outcome . '-data', $payload, ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('evidence.' . $keys[1]);
+        $this->assertDatabaseMissing('cwis.' . $outcome . '_submissions',
+            ['country_code' => 'BD', 'reporting_year' => $payload['year']]);
+        $payload['evidence'][$keys[1]] = $this->pdf('second.pdf');
+        $this->post('/cwis/' . $outcome . '-data', $payload, ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonStructure(['redirect'])->assertSessionHas('cwis_saved');
+        $this->assertDatabaseHas('cwis.' . $outcome . '_submissions',
+            ['country_code' => 'BD', 'reporting_year' => $payload['year'], 'status' => 'submitted']);
     }
 
     /** @dataProvider outcomes */

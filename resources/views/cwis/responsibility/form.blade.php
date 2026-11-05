@@ -68,6 +68,7 @@
 </form>
 </div>
 @stop
+@include('cwis.generator-data.retain-uploads')
 @push('scripts')
 <script>
 document.querySelectorAll('.responsibility-answer').forEach(function (select) {
