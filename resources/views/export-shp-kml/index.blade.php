@@ -151,11 +151,8 @@ $(document).ready(function(){
             });
 
             var outputFormat = selectedFormat == 'kml' ? 'KML' : 'SHAPE-ZIP';
-            var selectedLayerNames = $('#ward_overlay option:selected').map(function() {
-                return $(this).text().trim();
-            }).get().join('_').replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
             var fileExtension = selectedFormat == 'kml' ? 'kml' : 'zip';
-            var exportFilename = (selectedLayerNames || 'export_imis') + '_' +
+            var exportFilename = 'export_imis_' +
                 moment().format('YYYYMMDD_HHmmss') + '.' + fileExtension;
 
             var cqlFilter = "INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL";
