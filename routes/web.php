@@ -616,6 +616,7 @@ Route::group([
     Route::get('generator-data/create', 'CwisGeneratorDataController@create')->name('cwis.generator-data.create');
     Route::post('generator-data', 'CwisGeneratorDataController@store')->name('cwis.generator-data.store');
     Route::get('generator-data/data', 'CwisGeneratorDataController@getData')->name('cwis.generator-data.data');
+    Route::get('generator-data/{submission}/documents/{document}', 'CwisGeneratorDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.generator-data.document');
     Route::get('generator-data/{submission}', 'CwisGeneratorDataController@show')->whereNumber('submission')->name('cwis.generator-data.show');
     Route::get('generator-data/{submission}/edit', 'CwisGeneratorDataController@edit')->whereNumber('submission')->name('cwis.generator-data.edit');
     Route::get('generator-data/{submission}/review', 'CwisGeneratorDataController@review')->whereNumber('submission')->name('cwis.generator-data.review');

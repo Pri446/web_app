@@ -42,20 +42,22 @@ class CwisAccountabilityDataRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if ($this->route()->getActionMethod() !== 'approve') { return; }
+            if ($this->input('save_mode') !== 'submitted' && $this->route()->getActionMethod() !== 'approve') { return; }
             $country = app(CwisIndicatorService::class)->activeCountry();
             $source = DB::table('cwis.accountability_submissions')->where('id', $this->route('submission'))
                 ->where('country_code', $country)->first();
-            abort_unless($source, 404);
-            abort_unless(in_array($source->status, ['draft', 'submitted'], true), 403);
+            if ($this->route('submission')) {
+                abort_unless($source, 404);
+                abort_unless(in_array($source->status, ['draft', 'submitted'], true), 403);
+            }
             foreach (app(CwisAccountabilityFormService::class)->questions($country) as $code => $label) {
                 $key = str_replace('.', '_', $code);
                 if ($this->input('answers.' . $key) !== 'Yes' || $this->hasFile('evidence.' . $key)) { continue; }
-                $path = DB::table('cwis.accountability_answers')->where('submission_id', $source->id)
+                $path = DB::table('cwis.accountability_answers')->where('submission_id', $source->id ?? 0)
                     ->where('indicator_code', $code)->value('document_path');
                 if (!$path || !Storage::disk('local')->exists($path)) {
                     $validator->errors()->add('evidence.' . $key,
-                        __(':indicator requires an evidence document before approval.', ['indicator' => __($label)]));
+                        __(':indicator requires an evidence document before submission or approval.', ['indicator' => __($label)]));
                 }
             }
         });

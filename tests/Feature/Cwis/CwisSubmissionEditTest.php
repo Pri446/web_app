@@ -48,6 +48,46 @@ class CwisSubmissionEditTest extends TestCase
             ->assertSee('name="_method" value="PUT"',false);
     }
 
+    public function test_equity_document_links_are_downloadable_and_country_scoped(): void
+    {
+        $id = $this->draft();
+        $document = DB::table('cwis.sanitation_worker_policy')->where('submission_id', $id)->value('training_requirement_document_id');
+        $url = route('cwis.generator-data.document', ['submission' => $id, 'document' => $document]);
+        foreach (['', '/edit', '/review'] as $suffix) {
+            $this->get('/cwis/generator-data/' . $id . $suffix)->assertOk()
+                ->assertSee('training.pdf')->assertSee($url, false)->assertSee('preview=1', false);
+        }
+        $download = $this->get($url)->assertOk();
+        $this->assertStringContainsString('attachment', $download->headers->get('Content-Disposition'));
+        $this->get(route('cwis.generator-data.document', ['submission' => $id, 'document' => $document + 100000]))->assertNotFound();
+        DB::table('public.site_settings')->where('name', 'active_country')->update(['value' => 'BD']);
+        $this->get($url)->assertNotFound();
+    }
+
+    public function test_equity_submission_requires_each_yes_document_and_reuses_draft_evidence(): void
+    {
+        $id = $this->draft();
+        $payload = $this->payload();
+        $payload['save_mode'] = 'submitted';
+        $payload['inputs'] += ['women_employee_count' => 10, 'total_employee_count' => 20,
+            'women_leadership_count' => 1, 'total_leadership_count' => 2,
+            'average_salary_of_women_in_sanitation' => 100, 'average_salary_of_men_in_sanitation' => 100];
+        foreach (app(\App\Services\Cwis\CwisFormService::class)->definitions() as $field) {
+            if ($field->kind === 'policy' && !$field->parent_code && $field->input_name !== 'EQ_6_1') {
+                $payload['policies'][$field->input_name] = 'No';
+            }
+        }
+        $payload['policies']['EQ_6_1a'] = 'Yes';
+        $payload['policies']['EQ_6_1b'] = 'No';
+        $url = '/cwis/generator-data/' . $id;
+        $this->put($url, $payload, ['Accept' => 'application/json'])->assertStatus(422)
+            ->assertJsonValidationErrors('evidence.EQ_6_1a')->assertJsonMissingValidationErrors('evidence.EQ_6_1');
+        $this->assertDatabaseHas('cwis.equity_submissions', ['id' => $id, 'status' => 'draft']);
+        $payload['evidence']['EQ_6_1a'] = UploadedFile::fake()->create('rights.pdf', 1);
+        $this->put($url, $payload, ['Accept' => 'application/json'])->assertOk()->assertJsonStructure(['redirect']);
+        $this->assertDatabaseHas('cwis.equity_submissions', ['id' => $id, 'status' => 'submitted']);
+    }
+
     public function test_form_uses_laravel_errors_instead_of_browser_validation(): void
     {
         $id = $this->draft();
