@@ -8,12 +8,12 @@ use Illuminate\Validation\ValidationException;
 class PropertyTaxPiiExportService
 {
     private const HEADERS = [
-        'tax_code',
-        'bin',
-        'owner_name',
-        'owner_contact',
-        'last_payment_date',
-        'status',
+        'Tax Code',
+        'BIN',
+        'Owner Name',
+        'Owner Contact',
+        'Last Payment Date',
+        'Status',
     ];
 
     private PiiEncryptionService $encryption;

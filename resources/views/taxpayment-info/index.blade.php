@@ -22,7 +22,7 @@
                 <label for="property_tax_pii_password">{{ __('Current Password') }}</label>
                 <input id="property_tax_pii_password" name="current_password" type="password"
                     class="form-control @error('property_tax_pii_password') is-invalid @enderror"
-                    required maxlength="255" autocomplete="current-password">
+                    maxlength="255" autocomplete="current-password">
                 @error('property_tax_pii_password')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
@@ -386,7 +386,7 @@ $(function() {
             }
             var disposition = response.headers.get('Content-Disposition') || '';
             var match = disposition.match(/filename\*?=(?:UTF-8''|["'])?([^"';]+)/i);
-            var filename = match ? decodeURIComponent(match[1].replace(/["']/g, '')) : 'property-tax-owner-pii.csv';
+            var filename = match ? decodeURIComponent(match[1].replace(/["']/g, '')) : 'Property Tax Owner PII Export.csv';
             return response.blob().then(function(blob) { return { blob: blob, filename: filename }; });
         }).then(function(download) {
             var url = URL.createObjectURL(download.blob);
