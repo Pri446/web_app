@@ -48,7 +48,7 @@
                                 </label>
                                 <input id="current_password" name="current_password" type="password"
                                     class="form-control @error('current_password') is-invalid @enderror"
-                                    required maxlength="255" autocomplete="current-password"
+                                    maxlength="255" autocomplete="current-password"
                                     aria-describedby="current-password-help">
                                 <small id="current-password-help" class="form-text text-muted">
                                     {{ __('Re-enter your login password to confirm access. The password is not stored.') }}
@@ -141,6 +141,10 @@
                                 <input id="bin_csv" name="bin_csv" type="hidden" value="">
                                 <small class="form-text text-muted">
                                     {{ __('Upload a CSV containing a bin header and one BIN per row.') }}
+                                    <a href="{{ asset('templates/building-owner-pii-bin-sample.csv') }}"
+                                        download="Building Owner PII BIN List Sample.csv">
+                                        {{ __('Download sample CSV') }}
+                                    </a>
                                 </small>
                                 <div id="bin-file-validation" class="small mt-1" role="status"
                                     aria-live="polite"></div>

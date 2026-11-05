@@ -89,12 +89,12 @@ class OwnerPiiExportControllerTest extends TestCase
         $exporter->shouldReceive('headers')
             ->once()
             ->andReturn([
-                'bin',
-                'owner_name',
-                'owner_contact',
-                'owner_gender',
-                'nid',
-                'status',
+                'BIN',
+                'Owner Name',
+                'Owner Contact',
+                'Owner Gender',
+                'NID',
+                'Status',
             ]);
 
         $controller = new OwnerPiiExportController(
@@ -110,7 +110,7 @@ class OwnerPiiExportControllerTest extends TestCase
         $this->assertStringContainsString('private', $cacheControl);
         $this->assertStringContainsString('max-age=0', $cacheControl);
         $this->assertStringContainsString(
-            'owner-pii-export-',
+            'Owner PII Export BIN List.csv',
             (string) $response->headers->get('Content-Disposition')
         );
     }
@@ -172,12 +172,12 @@ class OwnerPiiExportControllerTest extends TestCase
                 'missing_count' => 0,
             ]);
         $exporter->shouldReceive('headers')->once()->andReturn([
-            'bin',
-            'owner_name',
-            'owner_contact',
-            'owner_gender',
-            'nid',
-            'status',
+            'BIN',
+            'Owner Name',
+            'Owner Contact',
+            'Owner Gender',
+            'NID',
+            'Status',
         ]);
 
         $controller = new OwnerPiiExportController(
@@ -189,7 +189,7 @@ class OwnerPiiExportControllerTest extends TestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertStringContainsString(
-            'owner-pii-export-all-',
+            'Owner PII Export ALL.csv',
             (string) $response->headers->get('Content-Disposition')
         );
     }
