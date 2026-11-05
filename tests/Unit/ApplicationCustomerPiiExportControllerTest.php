@@ -50,7 +50,7 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
             (string) $response->headers->get('Cache-Control')
         );
         $this->assertStringContainsString(
-            'application-customer-pii-export-bin_list-',
+            'Application Customer PII Export BIN List.csv',
             (string) $response->headers->get('Content-Disposition')
         );
     }
@@ -76,7 +76,7 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertStringContainsString(
-            'application-customer-pii-export-all-',
+            'Application Customer PII Export ALL.csv',
             (string) $response->headers->get('Content-Disposition')
         );
     }
@@ -217,12 +217,12 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
     private function headers(): array
     {
         return [
-            'application_id',
-            'bin',
-            'customer_name',
-            'customer_gender',
-            'customer_contact',
-            'status',
+            'Application ID',
+            'BIN',
+            'Customer Name',
+            'Customer Gender',
+            'Customer Contact',
+            'Status',
         ];
     }
 
