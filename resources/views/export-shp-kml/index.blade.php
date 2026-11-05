@@ -152,15 +152,14 @@ $(document).ready(function(){
             });
 
             var outputFormat = selectedFormat == 'kml' ? 'KML' : 'SHAPE-ZIP';
+            var fileExtension = selectedFormat == 'kml' ? 'kml' : 'zip';
+            var exportFilename = 'export_imis_' +
+                moment().format('YYYYMMDD_HHmmss') + '.' + fileExtension;
 
             var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName=" + layers.join(',') + "&CQL_FILTER=INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL" +
     "&outputFormat=" + outputFormat;
 
-            if(outputFormat == 'SHAPE-ZIP') {
-                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.zip';
-            } else {
-                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.kml';
-            }
+            exportLink += '&format_options=filename:' + exportFilename;
             window.open(exportLink);
 
         }
