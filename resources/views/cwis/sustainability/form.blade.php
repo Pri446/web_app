@@ -111,6 +111,7 @@
 </form>
 </div>
 @stop
+@include('cwis.generator-data.retain-uploads')
 @push('scripts')
 <script>
 document.querySelectorAll('.campaign-answer').forEach(function (select) {

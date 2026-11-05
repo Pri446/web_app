@@ -319,7 +319,37 @@ No new manual input form or building columns are required. SF-0a counts safely m
 
 The second migration repairs the legacy classification helper when fsm.applications.emptying_status is an integer: it replaces the obsolete IS TRUE predicate with IN (1, 2) and preserves the helper's declared boolean output through an explicit expression. The source column is not converted to boolean and no application records are updated. Boolean-source installations retain their existing behaviour. The old function definition is saved in cwis.emptying_status_function_backup for rollback.
 
-### Equity documents migration is included
+### Generation error: IS TRUE received an integer
+
+The RPM generation wrapper also calls the classic Safety/Equity chain. Consequently, an error shown against `generate_cwis_with_rpm(year)` can originate in the older shared building/emptying classification helper rather than an RPM formula. The integer application status must not be tested with `IS TRUE`.
+
+After deploying the release files, run the compatibility migration on the **same database connection used by the web application** (choose one method):
+
+```bash
+sudo docker compose run --rm artisan migrate --force --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php
+# Or without Docker:
+php artisan migrate --force --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php
+```
+
+Read-only verification in that database:
+
+```sql
+SELECT current_database();
+SELECT migration FROM public.migrations
+WHERE migration = '2026_11_04_000002_align_cwis_emptying_status_helper';
+SELECT pg_get_functiondef('public.execute_select_build_sanisys_nd_criterias_part3()'::regprocedure);
+SELECT * FROM public.execute_select_build_sanisys_nd_criterias_part3() LIMIT 1;
+```
+
+For an integer source, the definition must contain `a.emptying_status IN (1, 2)`; when its declared result is boolean, the projection must use `(bsc.emptying_status IN (1, 2)) AS latest_emptying_status`. Do not drop dependent functions or cast the source column to boolean. If the migration is recorded but the old definition remains, stop and check for a later database dump/manual replacement before rerunning or repairing it. These checks do not regenerate annual results.
+
+### Evidence submission and review
+
+Every applicable Yes answer requires its own PDF, DOC or DOCX evidence file (maximum 5 MB) on submission and approval. A saved, physically present attachment for that same submission is reused unless replaced. Drafts may remain incomplete. Equity review and edit screens offer protected open/download links, as do the other outcomes.
+
+All outcome forms submit asynchronously and display Laravel validation errors without replacing the form. A 422 validation response preserves selected files for correction and retry. Successful saves navigate using the server-selected redirect and retain the existing success toast. A manual refresh or leaving the page still clears unsaved browser file selections.
+
+### Equity document migration files
 
 The `--path=database/migrations/cwis/equity` argument loads every PHP migration in that folder, including:
 

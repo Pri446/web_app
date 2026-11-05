@@ -17,6 +17,7 @@ class CwisResponsibilityDataController extends Controller
     public function __construct()
     {
         $this->middleware(['auth', 'permission:List CWIS']);
+        $this->middleware(\App\Http\Middleware\CwisFormResponse::class)->only(['store', 'update', 'approve']);
     }
 
     public function create(Request $request)

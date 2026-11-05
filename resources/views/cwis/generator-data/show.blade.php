@@ -79,7 +79,13 @@
                             @endforeach
                         </td>
                         <td>{{ $value === null ? __('No data') : ($field->kind === 'policy' ? ($value ? __('Yes') : __('No')) : $value) }}</td>
-                        <td>{{ $field->kind === 'policy' ? ($documentId ? __('Attached') : __('Not attached')) : '' }}</td>
+                        <td>
+                            @if($field->kind === 'policy' && $documentId)
+                                @include('cwis.generator-data.equity-evidence', ['documentName' => $evidenceNames[$documentId] ?? __('Attached Evidence')])
+                            @elseif($field->kind === 'policy')
+                                {{ __('Not attached') }}
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

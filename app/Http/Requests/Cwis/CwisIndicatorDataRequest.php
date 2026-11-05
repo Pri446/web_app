@@ -81,6 +81,26 @@ class CwisIndicatorDataRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            if ($this->input('save_mode') === 'submitted') {
+                $forms = app(CwisFormService::class);
+                $country = $this->input('country_code');
+                $fields = in_array($country, array_keys(CwisIndicatorService::COUNTRIES), true)
+                    ? $forms->applicable($forms->definitions(),
+                        app(CwisIndicatorService::class)->forCountry($country)->pluck('indicator_code')->all()) : [];
+                foreach ($fields as $field) {
+                    if ($field->kind !== 'policy' || !$field->document_column
+                        || $this->input('policies.' . $field->input_name) !== 'Yes'
+                        || $this->hasFile('evidence.' . $field->input_name)) { continue; }
+                    $documentId = $this->route('submission') ? DB::table($field->storage_table)
+                        ->where('submission_id', $this->route('submission'))->whereNull('deleted_at')
+                        ->value($field->document_column) : null;
+                    $document = $documentId ? DB::table('cwis.equity_documents')->where('id', $documentId)->first() : null;
+                    if (!$document || !\Illuminate\Support\Facades\Storage::disk($document->disk)->exists($document->path)) {
+                        $validator->errors()->add('evidence.' . $field->input_name,
+                            __(':indicator requires an evidence document before submission or approval.', ['indicator' => __($field->label)]));
+                    }
+                }
+            }
             foreach (app(CwisFormService::class)->definitions() as $field) {
                 if ($field->kind !== 'number') {
                     continue;

@@ -22,6 +22,7 @@ class CwisGeneratorDataController extends Controller
         $this->indicators = $indicators;
         $this->forms = app(\App\Services\Cwis\CwisFormService::class);
         $this->middleware('auth');
+        $this->middleware(\App\Http\Middleware\CwisFormResponse::class)->only(['store', 'update', 'approve']);
         $this->middleware('permission:List CWIS');
     }
 
@@ -196,6 +197,10 @@ class CwisGeneratorDataController extends Controller
         return view('cwis.generator-data.show', $data + [
             'page_title' => __('CWIS Indicator Data'), 'submission' => $record,
             'fields' => $fields, 'sourceRows' => $sourceRows,
+            'evidenceNames' => DB::table('cwis.equity_documents')->whereIn('id', collect($fields)
+                ->filter(function ($field) { return (bool) $field->document_column; })
+                ->map(function ($field) use ($sourceRows) { return $sourceRows[$field->storage_table]->{$field->document_column} ?? null; })
+                ->filter()->all())->pluck('original_name', 'id'),
             'canManageCountry' => $record->country_code === $this->indicators->activeCountry(),
             'hasGeneratedResults' => DB::table('cwis.data_cwis')->where('year',$record->reporting_year)->exists(),
         ]);
@@ -377,7 +382,7 @@ class CwisGeneratorDataController extends Controller
                 $savedPolicies[$field->input_name] = $value === null ? '' : ($value ? 'Yes' : 'No');
                 $document = $field->document_column ? ($row->{$field->document_column} ?? null) : null;
                 if ($document) {
-                    $savedEvidence[$field->input_name] = DB::table('cwis.equity_documents')->where('id',$document)->value('original_name');
+                    $savedEvidence[$field->input_name] = DB::table('cwis.equity_documents')->where('id',$document)->first();
                 }
             }
         }
@@ -541,6 +546,27 @@ class CwisGeneratorDataController extends Controller
             ->with('cwis_saved', $hasResults
                 ? __('Indicator data approved. Click Rebuild CWIS Results to update the saved results.')
                 : __('Indicator data approved. No CWIS results have been generated yet.'));
+    }
+
+    public function document(Request $request, int $submission, int $document)
+    {
+        $record = DB::table('cwis.equity_submissions')->where('id', $submission)
+            ->where('country_code', $this->indicators->activeCountry())->whereNull('deleted_at')->first();
+        abort_unless($record, 404);
+        $fields = $this->forms->applicable($this->forms->definitions(),
+            $this->indicators->forCountry($record->country_code)->pluck('indicator_code')->all());
+        $linked = false;
+        foreach ($fields as $field) {
+            if ($field->document_column && DB::table($field->storage_table)->where('submission_id', $submission)
+                ->whereNull('deleted_at')->where($field->document_column, $document)->exists()) {
+                $linked = true;
+                break;
+            }
+        }
+        abort_unless($linked, 404);
+        $file = DB::table('cwis.equity_documents')->where('id', $document)->first();
+        abort_unless($file, 404);
+        return \App\Support\CwisEvidence::response($file->disk, $file->path, $file->original_name, $request->boolean('preview'));
     }
 
     private function submissionExists(string $country, int $year): bool
