@@ -1334,6 +1334,24 @@ Table name: **cwis.equity_generation_function_backup**
 
 The Equity catalogue contains EQ-1, EQ-2, EQ-3, EQ-4, EQ-4a, EQ-5, EQ-6.1, EQ-6.1a, EQ-6.1b, EQ-6.2, EQ-6.3, EQ-6.3a, EQ-6.3b, EQ-6.4 and EQ-6.5. Existing catalogue IDs are retained. New labels and input definitions are supplied by Database\\Seeders\\Cwis\\Equity\\CwisDataSourceSeeder and CwisFormFieldsSeeder. Nullable source values support drafts; required/count/evidence rules are also enforced by the application. User audit IDs on these source tables are not declared user-table FKs by these migrations.
 
+### Safely Managed Sanitation Count Indicators
+
+The cwis.data_source catalogue includes SF-0a (building count), SF-0b (private-toilet household count) and SF-0c (private-toilet population count), all under Safety. They use existing building_info.buildings.bin, building_info.buildings.household_with_private_toilet and building_info.buildings.population_with_private_toilet with the derived cwis.safety_buildings(year) classification. No new building or manual-source columns are added. Calculated annual values are written to cwis.data_cwis.data_value.
+
+Table name: **cwis.safety_counts_function_backup**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.safety_counts_function_backup.signature | Master routine signature captured before installing SF-0 dispatch | text pk |
+| cwis.safety_counts_function_backup.definition | Original complete function definition for migration rollback | text, not null |
+
+Table name: **cwis.emptying_status_function_backup**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.emptying_status_function_backup.signature | Legacy classification helper routine signature before the integer-status compatibility fix | text pk |
+| cwis.emptying_status_function_backup.definition | Original function definition for migration rollback; no application status data is stored here | text, not null |
+
 ## CWIS Setting
 
 Schema Name: **public**

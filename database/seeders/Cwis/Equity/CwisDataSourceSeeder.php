@@ -73,6 +73,9 @@ class CwisDataSourceSeeder extends Seeder
      );
 
      $equityDatasources[] = ['safety', 'SF-1', 'Access to safely managed sanitation'];
+     $equityDatasources[] = ['safety', 'SF-0a', 'Number of buildings with safely managed sanitation'];
+     $equityDatasources[] = ['safety', 'SF-0b', 'Number of households with safely managed sanitation'];
+     $equityDatasources[] = ['safety', 'SF-0c', 'Population with safely managed sanitation'];
      $nextId = ((int) DB::table('cwis.data_source')->max('id')) + 1;
 
      foreach ($equityDatasources as $datasource) {
