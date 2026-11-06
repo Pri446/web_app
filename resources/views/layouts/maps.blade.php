@@ -24,7 +24,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   --><!DOCTYPE html>
 
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/maps.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/maps.css') }}?v={{ file_exists(public_path('css/maps.css')) ? filemtime(public_path('css/maps.css')) : time() }}">
   </head>
   <body class="hold-transition skin-blue sidebar-mini sidebar-collapse layout-fixed">
     <!-- Site wrapper -->
