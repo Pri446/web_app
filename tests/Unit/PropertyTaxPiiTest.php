@@ -112,12 +112,9 @@ class PropertyTaxPiiTest extends TestCase
     }
 
     public function test_export_parser_deduplicates_bins(): void
-    public function test_export_parser_deduplicates_bins(): void
     {
         $service = app(PropertyTaxPiiExportService::class);
         $this->assertSame(
-            ['B001', 'B002'],
-            $service->parseCsvText("bin\nB001\nB002\nB001\n")
             ['B001', 'B002'],
             $service->parseCsvText("bin\nB001\nB002\nB001\n")
         );
@@ -126,7 +123,6 @@ class PropertyTaxPiiTest extends TestCase
     public function test_export_parser_requires_bin_header(): void
     {
         $this->expectException(ValidationException::class);
-        app(PropertyTaxPiiExportService::class)->parseCsvText("tax_code\nTAX-1\n");
         app(PropertyTaxPiiExportService::class)->parseCsvText("tax_code\nTAX-1\n");
     }
 }
