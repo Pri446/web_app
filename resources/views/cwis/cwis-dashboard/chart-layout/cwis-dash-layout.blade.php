@@ -365,6 +365,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         @if($safetyIndicators->isNotEmpty())
             <h1>{{__('Safety')}}</h1>
             @include('cwis.cwis-dashboard.chart-layout.safety-layout')
+            @include('cwis.cwis-dashboard.chart-layout.safety-d22-cards', ['safetyChartPrefix' => 'all'])
         @endif
         @if($sustainabilityIndicators->isNotEmpty())
             <h1>{{__('Sustainability')}}</h1>
@@ -396,6 +397,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
     <div class="panel">
         <br>
         @include('cwis.cwis-dashboard.chart-layout.seperate-chart-layout.safety-card')
+        @include('cwis.cwis-dashboard.chart-layout.safety-d22-cards', ['safetyChartPrefix' => 'tab'])
     </div>
     @endif
     
