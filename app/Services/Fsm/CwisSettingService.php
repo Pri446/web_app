@@ -42,7 +42,7 @@ class CwisSettingService
     public function storeOrUpdate($data)
     {
         $performance_test = CwisSetting::where('category', 'cwis_setting')->whereNull('deleted_at')->get();
-        $updates = array_intersect_key($data, array_flip(array_merge(['active_country'], array_keys(config('cwis_safety_settings')))));
+        $updates = array_intersect_key($data, array_flip(array_merge(['active_country'], array_keys(config('cwis_safety_settings')), array_keys(config('cwis_safety_d22.decisions')))));
         DB::transaction(function () use ($updates, $performance_test) {
             foreach ($updates as $key => $value) {
                 $setting = $performance_test->where('name', $key)->first();

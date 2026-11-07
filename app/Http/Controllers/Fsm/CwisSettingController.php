@@ -38,16 +38,21 @@ class CwisSettingController extends Controller
     
         $countries = CwisIndicatorService::COUNTRIES;
         $parameters = config('cwis_safety_settings');
-        return view('fsm/cwis-setting.index', compact('page_title', 'data', 'updated', 'countries', 'parameters'));
+        $decisions = config('cwis_safety_d22.decisions');
+        return view('fsm/cwis-setting.index', compact('page_title', 'data', 'updated', 'countries', 'parameters', 'decisions'));
     }
     
 
     public function store(Request $request)
     {
+        abort_unless($request->user()->can('Edit CWIS'),403);
 
         $rules = ['active_country' => ['required', Rule::in(array_keys(CwisIndicatorService::COUNTRIES))]];
         foreach (config('cwis_safety_settings') as $key => $parameter) {
             $rules[$key] = ['required', 'numeric', 'min:' . $parameter['min'], 'max:' . $parameter['max']];
+        }
+        foreach (config('cwis_safety_d22.decisions') as $key => $decision) {
+            $rules[$key] = ['sometimes','required',Rule::in(array_keys($decision['options']))];
         }
         $data = $request->validate($rules);
         $result = $this->cwissetting->storeOrUpdate($data);

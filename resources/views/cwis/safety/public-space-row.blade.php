@@ -1,0 +1,5 @@
+<tr>
+    <td><input aria-label="{{ __('Public Space') }}" class="form-control" name="public_spaces[{{ $index }}][name]" value="{{ $space['name'] ?? '' }}">@error('public_spaces.'.$index.'.name')<div class="text-danger">{{ $message }}</div>@enderror</td>
+    <td><select aria-label="{{ __('Public Toilet') }}" class="form-control" name="public_spaces[{{ $index }}][toilet_id]"><option value="">{{ __('No Public Toilet') }}</option>@foreach($publicToilets as $publicToilet)<option value="{{ $publicToilet->id }}" {{ (string)($space['toilet_id'] ?? '') === (string)$publicToilet->id ? 'selected' : '' }}>{{ $publicToilet->name }}</option>@endforeach</select>@error('public_spaces.'.$index.'.toilet_id')<div class="text-danger">{{ $message }}</div>@enderror</td>
+    @unless($readOnly)<td><button type="button" class="btn btn-danger remove-public-space" title="{{ __('Remove Public Space') }}"><i class="fa fa-trash" aria-hidden="true"></i><span class="sr-only">{{ __('Remove Public Space') }}</span></button></td>@endunless
+</tr>
