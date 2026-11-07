@@ -9,30 +9,58 @@
 @endpush
 @section('content')
 @if (!$propertyTaxPiiUnlocked && $canUnlockPropertyTaxPii)
-<div class="modal fade" id="property-tax-pii-modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document"><div class="modal-content">
-        <form method="POST" action="{{ route('tax-payment-pii.unlock') }}">
-            @csrf
-            <div class="modal-header">
-                <h5 class="modal-title">{{ __('View Property Tax Owner PII') }}</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <p>{{ __('Owner names will be available for five minutes.') }}</p>
-                <label for="property_tax_pii_password">{{ __('Current Password') }}</label>
-                <input id="property_tax_pii_password" name="current_password" type="password"
-                    class="form-control @error('property_tax_pii_password') is-invalid @enderror"
-                    maxlength="255" autocomplete="current-password">
-                @error('property_tax_pii_password')
-                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                @enderror
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('Cancel') }}</button>
-                <button type="submit" class="btn btn-info">{{ __('View PII Information') }}</button>
-            </div>
-        </form>
-    </div></div>
+<div class="modal fade" id="property-tax-pii-modal" tabindex="-1" role="dialog"
+    aria-labelledby="property-tax-pii-title" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('tax-payment-pii.unlock') }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="property-tax-pii-title">
+                        {{ __('Reveal Property Tax Owner PII') }}
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="{{ __('Close') }}">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        {{ __('Owner names will be available in the Property Tax data table for five minutes. Access will be recorded in the security audit log.') }}
+                    </p>
+                    <div class="form-group mb-0">
+                        <label for="property_tax_pii_password">
+                            {{ __('Current Password') }}
+                        </label>
+                        <input id="property_tax_pii_password" name="current_password" type="password"
+                            class="form-control {{ $errors->has('current_password') || $errors->has('property_tax_pii_password') ? 'is-invalid' : '' }}"
+                            maxlength="255" autocomplete="current-password"
+                            aria-describedby="property-tax-pii-password-help">
+                        <small id="property-tax-pii-password-help" class="form-text text-muted">
+                            {{ __('Re-enter your login password to confirm access. The password is not stored.') }}
+                        </small>
+                        @error('property_tax_pii_password')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        {{-- Laravel's required validator uses the submitted
+                            field name, while a wrong password uses the
+                            Property Tax-specific error key. Display both so an
+                            empty submission cannot fail without feedback. --}}
+                        @error('current_password')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        {{ __('Cancel') }}
+                    </button>
+                    <button type="submit" class="btn btn-info">
+                        {{ __('Reveal for 5 Minutes') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @endif
 
@@ -239,7 +267,7 @@
 
 @push('scripts')
 <script>
-@if ($errors->has('property_tax_pii_password'))
+@if ($errors->has('property_tax_pii_password') || $errors->has('current_password'))
 $(function() { $('#property-tax-pii-modal').modal('show'); });
 @endif
 

@@ -50,6 +50,7 @@ class ApplicationController extends Controller
             'buildingDetails',
             'show',
             'edit',
+            'export',
         ]);
     }
 
@@ -515,7 +516,36 @@ class ApplicationController extends Controller
     public function export(Request $request)
     {
         try {
-            $this->applicationService->export($request);
+            // The normal Application CSV must remain non-PII unless the same
+            // user has an active, password-confirmed list reveal session AND
+            // is authorized to export Application customer PII. Checking both
+            // conditions here keeps a copied export URL from bypassing the UI.
+            $includeCustomerPii = $this->customerPiiListIsUnlocked()
+                && Auth::user()
+                && Auth::user()->can('Export Application Customer PII');
+
+            if ($includeCustomerPii) {
+                // Record that the ordinary CSV contained plaintext customer
+                // PII. Actual names, contacts and genders are never logged.
+                $this->piiAudit->record(
+                    'application_customer_pii_exported',
+                    true,
+                    Auth::user(),
+                    null,
+                    [
+                        'surface' => 'application_standard_csv_export',
+                        'includes_customer_pii' => true,
+                        'customer_field_count' => 3,
+                    ],
+                    $this->applicationPiiAccess->authenticationMethod(
+                        Auth::user(),
+                        'list',
+                        ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+                    )
+                );
+            }
+
+            $this->applicationService->export($request, $includeCustomerPii);
         } catch (\Throwable $e) {
             return redirect(route('application.index'))->with('error', __('Failed to export applications.'));
         }
