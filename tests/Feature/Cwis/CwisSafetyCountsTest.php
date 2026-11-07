@@ -134,7 +134,8 @@ class CwisSafetyCountsTest extends TestCase
             'safetyCountIndicators' => $indicators, 'safetyCountValues' => $data,
             'countryLabel' => 'Nepal', 'reportingYear' => 2099,
         ])->render();
-        $this->assertStringContainsString('11.000', $pdf);
+        $this->assertStringContainsString('>11</div>', $pdf);
+        $this->assertStringNotContainsString('11.000', $pdf);
         $this->assertStringContainsString('Nepal', $pdf);
     }
 
