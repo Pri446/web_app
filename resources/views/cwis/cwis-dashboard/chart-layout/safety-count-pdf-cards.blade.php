@@ -6,7 +6,7 @@
         <tr style="page-break-inside: avoid;">
             @foreach($safetyCountIndicators->sortBy('indicator_code') as $indicator)
                 <td style="width: 33.33%; padding: 14px; border: 1px solid #D9D9D9; background: #F4F9F7; text-align: center; vertical-align: middle;">
-                    <div style="font-size: 30px; font-weight: bold; color: #29ab87;">{{ $safetyCountValues[$indicator->indicator_code] ?? __('No data') }}</div>
+                    <div style="font-size: 30px; font-weight: bold; color: #29ab87;">{{ \App\Support\CwisValueFormatter::formatCount($safetyCountValues[$indicator->indicator_code] ?? null) }}</div>
                     <p style="font-size: 12px;">{{ __($indicator->label) }}</p>
                 </td>
             @endforeach

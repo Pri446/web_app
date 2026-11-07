@@ -50,6 +50,14 @@
                     </div>
                 </div>
             @endforeach
+            @foreach($decisions as $key => $decision)
+                <div class="form-group row">
+                    <label for="{{ $key }}" class="col-sm-3 control-label">{{ __($decision['label']) }}</label>
+                    <div class="col-sm-3"><select id="{{ $key }}" name="{{ $key }}" class="form-control">
+                        @foreach($decision['options'] as $value => $label)<option value="{{ $value }}" @if(old($key,$data[$key] ?? ($decision['default'] ?? 'pending')) === $value) selected @endif>{{ __($label) }}</option>@endforeach
+                    </select></div>
+                </div>
+            @endforeach
             <h6 class="mt-4 mb-3">{{ __('Legacy Parameters (Not Used by Revised Formulas)') }}</h6>
             @foreach ([
                 'fs_generation_from_containment_not_connected_to_sewer_lpcd' => 'FS Generation From Containment Not Connected to Sewer (LPCD)',

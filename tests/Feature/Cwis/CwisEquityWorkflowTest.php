@@ -43,6 +43,28 @@ class CwisEquityWorkflowTest extends TestCase
                 DB::table('cwis.responsibility_answers')->insert(['submission_id' => $responsibilityId, 'indicator_code' => $code, 'answer' => 'No']);
             }
         }
+        // ALL generation needs every independent outcome's approved source.
+        foreach (['accountability' => \App\Services\Cwis\CwisAccountabilityFormService::class,
+            'rpm' => \App\Services\Cwis\CwisRpmFormService::class] as $outcome => $service) {
+            $sourceId = DB::table('cwis.'.$outcome.'_submissions')->insertGetId([
+                'country_code' => 'ALL', 'reporting_year' => now()->year, 'status' => 'approved', 'approved_at' => now(),
+            ]);
+            foreach (app($service)->questions('ALL') as $code => $label) {
+                DB::table('cwis.'.$outcome.'_answers')->insert(['submission_id' => $sourceId, 'indicator_code' => $code, 'answer' => 'No']);
+            }
+        }
+        $safetyId = DB::table('cwis.safety_submissions')->insertGetId([
+            'country_code' => 'ALL', 'reporting_year' => now()->year, 'status' => 'approved', 'approved_at' => now(), 'public_spaces_complete' => true,
+        ]);
+        foreach (config('cwis_safety_d22.policies') as $code) {
+            DB::table('cwis.safety_answers')->insert(['submission_id' => $safetyId, 'indicator_code' => $code, 'answer' => 'No']);
+        }
+        foreach (app(\App\Services\Cwis\CwisSafetyFormService::class)->toilets('ALL') as $toilet) {
+            $path = 'cwis/safety-documents/equity-regression-'.$toilet->id.'.pdf';
+            Storage::disk('local')->put($path, '%PDF-1.4');
+            DB::table('cwis.safety_waiting_times')->insert(['submission_id' => $safetyId, 'toilet_id' => $toilet->id,
+                'waiting_minutes' => 12, 'number_users' => 4, 'document_path' => $path]);
+        }
     }
 
     private function source(): int
@@ -235,11 +257,11 @@ class CwisEquityWorkflowTest extends TestCase
         $payload['policies']['EQ_6_1a'] = 'No';
         $payload['policies']['EQ_6_1b'] = 'No';
         $this->postJson('/cwis/generator-data/' . $id . '/approve',$payload)->assertStatus(422)
-            ->assertJsonValidationErrors('EQ_6_1');
+            ->assertJsonValidationErrors('evidence.EQ_6_1');
         $this->assertEquals(60000,DB::table('cwis.equity_subsidies')->where('submission_id',$id)->value('total_subsidies_amount_nss'));
         $this->assertSame('submitted',DB::table('cwis.equity_submissions')->where('id',$id)->value('status'));
         Storage::fake('public');
-        $payload['evidence'] = ['EQ_6_1' => \Illuminate\Http\UploadedFile::fake()->create('review.pdf',1)];
+        $payload['evidence'] = ['EQ_6_1' => \Illuminate\Http\UploadedFile::fake()->createWithContent('review.pdf', "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF")];
         $this->post('/cwis/generator-data/' . $id . '/approve',$payload)->assertSessionHasNoErrors()
             ->assertSessionHas('cwis_saved');
         $this->assertSame('approved',DB::table('cwis.equity_submissions')->where('id',$id)->value('status'));

@@ -62,6 +62,11 @@ class CwisGeneratorDataController extends Controller
         $availableInputYears = $data['years']->diff($usedYears)->values();
         $inputOutcomes = empty($fields) ? [] : ['equity' => __('Equity')];
         $inputYearsByOutcome = ['equity' => $availableInputYears->all()];
+        if (app(\App\Services\Cwis\CwisSafetyFormService::class)->available($data['country'])) {
+            $inputOutcomes['safety'] = __('Safety');
+            $usedSafetyYears = DB::table('cwis.safety_submissions')->where('country_code', $data['country'])->pluck('reporting_year')->all();
+            $inputYearsByOutcome['safety'] = $data['years']->diff($usedSafetyYears)->values()->all();
+        }
         if (app(\App\Services\Cwis\CwisSustainabilityFormService::class)->available($data['country'])) {
             $inputOutcomes['sustainability'] = __('Sustainability');
             $data['serviceOutcomes']['sustainability'] = __('Sustainability');
@@ -160,10 +165,23 @@ class CwisGeneratorDataController extends Controller
             $rows = DB::query()->fromSub($rows->unionAll($rpm), 'rpm_outcome_submissions')->select('rpm_outcome_submissions.*');
         }
 
+        if (app(\App\Services\Cwis\CwisSafetyFormService::class)->available($data['country'])) {
+            $safety = DB::table('cwis.safety_submissions')->select('id', 'reporting_year as year', 'status', 'updated_at')
+                ->selectRaw("'safety' as outcome_key")->where('country_code', $data['country']);
+            if ($data['year'] !== null) { $safety->where('reporting_year', $data['year']); }
+            if (!empty($data['filters']['service_outcome']) && $data['filters']['service_outcome'] !== 'safety') {
+                $safety->whereRaw('1 = 0');
+            }
+            $rows = DB::query()->fromSub($rows->unionAll($safety), 'safety_outcome_submissions')->select('safety_outcome_submissions.*');
+        }
+
         return DataTables::of($rows)
             ->addColumn('service_outcome', function ($row) { return $row->outcome_key === 'rpm' ? __('Resource Planning and Management') : __(ucfirst($row->outcome_key)); })
             ->addColumn('status_label', function ($row) { return __(ucfirst($row->status)); })
             ->addColumn('action', function ($row) {
+                if ($row->outcome_key === 'safety') {
+                    return view('cwis.safety.actions', compact('row'))->render();
+                }
                 if ($row->outcome_key === 'rpm') {
                     return view('cwis.rpm.actions', compact('row'))->render();
                 }
@@ -268,6 +286,7 @@ class CwisGeneratorDataController extends Controller
             app(\App\Services\Cwis\CwisResponsibilityWorkflowService::class)->requireApproval($record->reporting_year, $country);
             app(\App\Services\Cwis\CwisAccountabilityWorkflowService::class)->requireApproval($record->reporting_year, $country);
             app(\App\Services\Cwis\CwisRpmWorkflowService::class)->requireApproval($record->reporting_year, $country);
+            app(\App\Services\Cwis\CwisSafetyWorkflowService::class)->requireApproval($record->reporting_year, $country);
             $results = DB::table('cwis.data_cwis')->where('year',$record->reporting_year)->orderBy('id')->get();
             if ($results->isNotEmpty()) {
                 $backup = json_encode([
@@ -302,6 +321,9 @@ class CwisGeneratorDataController extends Controller
 
     public function create(Request $request)
     {
+        if ($request->input('service_outcome') === 'safety') {
+            return redirect()->route('cwis.safety.create', $request->only('country_code', 'year'));
+        }
         if ($request->input('service_outcome') === 'rpm') {
             return redirect()->route('cwis.rpm.create', $request->only('year', 'country_code'));
         }

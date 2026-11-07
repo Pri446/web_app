@@ -2,7 +2,7 @@
 
 **Release branch:** `v2.0.6cwis-new-indicators`  
 **Prepared:** 1 November 2026  
-**Updated:** 4 November 2026  
+**Updated:** 7 November 2026
 **Command formats:** Linux Bash with Docker Compose or direct PHP Artisan  
 **Scope:** Equity, revised Safety, Sustainability, Responsibility, Accountability, RPM, shared settings, dashboard, monitoring, Excel/PDF and Treatment Plant annual inputs.
 
@@ -10,11 +10,11 @@
 
 This is an upgrade to an existing Base IMIS installation, not a standalone fresh database installer. Existing operational schemas, PostGIS objects and legacy CWIS calculation helpers are prerequisites.
 
-The original ten grouped CWIS commits end at `e185d67f`. The current code candidate is `917cc22a`, including the upstream merge, existing validation fixes and the follow-up evidence, Safety-count and listing changes. Lock and verify the approved documentation-inclusive SHA/tag before deployment. This guide does not publish or deploy that candidate.
+Deploy an approved, published SHA/tag from `v2.0.6cwis-new-indicators` that includes the 7 November Safety follow-up. Earlier commit `917cc22a` does not include these new Safety changes. The follow-up was implemented and verified locally; local commits do not publish it automatically. Review and publish the approved release through the normal release process before using this guide on a server. Record the exact approved SHA, not just the moving branch name. This guide does not itself publish or deploy a release.
 
 Do not deploy a single intermediate outcome commit by itself. Shared controllers, routes and the combined generator depend on the full reviewed series.
 
-Earlier checks passed for 96 changed PHP files and 2 migration-layout tests with 35 assertions. Latest focused checks passed on 4 November: 27 PHP tests with 265 assertions (Safety counts/helper, shared listing and evidence validation) and 10 JavaScript tests. The full database regression suite was stopped before completion; do not describe it as passed. Complete staging acceptance before live deployment. The inventory is 142 entries after the SF-0 migration, leaving 17 specifications unresolved against the latest supplied 159 target. The original D2.3 wording referred to 144; do not confuse that wording with verification of the newer catalogue.
+The 7 November follow-up was installed on the user-confirmed local/test database. Focused Safety, Equity, country-display and count tests passed across the initial run and corrected-case recheck. Desktop/mobile form checks passed. This is not a claim that the entire application test suite passed; complete staging acceptance before live deployment. Before/after hashes confirmed that all 14 out-of-scope Safety function definitions and existing annual result rows remained unchanged. The expected catalogue is now 159 main indicators plus three supporting SF-0 counts, or 162 entries. Registration is not proof that every indicator has complete source data or a publishable result; SF-6f still needs scope confirmation.
 
 **Never run these as part of this upgrade:** `migrate:fresh`, `migrate:refresh`, table truncation, deletion of annual results, or broad seeding through `DatabaseSeeder`.
 
@@ -99,7 +99,7 @@ Confirm:
 
 Do not copy the local development `.env` to live, change `APP_KEY`, or point live at the developer database.
 
-For either deployment method, the operational order is: backup and pause writers -> maintenance -> deploy/build the approved code/image -> create/verify persistent evidence directories (section 10) -> clear cache and check migration status -> scoped migration command (section 7) -> six seeders (section 8) -> country/settings/permissions -> installation checks and staging acceptance -> refresh services/caches -> reopen. Follow each step only after the previous one succeeds.
+For either deployment method, the operational order is: backup and pause writers -> maintenance -> deploy/build the approved code/image -> create/verify persistent evidence directories (section 10) -> clear cache and check migration status -> scoped migration command (section 7, or section 17 for the Safety-only follow-up) -> applicable seeders (section 8) -> country/settings/permissions -> installation checks and staging acceptance -> refresh services/caches -> reopen. Follow each step only after the previous one succeeds. The Safety follow-up migration runs its own seeder automatically; an already upgraded site does not need to rerun all baseline seeders.
 
 ### Read-only database checks
 
@@ -181,7 +181,7 @@ git show --no-patch --oneline APPROVED_RELEASE_SHA
 
 Deploy the approved SHA into a clean release directory or use the existing atomic release mechanism. Do not use a blind `git pull` or destructive reset on a dirty live checkout. Record both old and new release identifiers.
 
-The full local CWIS changeset is:
+The earlier committed CWIS baseline includes the following commits. This is historical context, not the final release SHA; the approved artifact must also include the later fixes and the 7 November Safety follow-up:
 1. `9496647b` - shared country-aware infrastructure.
 2. `add4e88b` - Equity sources, approval and calculations.
 3. `e12789a4` - revised Safety.
@@ -253,7 +253,6 @@ Use only the command for your deployment method after backups, maintenance mode,
 
 ```bash
 sudo docker compose run --rm artisan migrate --force \
-
   --path=database/migrations/cwis/equity \
   --path=database/migrations/2026_10_27_000001_install_revised_cwis_safety_functions.php \
   --path=database/migrations/2026_10_27_000002_configure_cwis_safety_parameters.php \
@@ -269,7 +268,9 @@ sudo docker compose run --rm artisan migrate --force \
   --path=database/migrations/2026_10_31_000003_create_cwis_rpm_tables.php \
   --path=database/migrations/2026_10_31_000004_install_cwis_rpm_calculations.php \
   --path=database/migrations/2026_11_04_000001_install_cwis_safety_count_indicators.php \
-  --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php
+  --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php \
+  --path=database/migrations/2026_11_07_000001_create_cwis_safety_d22_sources.php \
+  --path=database/migrations/2026_11_07_000002_install_cwis_safety_d22_functions.php
 ```
 
 **Direct PHP**
@@ -291,10 +292,12 @@ php artisan migrate --force \
   --path=database/migrations/2026_10_31_000003_create_cwis_rpm_tables.php \
   --path=database/migrations/2026_10_31_000004_install_cwis_rpm_calculations.php \
   --path=database/migrations/2026_11_04_000001_install_cwis_safety_count_indicators.php \
-  --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php
+  --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php \
+  --path=database/migrations/2026_11_07_000001_create_cwis_safety_d22_sources.php \
+  --path=database/migrations/2026_11_07_000002_install_cwis_safety_d22_functions.php
 ```
 
-Each scoped command includes the same 24 migration files: nine nested Equity/shared-foundation files and fifteen root migrations. Already-applied files are skipped. Run neither the alternative method nor the unscoped route after a successful scoped migration merely for completeness.
+Each scoped command includes the same 26 migration files: nine nested Equity/shared-foundation files and seventeen root migrations. Already-applied files are skipped. Run neither the alternative method nor the unscoped route after a successful scoped migration merely for completeness. These paths describe an upgrade of an existing IMIS database, not a fresh database installation.
 
 ### Adding SF-0a SF-0b and SF-0c to an already deployed installation
 
@@ -314,7 +317,7 @@ sudo docker compose run --rm artisan migrate --force --path=database/migrations/
 php artisan migrate --force --path=database/migrations/2026_11_04_000001_install_cwis_safety_count_indicators.php --path=database/migrations/2026_11_04_000002_align_cwis_emptying_status_helper.php
 ```
 
-No new manual input form or building columns are required. SF-0a counts safely managed buildings; SF-0b sums their private-toilet households; SF-0c sums their private-toilet population. These are counts, not percentages. Existing annual values are not regenerated by installation. Use the authorized generation/rebuild process for an intended year after source review. The expected combined catalogue becomes 142; 17 entries from the stated 159 target still require the missing specifications.
+The SF-0 counts themselves require no new manual input form or building columns. SF-0a counts safely managed buildings; SF-0b sums their private-toilet households; SF-0c sums their private-toilet population. These are counts, not percentages. Existing annual values are not regenerated by installation. This intermediate step produces 139 main indicators plus three supporting counts (142 entries). The subsequent Safety D2.2 follow-up adds the 20 missing main indicators, bringing the total to 159 main plus three supporting counts. The follow-up does introduce its own annual manual-input form.
 
 
 The second migration repairs the legacy classification helper when fsm.applications.emptying_status is an integer: it replaces the obsolete IS TRUE predicate with IN (1, 2) and preserves the helper's declared boolean output through an explicit expression. The source column is not converted to boolean and no application records are updated. Boolean-source installations retain their existing behaviour. The old function definition is saved in cwis.emptying_status_function_backup for rollback.
@@ -397,6 +400,7 @@ The table has one record per plant/data year, a plant foreign key and non-negati
 | Equity | `database/sql/cwis/equity/cwis_equity_calculations.sql`; `cwis_equity_generation.sql` |
 | Shared checks | `database/sql/cwis/equity/cwis_indicator_country_checks.sql`; original guard retained for rollback |
 | Revised Safety | `database/sql/cwis_safety_revised.sql` |
+| Safety D2.2 follow-up | `database/sql/cwis_safety_d22.sql`; the SF-0 prerequisites use `database/sql/cwis_safety_counts.sql` |
 | Sustainability | `database/sql/cwis_sustainability_calculations.sql` |
 | Responsibility | `database/sql/cwis_responsibility_calculations.sql` |
 | Accountability | `database/sql/cwis_accountability_calculations.sql` |
@@ -415,6 +419,8 @@ Do not delete migration-history rows, drop the whole public schema, or use `DROP
 ## 8. Seed Only the Required CWIS Data
 
 Run only one of the equivalent seeder command sets below after the required tables exist:
+
+These baseline commands are for the complete upgrade. For the Safety-only follow-up on an already upgraded site, skip them: `2026_11_07_000002_install_cwis_safety_d22_functions.php` automatically runs `Database\Seeders\CwisSafetyD22DataSourceSeeder`. Do not rerun an arbitrary country example seeder afterward. The new Safety seeder adds mappings without deleting existing ones.
 
 **Docker Compose**
 
@@ -461,6 +467,10 @@ Review the actual saved parameters, rather than overwriting them with document d
 - Wastewater and greywater conversion percentages.
 - Annual FS generation rates for the defined containment groups.
 - BOD compliance threshold.
+- SF-1 household basis: confirmed default `private`.
+- SF-1e volume basis: confirmed default `transaction`.
+- SF-3d/SF-4c waiting-time method: confirmed default `literal`.
+- SF-6f scope: `pending` until residential-only versus residential-and-mixed is confirmed.
 
 Revised Safety functions read these values from CWIS Settings. Existing city values may differ from the reference defaults. Annual source values such as subsidies, revenues, CAPEX and reuse volumes are not settings constants.
 
@@ -472,6 +482,7 @@ Preserve writable persistent storage for:
 - `storage/app/cwis/responsibility-documents`.
 - `storage/app/cwis/accountability-documents`.
 - `storage/app/cwis/rpm-documents`.
+- `storage/app/cwis/safety-documents`.
 - `storage/app/cwis/result-backups`.
 
 Existing Equity document metadata records its disk/path; preserve those exact locations during migration. The private folders must not be made publicly accessible. Use protected evidence routes for review/download.
@@ -500,6 +511,7 @@ sudo docker compose run --rm \
       storage/app/cwis/responsibility-documents \
       storage/app/cwis/accountability-documents \
       storage/app/cwis/rpm-documents \
+      storage/app/cwis/safety-documents \
       storage/app/cwis/result-backups
     for directory in \
       storage/app/public/cwis/equity-documents \
@@ -507,6 +519,7 @@ sudo docker compose run --rm \
       storage/app/cwis/responsibility-documents \
       storage/app/cwis/accountability-documents \
       storage/app/cwis/rpm-documents \
+      storage/app/cwis/safety-documents \
       storage/app/cwis/result-backups \
       bootstrap/cache
     do
@@ -534,6 +547,7 @@ sudo -u "$APP_USER" sh -c '
     storage/app/cwis/responsibility-documents \
     storage/app/cwis/accountability-documents \
     storage/app/cwis/rpm-documents \
+    storage/app/cwis/safety-documents \
     storage/app/cwis/result-backups
   for directory in \
     storage/app/public/cwis/equity-documents \
@@ -541,6 +555,7 @@ sudo -u "$APP_USER" sh -c '
     storage/app/cwis/responsibility-documents \
     storage/app/cwis/accountability-documents \
     storage/app/cwis/rpm-documents \
+    storage/app/cwis/safety-documents \
     storage/app/cwis/result-backups \
     bootstrap/cache
   do
@@ -567,7 +582,7 @@ sudo docker compose run --rm artisan storage:link
 php artisan storage:link
 ```
 
-This links only the configured public disk; private Sustainability/Responsibility/Accountability/RPM folders must remain outside it. Verify existing Equity public-disk exposure against the site's evidence-access policy. Test an upload and reopening its saved evidence on **staging** before live acceptance. For Docker, confirm the running web container sees the same files after the one-off artisan container exits. For Direct PHP, confirm the web/PHP process can access the folders created under APP_USER.
+This links only the configured public disk; private Safety/Sustainability/Responsibility/Accountability/RPM folders must remain outside it. Verify existing Equity public-disk exposure against the site's evidence-access policy. Test an upload and reopening its saved evidence on **staging** before live acceptance. For Docker, confirm the running web container sees the same files after the one-off artisan container exits. For Direct PHP, confirm the web/PHP process can access the folders created under APP_USER.
 
 ## 11. Read-only Installation Verification
 
@@ -624,7 +639,7 @@ Also run `migrate:status` through your chosen Docker or Direct PHP command after
 
 For this release, the cwis schema contains 29 individual AC calculators and 43 individual RPM calculators. The public schema contains 29 AC updaters and 43 RPM updaters. Extra overloads can increase raw routine counts; reconcile them instead of accepting counts alone.
 
-The expected clean catalogue has Equity 15, Safety 25, Sustainability 9, Responsibility 21, Accountability 29 and RPM 43. Live custom indicators can legitimately increase these totals. Do not delete municipal entries to force the count to match.
+The expected clean catalogue has Equity 15, Safety 45 (42 main plus three SF-0 supporting counts), Sustainability 9, Responsibility 21, Accountability 29 and RPM 43: 162 stored entries, representing 159 main indicators. Live custom indicators can legitimately increase these totals. Do not delete municipal entries to force the count to match.
 
 ## 12. Functional Acceptance
 
@@ -654,9 +669,15 @@ Sustainability checks:
 
 Safety checks:
 - SF-1b uses previous-year distinct eligible containments.
-- SF-1e follows the installed alignment equation: 100 x (365 x daily treatment capacity) / (365 x previous-year sludge-volume sum). Verify the document's daily-volume assumption against the actual source units before publication; do not silently reinterpret annual transaction totals as daily volumes.
+- SF-1 uses private-toilet households in safe buildings as the numerator.
+- With the confirmed `transaction` option, SF-1e is 100 x (365 x daily treatment capacity) / previous-year sludge transaction-volume sum. Do not multiply the denominator by 365. The earlier alignment migration is superseded by the D2.2 function installer; do not replay its SQL manually afterward.
 - SF-1d/SF-1f use the saved settings and consistent annual/daily units.
 - BOD equal to the threshold does not pass the strict SF-1g test.
+- SF-3d/SF-4c use the literal sum of each toilet's waiting minutes divided by its user count, not a weighted mean; zero users are invalid.
+- SF-12 Yes requires both effluent and biosolids evidence. Parent No makes the dependent policy not applicable.
+- Approval saves an immutable annual source; it does not automatically create official results.
+- Explicit Safety rebuild updates SF-1 and the newly added Safety indicators, not the other 14 legacy Safety formulas or other outcomes. First-time generation runs the normal complete CWIS chain.
+- SF-6f remains No data while its scope is pending. Do not describe that indicator as fully resolved.
 
 ## 13. Finish the Deployment
 
@@ -723,4 +744,161 @@ For a narrow function defect, prefer a reviewed forward-fix migration with compa
 Record the approved SHA, backup locations, migration/seeder commands and exit status, country mappings, parameter changes, verification evidence, operator/reviewer and reopen time. Keep credentials and personal/evidence contents out of the log.
 
 This guide was created locally for review. No live connection, migration, seeding, release push or deployment was performed while preparing it.
+
+## 17. Safety D2.2 Follow-up (7 November 2026)
+
+Apply this follow-up after the preceding CWIS migrations. It adds annual Safety draft sources, waiting-time measurements, public-space coverage, policy evidence and an approved-source generation snapshot. It registers the 20 missing Safety indicators and updates only the SF-1 family; the other 14 existing Safety function definitions are preserved. The master gains a Safety dispatch hook. The earlier 4 November inventory statement is historical: this follow-up brings the catalogue to 159 main indicators plus three SF-0 supporting counts (162 entries).
+
+### 17.1 Choose the Correct Route
+
+| Server state | Action |
+| --- | --- |
+| Existing IMIS, earlier CWIS upgrade not yet applied | Follow sections 3-13, including the complete 26-file command in section 7 and reviewed baseline seeders in section 8. |
+| Earlier CWIS upgrade, SF-0 counts and integer-emptying helper repair already applied | Use only the two new migrations below after the same backup, maintenance, artifact and storage checks. |
+| Both 7 November migrations already recorded as applied | Do not delete history or replay SQL. Verify the installed functions and investigate drift through a new reviewed migration if needed. |
+
+The local/test installation has already run both new migrations. Commands below are deployment instructions, not a request to rerun them locally or proof that live has been updated.
+
+### 17.2 Files to Include in the Release
+
+Deploy the complete reviewed application artifact, not only the two migration files. The follow-up includes:
+
+| Area | Files |
+| --- | --- |
+| Schema and installation | `database/migrations/2026_11_07_000001_create_cwis_safety_d22_sources.php`; `database/migrations/2026_11_07_000002_install_cwis_safety_d22_functions.php` |
+| SQL and catalogue | `database/sql/cwis_safety_d22.sql`; `database/seeders/CwisSafetyD22DataSourceSeeder.php` |
+| Form definitions and validation | `config/cwis_safety_d22.php`; `app/Http/Requests/Cwis/CwisSafetyDataRequest.php` |
+| Form and workflow services | `app/Services/Cwis/CwisSafetyFormService.php`; `app/Services/Cwis/CwisSafetyWorkflowService.php` |
+| Form controller and routes | `app/Http/Controllers/Cwis/CwisSafetyDataController.php`; `routes/web.php` |
+| Listing and generation | `app/Http/Controllers/Cwis/CwisGeneratorDataController.php`; `app/Http/Controllers/Cwis/CwisMneController.php` |
+| Settings | `app/Http/Controllers/Fsm/CwisSettingController.php`; `app/Services/Fsm/CwisSettingService.php`; `resources/views/fsm/cwis-setting/index.blade.php` |
+| Input/review UI | All files under `resources/views/cwis/safety/`; `public/js/cwis-form-submit.js` |
+| Dashboard and PDF | `resources/views/cwis/cwis-dashboard/chart-layout/cwis-dash-layout.blade.php`; `safety-d22-cards.blade.php`; `safety-d22-pdf-cards.blade.php`; `app/Http/Controllers/ChartController.php` |
+| Regression checks | `tests/Feature/Cwis/CwisSafetyD22Test.php`; updated Equity workflow fixtures; existing count/display tests and related fixes included in the reviewed release |
+| Deployment instructions | `documentations/CWIS_Live_Deployment_Guide.md` |
+
+The two Safety card filenames in the dashboard row are in the same `resources/views/cwis/cwis-dashboard/chart-layout/` directory. Keep the existing shared evidence helper, response middleware, upload-retention include, rebuild script, country services, numerical formatter and earlier CWIS SQL dependencies. No new Composer package or JavaScript build dependency is introduced by this follow-up. Do not include development preview scripts, internal studies or uploaded evidence in Git.
+
+### 17.3 Backup and Prerequisites
+
+Complete sections 3-6 and 10 first: reviewed published code/image, staging rehearsal, database/storage backups, paused writers and a verified persistent writable `storage/app/cwis/safety-documents` directory. The earlier country-aware functions, revised Safety calculator/settings, all earlier outcome generation wrappers, SF-0 installation and integer-emptying helper repair must be present. An ordinary empty PostgreSQL database is not sufficient.
+
+Record the result-row counts from section 3 and the following protected-function hash before and after installation. It must be unchanged; do not generate a year while comparing:
+
+```sql
+SELECT count(*) AS protected_function_count,
+       md5(string_agg(pg_get_functiondef(p.oid), E'\n' ORDER BY p.oid::regprocedure::text)) AS protected_definition_hash
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname ~ '^update_data_into_cwis_table_sf_(2a|2b|2c|3|3b|3c|3e|4a|4b|4d|5|6|7|9)_newsan$';
+```
+
+Expect 14 routines on the reviewed baseline. Investigate extra overloads or missing routines before continuing. Back up complete data, not only this hash.
+
+### 17.4 Apply the Safety-only Follow-up
+
+Choose one command format, not both. Run from the correct deployed application/Compose directory. First enter maintenance and clear stale caches; if these fail, stop:
+
+**Docker Compose**
+
+```bash
+sudo docker compose run --rm artisan down
+sudo docker compose run --rm artisan optimize:clear
+sudo docker compose run --rm artisan migrate:status
+```
+
+**Direct PHP**
+
+```bash
+php artisan down
+php artisan optimize:clear
+php artisan migrate:status
+```
+
+Then apply only the two new migrations using the same method:
+
+**Docker Compose**
+
+```bash
+sudo docker compose run --rm artisan migrate --force \
+  --path=database/migrations/2026_11_07_000001_create_cwis_safety_d22_sources.php \
+  --path=database/migrations/2026_11_07_000002_install_cwis_safety_d22_functions.php
+```
+
+**Direct PHP**
+
+```bash
+php artisan migrate --force \
+  --path=database/migrations/2026_11_07_000001_create_cwis_safety_d22_sources.php \
+  --path=database/migrations/2026_11_07_000002_install_cwis_safety_d22_functions.php
+```
+
+The second migration loads `database/sql/cwis_safety_d22.sql` and runs `CwisSafetyD22DataSourceSeeder`; no separate SQL execution or broad seeding is needed. Ship the migration, SQL, seeder, Safety config, request, services, controller, routes, views and shared submission script together. Original SF-1/master definitions are retained in `cwis.safety_d22_function_backup`.
+
+Check migration history afterward with the chosen method:
+
+```bash
+sudo docker compose run --rm artisan migrate:status
+```
+
+```bash
+php artisan migrate:status
+```
+
+Both `2026_11_07_000001_create_cwis_safety_d22_sources` and `2026_11_07_000002_install_cwis_safety_d22_functions` must be marked Yes. On PostgreSQL, each migration is transactional, but the pair is not one global transaction. If the second fails, leave maintenance enabled, inspect the first migration's recorded state and fix the prerequisite/error before retrying. Do not truncate tables, remove history rows or run a blanket rollback.
+
+### 17.5 Verify Installation Before Reopening
+
+The following checks read definitions and metadata only; they do not calculate official annual results:
+
+```sql
+SELECT to_regclass('cwis.safety_submissions') AS submissions,
+       to_regclass('cwis.safety_answers') AS answers,
+       to_regclass('cwis.safety_waiting_times') AS waiting_times,
+       to_regclass('cwis.safety_public_spaces') AS public_spaces,
+       to_regclass('cwis.safety_generation_runs') AS generation_snapshots,
+       to_regclass('cwis.safety_d22_function_backup') AS function_backup;
+
+SELECT to_regprocedure('cwis.calculate_sf_1(integer)') AS sf1,
+       to_regprocedure('cwis.calculate_sf_3d(integer)') AS ct_waiting,
+       to_regprocedure('cwis.calculate_sf_4c(integer)') AS pt_waiting,
+       to_regprocedure('cwis.calculate_sf_12(integer)') AS certification,
+       to_regprocedure('public.rebuild_cwis_safety(integer,bigint)') AS rebuild;
+
+SELECT pg_get_functiondef('public.update_data_into_cwis_table_revised_2024(integer)'::regprocedure);
+
+SELECT name, value
+FROM public.site_settings
+WHERE category = 'cwis_setting'
+  AND name IN ('safety_sf1_household_basis', 'safety_sf1e_volume_basis',
+               'safety_waiting_method', 'safety_sf6f_scope')
+  AND deleted_at IS NULL
+ORDER BY name;
+
+SELECT count(*) AS all_catalogue_entries,
+       count(*) FILTER (WHERE indicator_code NOT IN ('SF-0a','SF-0b','SF-0c')) AS main_indicators
+FROM cwis.data_source;
+
+SELECT year, count(*) AS saved_result_rows
+FROM cwis.data_cwis GROUP BY year ORDER BY year;
+```
+
+Expect non-null object references and both `prepare_safety_d22_generation` and `dispatch_safety_d22` calls in the master definition. Check the protected-function hash again. The existing saved annual rows/counts must match the backup baseline. The clean catalogue should have 162 total and 159 main entries; custom municipal indicators may increase it.
+
+Confirm the intended country mappings and reviewer permissions. On staging, select Add Indicator Data -> Safety -> an available year, save a draft with an attachment, reopen Approve, verify the attachment is reusable, check missing-value/evidence errors, and approve. Approval alone must not generate results. Review the confirmed formula options and the pending SF-6f scope before publication. Only generate/rebuild staging results in an explicitly isolated test database.
+
+After all checks succeed, use the chosen cache/service/reopen procedure in section 13. Refresh PHP/opcache, queue workers and application containers according to the existing server process. Do not run `up` while a migration or acceptance check is failing.
+
+### 17.6 Storage and Workflow Behavior
+
+New tables: `cwis.safety_submissions`, `cwis.safety_answers`, `cwis.safety_waiting_times`, `cwis.safety_public_spaces`, and `cwis.safety_generation_runs`. Evidence is private under `storage/app/cwis/safety-documents`; the protected document endpoint supports review/download. Accepted uploads are PDF, DOC and DOCX, up to 5 MB per file. SF-12 requires separate effluent and biosolids documents when answered Yes.
+
+The seeder adds Bangladesh mappings for Safety and Nepal mappings from D2.2's recommended list, preserving existing mappings and other outcomes. These recommendations are not national endorsement. Review production applicability before deployment. Safety appears in Add Indicator Data only where manual Safety inputs apply. Used years are excluded per country/outcome, not globally.
+
+Drafts allow incomplete values. Submission and approval require applicable answers, waiting times/user counts and supporting evidence; dependent answers apply only when their parent is Yes. Existing attachments are retained during review. Approval saves the source only and does not generate results. Generation requires the applicable approved source; rebuilding uses a saved snapshot and preserves the 14 out-of-scope Safety result rows. New generation still runs the normal complete CWIS chain.
+
+Confirmed defaults: SF-1 uses private-toilet households in safe buildings; SF-1e uses previous-year transaction/trip sludge volumes in cubic metres without multiplying the denominator by 365; SF-3d/SF-4c follow the literal sum of waiting minutes divided by users. These formula options are stored in CWIS Settings and copied into each Safety generation snapshot. SF-6f stays pending and produces No data until its residential-only versus residential-and-mixed scope is confirmed. SF-11b retains the operator-registration title; the source document's operator/vehicle wording should still be reconciled.
+
+Installation does not calculate, rebuild or delete any official annual results. Historical records are not backfilled automatically. Existing approved Safety records are immutable through the input form. Do not roll back by dropping source/audit tables; use the reviewed coordinated recovery procedure above.
 

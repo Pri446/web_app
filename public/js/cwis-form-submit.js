@@ -1,7 +1,7 @@
 (function () {
     'use strict';
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('#indicator-data-form, .sustainability-form, .responsibility-form, .accountability-form, .rpm-form').forEach(function (form) {
+        document.querySelectorAll('#indicator-data-form, .sustainability-form, .responsibility-form, .accountability-form, .rpm-form, .safety-form').forEach(function (form) {
             var busy = false;
             form.addEventListener('submit', async function (event) {
                 event.preventDefault();

@@ -557,6 +557,15 @@ Route::group([
     Route::post('sustainability-data/{submission}/calculate', 'CwisSustainabilityDataController@calculate')->whereNumber('submission')->name('cwis.sustainability.calculate');
     Route::put('sustainability-data/{submission}', 'CwisSustainabilityDataController@update')->whereNumber('submission')->name('cwis.sustainability.update');
     Route::get('sustainability-data/{submission}/documents/{document}', 'CwisSustainabilityDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.sustainability.document');
+    Route::get('safety-data/create', 'CwisSafetyDataController@create')->name('cwis.safety.create');
+    Route::post('safety-data', 'CwisSafetyDataController@store')->name('cwis.safety.store');
+    Route::get('safety-data/{submission}', 'CwisSafetyDataController@show')->whereNumber('submission')->name('cwis.safety.show');
+    Route::get('safety-data/{submission}/edit', 'CwisSafetyDataController@edit')->whereNumber('submission')->name('cwis.safety.edit');
+    Route::get('safety-data/{submission}/review', 'CwisSafetyDataController@review')->whereNumber('submission')->name('cwis.safety.review');
+    Route::put('safety-data/{submission}', 'CwisSafetyDataController@update')->whereNumber('submission')->name('cwis.safety.update');
+    Route::post('safety-data/{submission}/approve', 'CwisSafetyDataController@approve')->whereNumber('submission')->name('cwis.safety.approve');
+    Route::post('safety-data/{submission}/calculate', 'CwisSafetyDataController@calculate')->whereNumber('submission')->name('cwis.safety.calculate');
+    Route::get('safety-data/{submission}/documents/{document}', 'CwisSafetyDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.safety.document');
     Route::get('generator-data', 'CwisGeneratorDataController@index')->name('cwis.generator-data.index');
     Route::get('generator-data/create', 'CwisGeneratorDataController@create')->name('cwis.generator-data.create');
     Route::post('generator-data', 'CwisGeneratorDataController@store')->name('cwis.generator-data.store');

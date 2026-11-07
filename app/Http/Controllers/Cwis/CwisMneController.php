@@ -137,6 +137,7 @@ class CwisMneController extends Controller
         app(\App\Services\Cwis\CwisResponsibilityWorkflowService::class)->requireApproval((int) $validated['year'], $country);
         app(\App\Services\Cwis\CwisAccountabilityWorkflowService::class)->requireApproval((int) $validated['year'], $country);
         app(\App\Services\Cwis\CwisRpmWorkflowService::class)->requireApproval((int) $validated['year'], $country);
+        app(\App\Services\Cwis\CwisSafetyWorkflowService::class)->requireApproval((int) $validated['year'], $country);
         $result = DB::select('select public.generate_cwis_with_rpm(?);', [$validated['year']]);
         return response()->json($result);
     }
