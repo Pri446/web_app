@@ -119,6 +119,9 @@
             input.value = '';
             resetPreview(input);
             showFeedback(input, 'Only JPG or JPEG images are allowed.', true);
+        if (!file) return;
+        if (file.size <= COMPRESSION_THRESHOLD) {
+            input.dataset.imageOptimized = 'true';
             return;
         }
 

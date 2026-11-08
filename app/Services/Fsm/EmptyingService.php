@@ -318,6 +318,30 @@ class EmptyingService
             // their visibility from the current form values, allowing the
             // operator to change No. of Trips without reloading the page.
                 $hideFinalTripFields = (int) $application->trip_count !== ((int) $emptying->trip_no + 1);
+            if ($application->trip_count == $emptying->trip_no + 1) {
+                $folderPathBuildJpg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpg');
+                $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpeg');
+                $imagePathBuildJpg = 'storage/emptyings/houses/' . $application->bin . '.jpg';
+                $imagePathBuildJpeg = 'storage/emptyings/houses/' . $application->bin . '.jpeg';
+                if (file_exists($folderPathBuildJpg) == true) {
+                    $imageBuildSrc = asset($imagePathBuildJpg);
+                    $labelNameBuild = $application->bin . '.jpg';
+                } elseif (file_exists($folderPathBuildJpeg) == true) {
+                    $imageBuildSrc = asset($imagePathBuildJpeg);
+                    $labelNameBuild = $application->bin . '.jpeg';
+                } else {
+                    $imageBuildSrc = false;
+                    $labelNameBuild = "No House Image";
+                }
+                // receipt
+                $folderPathReceipt = public_path('/storage/emptyings/receipts/' . $emptying->receipt_image);
+                $imagePathReceipt = 'storage/emptyings/receipts/' . $emptying->receipt_image;
+                if (file_exists($folderPathReceipt) == true) {
+                    $imageReceiptSrc = asset($imagePathReceipt);
+                } else {
+                    $imageReceiptSrc = false;
+                }
+
 
                 $this->createFormFields[] = new FormField(
                     label: __('Receipt Number'),
