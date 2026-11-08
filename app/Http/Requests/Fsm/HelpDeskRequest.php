@@ -60,7 +60,7 @@ class HelpDeskRequest extends FormRequest
                     'description' => 'required',
                     'contact_number' => 'required|integer',
                     'email' => ['required', 'max:255', 'unique:pgsql.auth.users' ,'regex:/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix'],
-                    'password' => ['required_if:create_user,on', 'nullable',Password::min(8)
+                    'password' => ['exclude_unless:create_user,on', 'required_if:create_user,on', 'nullable',Password::min(8)
                         ->letters()
                         ->mixedCase()
                         ->numbers()

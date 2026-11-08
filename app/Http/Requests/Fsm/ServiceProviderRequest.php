@@ -73,7 +73,7 @@ class ServiceProviderRequest extends FormRequest
                                                         'required',
                                                         'integer',
                                                     ],
-                        'password' => ['required_if:create_user,on', 'nullable',Password::min(8)
+                        'password' => ['exclude_unless:create_user,on', 'required_if:create_user,on', 'nullable',Password::min(8)
                         ->letters()
                         ->mixedCase()
                         ->numbers()

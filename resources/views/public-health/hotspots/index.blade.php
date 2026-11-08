@@ -186,8 +186,12 @@
         var searchData = $('input[type=search]').val();
         var disease = $('#disease').val();
         var hotspot_location = $('#hotspot_location').val();
-        window.location.href = "{!! url('publichealth/hotspots/export?searchData=') !!}" + searchData +
-            "&disease=" + disease + "&hotspot_location=" + hotspot_location;
+        window.globalLoader.download(
+            "{!! url('publichealth/hotspots/export?searchData=') !!}" + searchData +
+                "&disease=" + disease + "&hotspot_location=" + hotspot_location,
+            'hotspots.csv',
+            this
+        ).catch(function () {});
 
     })
     // $("#export-shp").on("click", function(e) {

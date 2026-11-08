@@ -161,10 +161,14 @@ $(function() {
         var name = $('#name').val();
         var servprov = $('#servprov').val() ?? '';
         var searchData = $('input[type=search]').val();
-        window.location.href = "{!! url('fsm/help-desks/export?searchData=') !!}" + searchData +
-            "&help_desk_id=" + help_desk_id +
-            "&name=" + name +
-            "&servprov=" + servprov;
+        window.globalLoader.download(
+            "{!! url('fsm/help-desks/export?searchData=') !!}" + searchData +
+                "&help_desk_id=" + help_desk_id +
+                "&name=" + name +
+                "&servprov=" + servprov,
+            'help-desks.csv',
+            this
+        ).catch(function () {});
     });
 
 });

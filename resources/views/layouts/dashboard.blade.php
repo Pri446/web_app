@@ -13,7 +13,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
     <link rel="stylesheet" href="{{asset('css/app.css')}}">
-    <link rel="stylesheet" href="{{asset('css/style.css')}}">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
 </head>
 
 <body class="sidebar-mini sidebar-collapse layout-fixed layout-navbar-fixed layout-footer-fixed" style="height: auto;">
@@ -88,7 +88,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         })
     });
     </script>
-    <script src="{{ asset('js/functions.js') }}"></script>
+    <script src="{{ asset('js/functions.js') }}?v={{ filemtime(public_path('js/functions.js')) }}"></script>
     <script>
     $(function() {
         bsCustomFileInput.init();

@@ -78,6 +78,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
                 @if (Auth::user()->hasanyPermissionInGroup([
                 'FSM Dashboard',
+                'Schedule Desludging',
+                'Schedule Reintegration',
                 'Containments',
                 'Service Providers',
                 'Employee Infos',
@@ -93,6 +95,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 ]) || Auth::user()->hasRole('Super Admin'))
                 <li class="nav-item {{ request()->is(
                             'fsm/fsmdashboard',
+                            'fsm/desludging-schedule', 'fsm/desludging-schedule/*',
+                            'fsm/desludging-reintegration', 'fsm/desludging-reintegration/*',
                             'fsm/containments','fsm/containments/*',
                            'fsm/service-providers', 'fsm/service-providers/*',
                             'fsm/employee-infos/*','fsm/employee-infos',
@@ -110,6 +114,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             : '' }}">
                     <a href="#" class="nav-link {{ request()->is(
                                 'fsm/fsmdashboard',
+                                'fsm/desludging-schedule', 'fsm/desludging-schedule/*',
+                                'fsm/desludging-reintegration', 'fsm/desludging-reintegration/*',
                                 'fsm/containments','fsm/containments/*',
                                 'fsm/service-providers', 'fsm/service-providers/*',
                                 'fsm/employee-infos/*','fsm/employee-infos',
@@ -382,7 +388,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             @if(Auth::user()->hasanyPermissionInGroup(['CWIS','KPI Dashboard','KPI Target','NSD Setting']) || Auth::user()->hasRole('Super Admin'))
             <li class="nav-item {{ request()->is('cwis/*', 'fsm/kpi-dashboard', 'fsm/kpi-targets/*','fsm/kpi-targets','fsm/cwis-setting/*','fsm/cwis-setting', 
                 'fsm/nsd-setting','fsm/nsd-setting/*') ? 'menu-is-opening menu-open' : '' }}">
-                <a href="" class="nav-link {{ request()->is('cwis/*', 'fsm/kpi-dashboard', 'fsm/kpi-targets/*','fsm/kpi-targets','fsm/cwis-setting/*','fsm/cwis-setting', 'fsm/nsd-setting', 'fsm/nsd-setting/*') ? 'active' : '' }}">
+                <a href="#" class="nav-link {{ request()->is('cwis/*', 'fsm/kpi-dashboard', 'fsm/kpi-targets/*','fsm/kpi-targets','fsm/cwis-setting/*','fsm/cwis-setting', 'fsm/nsd-setting', 'fsm/nsd-setting/*') ? 'active' : '' }}">
                 <img src="{{ asset('img/svg/imis-icons/cwis.svg')}}" class="nav-icon" alt="CWIS  Icon">
                     <p> {{__('CWIS IMS')}}<i class="right fas fa-angle-left"></i> </p>
                 </a>
@@ -409,7 +415,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     </li>
                     @endcan
 
-                    @if(Auth::user()->hasanyPermissionInGroup(['KPI Dashboard']) || Auth::user()->hasRole('Super Admin'))
                     @can('LisT NSD Setting')
                     <li class="nav-item">
                         <a href="{{ action('Fsm\NsdSettingController@index') }}" class="nav-link {{ request()->is('fsm/nsd-setting','fsm/nsd-setting/*') ? 'active' : '' }}">
@@ -530,9 +535,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             </li>
             @endif
 
-            @if(Auth::user()->hasanyPermissionInGroup(['Data Export','Maps']) || Auth::user()->hasRole('Super Admin'))
-            <li class="nav-item  {{ request()->is('export-shp-kml', 'maps') ? 'menu-is-opening menu-open' : '' }}">
-                <a href="#" class="nav-link  {{ request()->is('export-shp-kml', 'maps') ? 'active' : '' }}">
+            @if(Auth::user()->hasanyPermissionInGroup(['Data Export','Maps','Places']) || Auth::user()->hasRole('Super Admin'))
+            <li class="nav-item  {{ request()->is('export-shp-kml', 'maps', 'places*') ? 'menu-is-opening menu-open' : '' }}">
+                <a href="#" class="nav-link  {{ request()->is('export-shp-kml', 'maps', 'places*') ? 'active' : '' }}">
                     <img src="{{ asset('img/svg/imis-icons/urbanManagementDSS.svg')}}" class="nav-icon" alt="Urban Management DSS">
                     <p>
                         {{__('Urban Management DSS')}} <i class="right fas fa-angle-left"></i>
@@ -554,6 +559,18 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             <p>{{__('Map Feature')}} </p>
                         </a>
                     </li>
+
+                    @can('List Places')
+                    <li class="nav-item" data-testid="nav-places">
+                        <a
+                            href="{{ route('places.index') }}"
+                            class="nav-link {{ request()->is('places*') ? 'active' : '' }}"
+                        >
+                            <i class="nav-icon far fa-circle nav-icon"></i>
+                            <p>{{ __('Places') }}</p>
+                        </a>
+                    </li>
+                    @endcan
                 </ul>
             </li>
             @endif
@@ -649,7 +666,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             @endif
 
             </ul>
-             @endif
         </nav>
 
     </div>

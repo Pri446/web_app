@@ -32,6 +32,28 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 @endsection
 
 @push('scripts')
+@if(session('popup_confirm'))
+<script>
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "{{ session('popup_message') }}",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Redirect to route that deletes the entire application and related data
+            window.globalLoader.show(Swal.getConfirmButton());
+            window.location.href = "{{ url('fsm/application') }}/{{ session('application_id') }}/force-delete";
+        }
+    });
+</script>
+@endif 
+
+
     <script>
         $(document).ready(function() {
             var dataTable = $('#data-table').DataTable({

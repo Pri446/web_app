@@ -341,7 +341,7 @@ WITH candidates AS (
           SELECT 1
           FROM fsm.applications AS application
           WHERE application.containment_id = containment.id
-            AND application.emptying_status = FALSE
+            AND application.emptying_status IN (0, 1)
             AND application.deleted_at IS NULL
       )
     ORDER BY containment.id, building.bin
@@ -898,7 +898,7 @@ SQL
                         'application.containment_id',
                         'containment.id'
                     )
-                    ->where('application.emptying_status', false)
+                    ->whereIn('application.emptying_status', [0, 1])
                     ->whereNull('application.deleted_at');
             })
             ->selectRaw(

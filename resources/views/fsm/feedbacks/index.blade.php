@@ -205,8 +205,12 @@ $(function() {
         date_from = $('#date_from').val();
         date_to = $('#date_to').val();
         var searchData = $('input[type=search]').val();
-        window.location.href = "{!! url('fsm/feedback/export?searchData=') !!}" + searchData +
-            "&application_id=" + application_id + "&ward=" + ward + "&date_from=" + date_from + "&date_to=" + date_to;
+        window.globalLoader.download(
+            "{!! url('fsm/feedback/export?searchData=') !!}" + searchData +
+                "&application_id=" + application_id + "&ward=" + ward + "&date_from=" + date_from + "&date_to=" + date_to,
+            'feedbacks.csv',
+            this
+        ).catch(function () {});
     })
 
 });

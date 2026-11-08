@@ -126,6 +126,9 @@ class SewerConnectionController extends Controller
                 'success' => true,
                 'baseUrl' => config("constants.GEOSERVER_URL"),
                 'data' => $wms,
+                'bbox'    => config('constants.GEOSERVER_BBOX'),
+                'width'   => config('constants.GEOSERVER_WIDTH'),
+                'height'  => config('constants.GEOSERVER_HEIGHT'),
                 'message' => __('WMS layer for:').$layer,
             ]);
 

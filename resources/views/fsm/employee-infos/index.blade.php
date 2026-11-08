@@ -184,12 +184,16 @@ $(function() {
         var service_provider_id = $('#service_provider_id').val();
         var status = $('#status').val();
         var searchData=$('input[type=search]').val();
-        window.location.href="{!! url('fsm/employee-infos/export?searchData=') !!}"+searchData+
-        "&id=" + id +
-        "&employee_name=" + employee_name +
-        "&employee_type=" + employee_type +
-        "&service_provider_id=" + service_provider_id +
-        "&status=" + status;
+        window.globalLoader.download(
+            "{!! url('fsm/employee-infos/export?searchData=') !!}" + searchData +
+                "&id=" + id +
+                "&employee_name=" + employee_name +
+                "&employee_type=" + employee_type +
+                "&service_provider_id=" + service_provider_id +
+                "&status=" + status,
+            'employee-infos.csv',
+            this
+        ).catch(function () {});
     })
 
 });

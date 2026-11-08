@@ -342,16 +342,20 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             const ph_validation = $('#ph_validation').val();
 
 
-                            window.location.href = "{!! url('fsm/treatment-plant-test/export?searchData=') !!}" + searchData +
-                                "&treatment_plant_name=" + treatment_plant_name +
-                                "&date=" + date +
-                                "&temperature=" + temperature +
-                                "&cod=" + cod +
-                                "&remarks=" + remarks +
-                                "&bod_validation=" + bod_validation +
-                                "&ecoli_validation=" + ecoli_validation +
-                                "&tss_validation=" + tss_validation +
-                                "&ph_validation=" + ph_validation;
+                            window.globalLoader.download(
+                                "{!! url('fsm/treatment-plant-test/export?searchData=') !!}" + searchData +
+                                    "&treatment_plant_name=" + treatment_plant_name +
+                                    "&date=" + date +
+                                    "&temperature=" + temperature +
+                                    "&cod=" + cod +
+                                    "&remarks=" + remarks +
+                                    "&bod_validation=" + bod_validation +
+                                    "&ecoli_validation=" + ecoli_validation +
+                                    "&tss_validation=" + tss_validation +
+                                    "&ph_validation=" + ph_validation,
+                                'treatment-plant-tests.csv',
+                                this
+                            ).catch(function () {});
 
                         });
 

@@ -8,12 +8,14 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 </style>
 @endpush
     <div class="card-body">
+      
         @if(!empty($treatment_plant_id))
         <div class="form-group row required">
             {!! Form::label('treatment_plant_id',__('Treatment Plant Name'),['class' => 'col-sm-3 control-label']) !!}
             <div class="col-sm-3">
                 {!! Form::select('treatment_plant_id', $treatmentPlants, $treatment_plant_id, ['class' => 'form-control chosen-select', 'placeholder' => '--- Choose treatment plant ---','disabled'=>'true']) !!}
                 {!! Form::text('treatment_plant_id', $treatment_plant_id, ['class' => 'form-control','hidden'=>'hidden']) !!}
+                {!! Form::text('service_provider_id', $service_provider_id, ['class' => 'form-control','hidden'=>'hidden']) !!}
             </div>
         </div>
         @else
@@ -55,12 +57,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             {!! Form::date('date',$sludgeCollection->date??null,['class' => 'form-control date', 'id' => 'sludge_collection_date', 'onclick' => 'this.showPicker()']) !!}
         </div>
     </div>
-    <div class="form-group row required">
-        {!! Form::label('no_of_trips',__('No. of Trips'),['class' => 'col-sm-3 control-label']) !!}
-        <div class="col-sm-3">
-            {!! Form::number('no_of_trips',null,['class' => 'form-control', 'placeholder' => __('No. of Trips'),'oninput' => "this.value = this.value.replace(/[^0-9]/g, '')"]) !!}
-        </div>
-    </div>
     
     <div class="form-group row required">
         {!! Form::label('entry_time',__('Entry Time'),['class' => 'col-sm-3 control-label']) !!}
@@ -74,13 +70,27 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             {!! Form::time('exit_time',$exit_time,['class' => 'form-control timepicker', 'placeholder' => 'Time']) !!}
         </div>
     </div>
-    @if(!empty($service_provider_id))
+        <div class="form-group row required">
+        {!! Form::label('tipping_fee_receipt_no', __('Tipping Fee Receipt No'),['class' => 'col-sm-3 control-label']) !!}
+        <div class="col-sm-3">
+            {!! Form::text('tipping_fee_receipt_no', $sludgeCollection->tipping_fee_receipt_no??null,['class' => 'col-sm form-control', 'placeholder' => 'Tipping Fee Receipt No']) !!}
+        </div>
+    </div>
+    
+    <div class="form-group row required">
+        {!! Form::label('tipping_fee_amount', __('Tipping Fee Amount'),['class' => 'col-sm-3 control-label']) !!}
+        <div class="col-sm-3">
+            {!! Form::text('tipping_fee_amount', $sludgeCollection->tipping_fee_amount??null,['class' => 'col-sm form-control', 'placeholder' => 'Tipping Fee Amount', 'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '');"]) !!}
+        </div>
+    </div>
+  @if(!empty($service_provider_id))
         <div class="form-group row required">
             <div class="col-sm-3">
                 {!! Form::text('service_provider_id', $service_provider_id, ['class' => 'form-control','hidden'=>'hidden']) !!}
             </div>
         </div>
     @endif
+
     @if(!empty($vacutug_id))
         <div class="form-group row required">
             <div class="col-sm-3">

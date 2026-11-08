@@ -17,6 +17,9 @@ class DesludgingAcceptanceApplicationTest extends TestCase
         $provider = $this->createDesludgingProvider(7);
         $property = $this->createScheduledProperty($provider);
         $user = $this->createDesludgingUser();
+        $providerUser = $this->createDesludgingUser();
+        $providerUser->service_provider_id = $provider->id;
+        $providerUser->save();
 
         $acceptResponse = $this->actingAs($user)
             ->withoutMiddleware()
@@ -67,6 +70,15 @@ class DesludgingAcceptanceApplicationTest extends TestCase
         ]);
         $this->assertDatabaseMissing('fsm.desludging_schedule_temp', [
             'containment_id' => $property['containmentId'],
+        ]);
+        $applicationId = \Illuminate\Support\Facades\DB::table('fsm.applications')
+            ->where('containment_id', $property['containmentId'])
+            ->value('id');
+        $this->assertDatabaseHas('public.notification', [
+            'user_id' => $providerUser->id,
+            'application_id' => $applicationId,
+            'mode' => 'web',
+            'status' => false,
         ]);
     }
 }

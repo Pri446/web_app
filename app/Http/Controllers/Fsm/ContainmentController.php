@@ -122,6 +122,17 @@ class ContainmentController extends Controller
             $this->buildingStructureService->storeContainmentInfo($flag = 'containment', $type = 'createContainOnly', $request);
             // updating building fields
             $this->buildingStructureService->updateBuildingFromContainment($request);
+
+            if ($request->filled('application_id')) {
+                $containmentId = $request->containment_id;
+                if ($containmentId) {
+                    $applicationService = app(\App\Services\Fsm\ApplicationService::class);
+                    $applicationService->resolveAnf((int) $request->application_id, $id, $containmentId);
+                }
+                DB::commit();
+                return redirect()->route('emptying.create-id', $request->application_id)->with('success', __("Containment created and linked to application successfully"));
+            }
+
             DB::commit();
             return redirect('building-info/buildings/'.$id.'/edit')->with('success', __("Containment created successfully"));
         } catch (Exception $e) {

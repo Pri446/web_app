@@ -166,6 +166,29 @@ class BuildingStructureService
                 }
             }
             DB::commit();
+
+            if ($request->filled('application_id')) {
+                $application = \App\Models\Fsm\Application::find($request->application_id);
+                if ($application) {
+                    $application->bin = $building->bin;
+                    $application->ward = $building->ward ?? $application->ward;
+                    $application->road_code = $building->road_code ?? $application->road_code;
+                    $owner = $building->owners;
+                    if ($owner) {
+                        $application->customer_name = $owner->owner_name ?? $application->customer_name;
+                        $application->customer_contact = $owner->owner_contact ?? $application->customer_contact;
+                        $application->customer_gender = $owner->owner_gender ?? $application->customer_gender;
+                    }
+                    $firstContainment = $building->containments->first();
+                    if ($firstContainment) {
+                        $application->containment_id = $firstContainment->id;
+                        $application->is_anf = false;
+                    }
+                    $application->save();
+                }
+                return redirect()->route('emptying.create-id', $request->application_id)->with('success', __("Building created successfully"));
+            }
+
             return redirect('building-info/buildings')->with('success', __("Building created successfully"));
         } catch (\Exception $e) {
             DB::rollback();
@@ -282,8 +305,23 @@ class BuildingStructureService
                 // do no changes to geom if containment data is being updated only
             } else {
 
-                // create new point from buildings centroid if new building and containment
-                $containment->geom = $this->storeGeomInfo($request,  'containment', 'create');
+                // create new point from lat/lng if API request without KML file
+                if ($request->has('lat') && $request->has('lng') && !$request->hasFile('geom') && !$request->kml) {
+                    $lat = (float) $request->lat;
+                    $lng = (float) $request->lng;
+                    $containment->geom = DB::raw("ST_GeomFromText('POINT({$lng} {$lat})', 4326)");
+                } elseif (!empty($request->bin) && !$request->hasFile('geom') && !$request->kml) {
+                    $building = Building::where('bin', $request->bin)->first();
+                    if ($building && $building->geom) {
+                        $containment_point = DB::select(DB::raw("SELECT (ST_AsText(st_centroid(st_union(geom)))) AS central_point FROM building_info.buildings WHERE bin = '{$building->bin}'"));
+                        if (!empty($containment_point[0]->central_point)) {
+                            $containment->geom = DB::raw("ST_GeomFromText('" . $containment_point[0]->central_point . "', 4326)");
+                        }
+                    }
+                } else {
+                    // create new point from buildings centroid if new building and containment (web/kml)
+                    $containment->geom = $this->storeGeomInfo($request, 'containment', 'create');
+                }
             }
             $containment->save();
             $this->storeBuildContainInfo($request->bin, $containment->id);
@@ -296,7 +334,7 @@ class BuildingStructureService
         $owner = Owner::where('bin', $request->bin)->whereNULL('deleted_at')->first();
         if (empty($owner)) {
             $owner = new Owner();
-            $owner->bin = $request->bin;
+            $owner->bin = $request->bin;    
 
         }
         $owner->owner_name = $request->owner_name ? $request->owner_name : null;
@@ -1048,30 +1086,30 @@ class BuildingStructureService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['buildings.destroy', $model->bin]]);
 
                 if (auth()->user()->can('View Containments Connected to Buildings')) {
-                    $content .= '<a title="'.__("View Containments Connected to Building"). '" data-id="' . $model->bin . '" class="containment btn btn-info btn-sm mb-1" data-toggle="modal" data-target="#containmentsModal"><i class="fa-solid fa-building"></i></a> ';
+                    $content .= '<a title="' . e(__("View Containments Connected to Building")) . '" data-id="' . $model->bin . '" class="containment btn btn-info btn-sm mb-1" data-toggle="modal" data-target="#containmentsModal"><i class="fa-solid fa-building"></i></a> ';
                 }
 
                 if (auth()->user()->can('Edit Building Structure')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("BuildingInfo\BuildingController@edit", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("BuildingInfo\BuildingController@edit", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-edit"></i></a> ';
                 }
 
                 if (auth()->user()->can('View Building Structure')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("BuildingInfo\BuildingController@show", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("BuildingInfo\BuildingController@show", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-list"></i></a> ';
                 }
 
                 if (auth()->user()->can('View Building Structures History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("BuildingInfo\BuildingController@history", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("BuildingInfo\BuildingController@history", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-history"></i></a> ';
                 }
 
                 if (auth()->user()->can('Delete Building Structure')) {
-                    $content .= '<a href="#" title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1 "  ><i class="fas fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1 "  ><i class="fas fa-trash"></i></a> ';
                 }
 
                 if (auth()->user()->can('View Building On Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-map-marker"></i></a> ';
                 }
                 if (auth()->user()->can('View Nearest Road To Building On Map')) {
-                    $content .= '<a title="' . __("Nearest Road") . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin, 'action' => 'building-road']) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-road"></i></a> ';
+                    $content .= '<a title="' . e(__("Nearest Road")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin, 'action' => 'building-road']) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-road"></i></a> ';
                 }
 
                 $content .= \Form::close();

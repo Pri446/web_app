@@ -86,6 +86,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             <table id="data-table" class="table table-bordered table-striped dtr-inline" width="100%">
             <thead>
                 <tr>
+                    <th>{{ __('ID') }}</th>
                     <th>{{ __('Application ID') }}</th>
                     <th>{{ __('Date') }}</th>
                     <th>{{ __('Treatment Plant Name') }}</th>
@@ -111,7 +112,7 @@ $(function() {
 
         scrollCollapse: true,
         ajax: {
-            url: '{!! url("fsm/sludge-collection/getData") !!}',
+            url: '{!! url("fsm/sludge-collection-log/getData") !!}',
             data: function(d) {
                 d.treatment_plant_id = $('#treatment_plant_id').val();
                 d.date_from = $('#date_from').val();
@@ -120,7 +121,11 @@ $(function() {
                 d.servprov = $('#servprov').val();
             }
         },
-        columns: [{
+        columns: [
+            {
+                data: 'id',
+                name: 'id'
+            },{
                 data: 'application_id',
                 name: 'application_id'
             },
@@ -255,12 +260,16 @@ $(function() {
         date_to = $('#date_to').val();
         application_id = $('#application_id').val();
         servprov = $('#servprov').val();
-        window.location.href = "{!! url('fsm/sludge-collection/export?searchData=') !!}" + searchData +
-            "&treatment_plant_id=" + treatment_plant_id +
-            "&date_from=" + date_from +
-            "&date_to=" + date_to +
-            "&application_id=" + application_id +
-            "&servprov=" + servprov;
+        window.globalLoader.download(
+            "{!! url('fsm/sludge-collection/export?searchData=') !!}" + searchData +
+                "&treatment_plant_id=" + treatment_plant_id +
+                "&date_from=" + date_from +
+                "&date_to=" + date_to +
+                "&application_id=" + application_id +
+                "&servprov=" + servprov,
+            'sludge-collections.csv',
+            this
+        ).catch(function () {});
     })
 
 

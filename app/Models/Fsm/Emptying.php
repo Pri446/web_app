@@ -78,6 +78,8 @@ class Emptying extends Model
         'service_receiver_contact',
         'emptying_reason',
         'comments',
+        'total_time',
+        'trip_no',
     ];
 
     /**

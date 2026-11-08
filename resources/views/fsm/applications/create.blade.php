@@ -23,6 +23,134 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
 @push('scripts')
 <script>
+    function toggleANF(checkbox, isUserToggle = false) {
+    if (!checkbox) return;
+    const textKnown = document.getElementById('text_known');
+    const textUnknown = document.getElementById('text_unknown');
+
+    localStorage.setItem("anfCheckboxState", checkbox.checked ? "true" : "false");
+ 
+    if (checkbox.checked) {
+        // Checkbox TICKED = House Number Known (ANF mode OFF)
+        if (textKnown) textKnown.style.display = '';
+        if (textUnknown) textUnknown.style.display = 'none';
+        
+        // Hide ANF fields, restore normal fields
+        $('#anf-address-fields').slideUp(200);
+        $('#anf-active-banner').slideUp(200);
+        $('#normal-address-fields').slideDown(200);
+        $('#is_anf').val('0');
+ 
+        // Re-enable address fields
+        $('#road_code, #bin, #containment_id, #ward')
+            .not('[data-view-only]')
+            .prop('disabled', false);
+
+        if ($('#road_code').data('select2')) {
+            $('#road_code').select2('destroy');
+        }
+        if ($('#bin').data('select2')) {
+            $('#bin').select2('destroy');
+        }
+
+        $('#bin').select2({
+            ajax: {
+                url: "{{ route('building.get-house-numbers-containments') }}",
+                data: function (params) {
+                    return {
+                        search: params.term,
+                        road_code: $('#road_code').val(),
+                        page: params.page || 1
+                    };
+                },
+            },
+            placeholder: '{{ __('House Number / BIN') }}',
+            allowClear: true,
+            closeOnSelect: true,
+            width: '100%'
+        });
+
+        $('#road_code').select2({
+            ajax: {
+                url: "{{ route('roadlines.get-road-names') }}",
+                data: function (params) {
+                    return {
+                        search: params.term,
+                        bin: $('#bin').val(),
+                        page: params.page || 1
+                    };
+                },
+            },
+            placeholder: '{{ __('Street Name / Street Code') }}',
+            allowClear: true,
+            closeOnSelect: true,
+            width: '100%'
+        });
+ 
+        // Restore Owner Details card
+        $('#owner-details-card').slideDown(200);
+        $('#owner-details-card input, #owner-details-card select')
+            .not('[data-view-only]')
+            .prop('disabled', false);
+
+        // Disable & unrequire ANF fields (do not clear values)
+        $('#anf_ward, #anf_locality, #anf_nearest_locality').prop('disabled', true).prop('required', false);
+
+        if (isUserToggle) {
+            $('#applicant_name').val('');
+            $('#applicant_gender').val('');
+            $('#applicant_contact').val('');
+            localStorage.removeItem("applicant_name");
+            localStorage.removeItem("applicant_gender");
+            localStorage.removeItem("applicant_contact");
+        }
+
+        if ($('#customer_name').val() != '' && $('#customer_gender').val() != '' ) {
+            $('#autofill-wrapper').show();
+        }
+ 
+    } else {
+        // Checkbox UNTICKED = House Number Unknown (ANF mode ON)
+        if (textKnown) textKnown.style.display = 'none';
+        if (textUnknown) textUnknown.style.display = '';
+        
+        // Show banner + ANF fields, hide normal fields
+        $('#normal-address-fields').slideUp(200);
+        $('#anf-active-banner').slideDown(200);
+        $('#anf-address-fields').slideDown(200);
+        $('#is_anf').val('1');
+ 
+        // Disable normal address fields (do not clear values)
+        $('#road_code, #bin, #containment_id, #ward').prop('disabled', true);
+ 
+        // Hide Owner Details card completely and disable inputs
+        $('#owner-details-card').slideUp(200);
+        $('#owner-details-card input, #owner-details-card select').prop('disabled', true);
+
+        // Enable & require ANF fields
+        $('#anf_ward, #anf_locality, #anf_nearest_locality').prop('disabled', false).prop('required', true);
+
+        // Clear Applicant Details ONLY when user explicitly toggled the checkbox
+        if (isUserToggle) {
+            $('#applicant_name').val('');
+            $('#applicant_gender').val('');
+            $('#applicant_contact').val('');
+            localStorage.removeItem("applicant_name");
+            localStorage.removeItem("applicant_gender");
+            localStorage.removeItem("applicant_contact");
+        }
+
+        // Hide "Same as Owner" checkbox in Applicant Details
+        $('#autofill-wrapper').hide();
+    }
+
+    // Scheduled application address fields are always view-only, even if the
+    // House Number state is toggled.
+    if (typeof lockConfirmAddressFields === 'function') {
+        lockConfirmAddressFields();
+    }
+}
+
     const scheduleAccept = @json(session('schedule_accept'));
     const isConfirm = @json(
         ($action_type ?? session('action_type') ?? old('action_type')) === 'confirm'
@@ -33,6 +161,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     const sessionServiceProviderId = @json(
         session('service_provider_id') ?? old('service_provider_id')
     );
+    const scheduleRoadText = @json($scheduleRoadText ?? null);
+    const scheduleBinText = @json($scheduleBinText ?? null);
 
     function autoFillDetails() {
         $(document).ready(function() {
@@ -40,10 +170,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 $("input[name='applicant_name']").val($("input[name=customer_name]").val());
                 $("#applicant_gender").val($("#customer_gender").val());
                 $("input[name='applicant_contact']").val($("input[name=customer_contact]").val());
-            } else {
-                $("input[name='applicant_name']").val('');
-                $("#applicant_gender").val('');
-                $("input[name='applicant_contact']").val('');
             }
         });
     }
@@ -58,7 +184,14 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         const hasValue = $.trim(String(fieldValue)) !== '';
 
         $(`input[type="hidden"][name="${hiddenName}"]`).remove();
-        $(selector).val(fieldValue).prop('disabled', hasValue);
+        const $field = $(selector);
+        $field.val(fieldValue).prop('disabled', hasValue);
+
+        if (hasValue) {
+            $field.attr('data-view-only', 'lookup');
+        } else {
+            $field.removeAttr('data-view-only');
+        }
 
         if (hasValue) {
             $('<input>', {
@@ -97,8 +230,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         field.tagName === 'SELECT' &&
                         !$field.find(`option[value="${fieldValue}"]`).length
                     ) {
+                        let optionText = fieldValue;
+                        if (fieldName === 'road_code' && scheduleRoadText) {
+                            optionText = scheduleRoadText;
+                        } else if (fieldName === 'bin' && scheduleBinText) {
+                            optionText = scheduleBinText;
+                        }
+
                         $field.append(
-                            new Option(fieldValue, fieldValue, true, true)
+                            new Option(optionText, fieldValue, true, true)
                         );
                     }
 
@@ -109,6 +249,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     `[data-confirm-address="${fieldName}"]`).remove();
 
                 $field.prop('disabled', true);
+                $field.attr('data-view-only', 'confirm');
 
                 $('<input>', {
                     type: 'hidden',
@@ -133,18 +274,28 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         $('#customer_name').val('');
         $('#customer_gender').val('');
         $('#customer_contact').val('');
-        $("input[name='applicant_name']").val('');
-        $("#applicant_gender").val('');
-        $("input[name='applicant_contact']").val('');
-        $("input[name='applicant_name']").removeAttr('disabled');
-        $("#applicant_gender").removeAttr('disabled');
-        $("input[name='applicant_contact']").removeAttr('disabled');
+        $('[data-view-only="lookup"]')
+            .removeAttr('data-view-only')
+            .prop('disabled', false);
         $("input[name='autofill']").prop('checked', false);
+        $('#autofill-wrapper').hide();
+        $('#containment_info, #accessibility_info').remove();
     }
 
     function onAddressChange() {
+        localStorage.setItem("applicant_name", $('#applicant_name').val());
+        localStorage.setItem("applicant_gender", $('#applicant_gender').val());
+        localStorage.setItem("applicant_contact", $('#applicant_contact').val());   
+
         emptyAutoFields();
-        if ($('#bin').find(":selected").text() === 'Address Not Found') {
+
+        $('#applicant_name').val(localStorage.getItem("applicant_name") || '');
+        $('#applicant_gender').val(localStorage.getItem("applicant_gender") || '');
+        $('#applicant_contact').val(localStorage.getItem("applicant_contact") || '');
+        $('#desludging_vehicle_size').val('');
+        $('#service_provider_name').val('');
+        
+        if ($('#bin').find(":selected").text() === 'House Number Known') {
             $('#building-if-address').hide();
             $("#building-if-address :input").each(function () {
                 $(this).attr("disabled", true);
@@ -193,11 +344,18 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                 'customer_contact',
                                 res.customer_contact
                             );
-                            $('#household_served').val(res.household_served).attr('disabled', true);
-                            $('#population_served').val(res.population_served).attr('disabled', true);
-                            $('#toilet_count').val(res.toilet_count).attr('disabled', true);
-                            $('#ward').val(res.ward);
-
+                            $('#household_served').val(res.household_served)
+                                .prop('disabled', true).attr('data-view-only', 'lookup');
+                            $('#population_served').val(res.population_served)
+                                .prop('disabled', true).attr('data-view-only', 'lookup');
+                            $('#toilet_count').val(res.toilet_count)
+                                .prop('disabled', true).attr('data-view-only', 'lookup');
+                           
+                            if ($('#customer_name').val() != '' && $('#customer_gender').val() != '' ) {
+                                $('#autofill-wrapper').show();
+                            } else {
+                                $('#autofill-wrapper').hide();
+                            }
 
                             localStorage.setItem("selectedOwnerName", res.customer_name);
                             localStorage.setItem("selectedOwnerGender", res.customer_gender);
@@ -205,13 +363,30 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             localStorage.setItem("selectedHouseholdServed", res.household_served);
                             localStorage.setItem("selectedPopulationServed", res.population_served);
                             localStorage.setItem("selectedToiletCount", res.toilet_count);
-
+                            localStorage.setItem("selectedWard", res.ward);
+                            $('#ward').val(res.ward).prop('disabled', true)
+                                .attr('data-view-only', 'lookup');
+                            $('<input>').attr({
+                                type: 'hidden',
+                                name: 'ward',
+                                value: res.ward
+                            }).insertAfter('#ward');
 
                             if (res.containments.length === 1) {
                                 $('#containment_id').replaceWith(`
                                     <input id="containment_id" name="containment_id" class="form-control" value="${res.containments[0]}" readonly>
                                 `);
                                 localStorage.setItem("containment_id", res.containments[0]);
+
+                                $('#containment_info, #accessibility_info').remove();
+                            $(`
+                                <div id="containment_info" style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                                    <strong>Containment Volume (m³):</strong> ${res.containment_size || 'N/A'}
+                                </div>
+                                <div id="accessibility_info" style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                                    <strong>Building Road Accessibility (m):</strong> ${res.building_accessible !== null ? (res.building_accessible ? "Yes" : "No") : 'N/A'}
+                                </div>
+                            `).insertAfter('#containment_id');
                             } else {
                                 $('#containment_id').replaceWith(`
                                     <select id="containment_id" name="containment_id" class="form-control">
@@ -229,6 +404,20 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                 }
 
                                 let selectedContainment = localStorage.getItem("containment_id");
+                                $('#containment_id').on('change', function() {
+                                    let selectedId = $(this).val();
+                                    $('#containment_info, #accessibility_info').remove();
+                                    if (selectedId) {
+                                        $(`
+                                            <div id="containment_info" style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                                                <strong>Containment Volume (m³):</strong> ${res.containment_size || 'N/A'}
+                                            </div>
+                                            <div id="accessibility_info" style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                                                <strong>Building Road Accessibility (m):</strong> ${res.building_accessible !== null ? (res.building_accessible ? "Yes" : "No") : 'N/A'}
+                                            </div>
+                                        `).insertAfter('#containment_id');
+                                    }
+                                });
                             }
 
                             lockConfirmAddressFields();
@@ -267,8 +456,56 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     }
 
     $(document).ready(function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('proposed_emptying_date').setAttribute('min', today);
+        $('#applicant_name, #applicant_gender, #applicant_contact').on('input change', function() {
+            localStorage.setItem("applicant_name", $('#applicant_name').val());
+            localStorage.setItem("applicant_gender", $('#applicant_gender').val());
+            localStorage.setItem("applicant_contact", $('#applicant_contact').val());
+        });
+
+        $('#customer_name, #customer_gender, #customer_contact').on('input change', function() {
+            const fieldName = $(this).attr('name');
+            const fieldValue = $(this).val();
+
+            if (fieldValue && fieldValue.trim() !== '') {
+                $(`input[name="${fieldName}"][type="hidden"]`).remove();
+            
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: fieldName,
+                    value: fieldValue
+                }).insertAfter(`#${$(this).attr('id')}`);
+            }
+            const ownerName = $('#customer_name').val();
+            const ownerGender = $('#customer_gender').val();
+            const ownerContact = $('#customer_contact').val();
+
+            if (ownerName) localStorage.setItem("selectedOwnerName", ownerName);
+            else localStorage.removeItem("selectedOwnerName");
+
+            if (ownerGender) localStorage.setItem("selectedOwnerGender", ownerGender);
+            else localStorage.removeItem("selectedOwnerGender");
+
+            if (ownerContact) localStorage.setItem("selectedOwnerContact", ownerContact);
+            else localStorage.removeItem("selectedOwnerContact");
+        });
+        const formSubmitted = localStorage.getItem("formSubmitted");
+
+        if (formSubmitted === "true" && $('.alert.alert-danger.alert-dismissible').length === 0) {
+            localStorage.removeItem("anfCheckboxState");
+            localStorage.removeItem("formSubmitted");
+        }
+
+        // Default state: House Number Known (checked = true)
+        const anfCheckboxEl = document.getElementById('anf_checkbox');
+        if (anfCheckboxEl) {
+            if ('{{ old('is_anf') }}' === '1') {
+                $('#anf_checkbox').prop('checked', false);
+                toggleANF(anfCheckboxEl);
+            } else {
+                $('#anf_checkbox').prop('checked', true);
+                toggleANF(anfCheckboxEl);
+            }
+        }
 
         $('#bin').prepend('<option selected=""></option>').select2({
             ajax: {
@@ -309,120 +546,67 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             onAddressChange();
         }
 
-        $('#bin').on('change', onAddressChange);
-
-        if (scheduleAccept && scheduleAccept.bin) {
-            localStorage.removeItem('selectedBINValue');
-            localStorage.removeItem('selectedBINText');
-            localStorage.removeItem('selectedRoadCode');
-            localStorage.removeItem('containment_id');
-
+        if (isScheduleConfirm && scheduleAccept) {
             if (scheduleAccept.road_code) {
-                $('#road_code').append(
-                    new Option(
-                        scheduleAccept.road_code,
-                        scheduleAccept.road_code,
-                        true,
-                        true
-                    )
-                ).trigger('change');
+                const roadText = scheduleRoadText || scheduleAccept.road_code;
+                if (!$('#road_code option[value="' + scheduleAccept.road_code + '"]').length) {
+                    $('#road_code').append(new Option(roadText, scheduleAccept.road_code, true, true));
+                }
+                $('#road_code').val(scheduleAccept.road_code).trigger('change.select2');
             }
-
-            $('#bin').append(
-                new Option(
-                    scheduleAccept.bin,
-                    scheduleAccept.bin,
-                    true,
-                    true
-                )
-            ).trigger('change');
-
-            if (scheduleAccept.ward) {
-                $('#ward').val(String(scheduleAccept.ward));
+            if (scheduleAccept.bin) {
+                const binText = scheduleBinText || scheduleAccept.bin;
+                if (!$('#bin option[value="' + scheduleAccept.bin + '"]').length) {
+                    $('#bin').append(new Option(binText, scheduleAccept.bin, true, true));
+                }
+                $('#bin').val(scheduleAccept.bin).trigger('change.select2');
             }
-
-            lockConfirmAddressFields();
-
+            onAddressChange();
         }
 
-        $('#create_application_form').on('submit', function () {
-            if (isScheduleConfirm) {
-                lockConfirmAddressFields();
-            } else {
-                $('#containment_id').removeAttr('disabled');
-            }
+        
 
-            if ($('#service_provider_id').is(':disabled')) {
-                $('input[name="service_provider_id"]')
-                    .val($('#service_provider_id').val());
+        $('#bin').on('change', onAddressChange);
+        $('#customer_name, #customer_gender, #customer_contact').on('change keyup input', function() {
+            if ($('#customer_name').val() != '' && $('#customer_gender').val() != '' ) {
+                if ($('#is_anf').val() !== '1') {
+                    $('#autofill-wrapper').show();
+                }
+            } else {
+                $('#autofill-wrapper').hide();
+                if ($('#autofill').is(':checked')) {
+                    $('#autofill').prop('checked', false);
+                }
             }
         });
 
+       $('#create_application_form').on('submit', function (e) {
+        localStorage.setItem("formSubmitted", "true");
 
-    var serviceProviderId = {{ Auth::user()->service_provider_id ?? 'null' }};
-    
-    // Determine the URL based on the service provider ID
-    var url = serviceProviderId 
-        ? '{!! url("fsm/service-provider") !!}/' + serviceProviderId 
-        : '{!! url("fsm/service-provider") !!}/0';
+        if (isScheduleConfirm) {
+            lockConfirmAddressFields();
+        } else if ($('#is_anf').val() === '1') {
+            // ANF (House Number Unknown) mode:
+            // Disable normal address fields & owner details inputs so they are NOT sent in POST payload
+            $('#road_code, #bin, #containment_id, #ward').prop('disabled', true);
+            $('#owner-details-card input, #owner-details-card select').prop('disabled', true);
 
-    // Make the AJAX request to fetch the service provider data
-    $.ajax({
-        url: url,
-        method: 'GET',
-        success: function (response) {
-            // Clear existing options
-            $('#service_provider_id').empty();
-            
-            // Add default option
-            $('#service_provider_id').append('<option value="">Service Provider Name</option>');
-            
-            // Populate the dropdown with options from the response
-            $.each(response, function (id, name) {
-                $('#service_provider_id').append('<option value="' + id + '">' + name + '</option>');
-            });
+            // Enable ANF fields so they ARE sent
+            $('#anf_ward, #anf_locality, #anf_nearest_locality').prop('disabled', false);
+        } else {
+            // Normal (House Number Known) mode:
+            // Disable ANF fields so they are NOT sent in POST payload
+            $('#anf_ward, #anf_locality, #anf_nearest_locality').prop('disabled', true);
 
-            if (isConfirm && sessionServiceProviderId) {
-                $('#service_provider_id')
-                    .val(String(sessionServiceProviderId))
-                    .trigger('change')
-                    .prop('disabled', true);
-
-                $('<input>', {
-                    type: 'hidden',
-                    name: 'service_provider_id',
-                    value: sessionServiceProviderId
-                }).insertAfter('#service_provider_id');
-
-                return;
-            }
-
-            // Check if there is a previously selected service provider in localStorage
-            const selectedServiceProviderValue = localStorage.getItem("selectedServiceProviderValue");
-
-            // If a value is found in localStorage, set it as the selected option
-            if (selectedServiceProviderValue) {
-                $('#service_provider_id').val(selectedServiceProviderValue).trigger('change');
-            }
-        },
-        error: function (error) {
-            console.error('Error fetching service provider data:', error);
+            // Enable normal address fields & owner details inputs so intended fields are sent
+            $('#road_code, #bin, #ward, #containment_id').prop('disabled', false);
+            $('#owner-details-card input, #owner-details-card select').prop('disabled', false);
         }
     });
 
-    // Save selected service provider value to localStorage on change
-    $('#service_provider_id').on('change', function() {
-        if (isConfirm) {
-            return;
-        }
-
-        var selectedServiceProviderValue = $(this).val();
-        localStorage.setItem("selectedServiceProviderValue", selectedServiceProviderValue);
-    });
-
-
-        if ($('.alert.alert-danger.alert-dismissible').length == 0) {
+           if ($('.alert.alert-danger.alert-dismissible').length == 0) {
             localStorage.removeItem("selectedRoadCode");
+            localStorage.removeItem("selectedRoadValue");
             localStorage.removeItem("selectedOwnerName");
             localStorage.removeItem("selectedOwnerGender");
             localStorage.removeItem("selectedOwnerContact");
@@ -434,11 +618,20 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             localStorage.removeItem("selectedServiceProviderText");
             localStorage.removeItem("selectedServiceProviderValue");
             localStorage.removeItem("selectedToiletCount");
-        } else { 
+            localStorage.removeItem("selectedWard");
+            localStorage.removeItem("service_provider_name");
+            localStorage.removeItem("service_provider_id");
+            localStorage.removeItem("applicant_name");
+            localStorage.removeItem("applicant_gender");
+            localStorage.removeItem("applicant_contact");
+            localStorage.removeItem("anfCheckboxState");
+
+        } else {
             // Retrieve values from localStorage and populate the form
             const selectedRoadCode = localStorage.getItem("selectedRoadCode");
+            const selectedRoadValue = localStorage.getItem("selectedRoadValue");
+            const selectedWard = localStorage.getItem("selectedWard");
             const selectedBINValue = localStorage.getItem("selectedBINValue");
-            
             const selectedBINText = localStorage.getItem("selectedBINText");
             const selectedOwnerName = localStorage.getItem("selectedOwnerName");
             const selectedOwnerGender = localStorage.getItem("selectedOwnerGender");
@@ -446,39 +639,62 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             const selectedHouseholdServed = localStorage.getItem("selectedHouseholdServed");
             const selectedPopulationServed = localStorage.getItem("selectedPopulationServed");
             const selectedToiletCount = localStorage.getItem("selectedToiletCount");
+            const service_provider_id = localStorage.getItem("service_provider_id");
+            const service_provider_name = localStorage.getItem("service_provider_name");
+            const applicantName = localStorage.getItem("applicant_name");
+            const applicantGender = localStorage.getItem("applicant_gender");
+            const applicantContact = localStorage.getItem("applicant_contact");
 
             if (selectedRoadCode) {
-                var roadCode = selectedRoadCode.split(" - ")[0];
+                var roadCode = selectedRoadValue;
                 $('#road_code').val(selectedRoadCode); // Set road code from localStorage
             }
+            if (selectedWard) {
+                $('#ward').val(selectedWard).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            }
+        
 
             $('#containment_id').prop('disabled', true);
 
             // Populate form fields with localStorage data
-            if (selectedRoadCode) $('#road_code').val(selectedRoadCode);
+            if (selectedRoadValue) $('#road_code').val(selectedRoadValue);
             if (selectedBINValue) $('#bin').val(selectedBINValue);
-            setOwnerFieldFromLookup(
-                '#customer_name',
-                'customer_name',
-                selectedOwnerName
-            );
-            setOwnerFieldFromLookup(
-                '#customer_gender',
-                'customer_gender',
-                selectedOwnerGender
-            );
-            setOwnerFieldFromLookup(
-                '#customer_contact',
-                'customer_contact',
-                selectedOwnerContact
-            );
-            if (selectedHouseholdServed) $('#household_served').val(selectedHouseholdServed).prop('disabled', true);
-            if (selectedPopulationServed) $('#population_served').val(selectedPopulationServed).prop('disabled', true);
-            if (selectedToiletCount) $('#toilet_count').val(selectedToiletCount).prop('disabled', true);
+            if (selectedOwnerName && selectedOwnerName !== 'null')
+                $('#customer_name').val(selectedOwnerName).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            if (selectedOwnerGender && selectedOwnerGender !== 'null')
+                $('#customer_gender').val(selectedOwnerGender).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            if (selectedOwnerContact && selectedOwnerContact !== 'null')
+                $('#customer_contact').val(selectedOwnerContact).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            if (selectedHouseholdServed) {
+                $('#household_served').val(selectedHouseholdServed).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            }
+            if (selectedPopulationServed) {
+                $('#population_served').val(selectedPopulationServed).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            }
+            if (selectedToiletCount) {
+                $('#toilet_count').val(selectedToiletCount).prop('disabled', true)
+                    .attr('data-view-only', 'lookup');
+            }
+            if (applicantName && applicantName !== 'null' && $('#applicant_name').val() == '') $('#applicant_name').val(applicantName);
+            if (applicantGender && applicantGender !== 'null' && $('#applicant_gender').val() == '') $('#applicant_gender').val(applicantGender);
+            if (applicantContact && applicantContact !== 'null' && $('#applicant_contact').val() == '') $('#applicant_contact').val(applicantContact);
+            if (selectedOwnerName && selectedOwnerName !== 'null' &&
+                selectedOwnerGender && selectedOwnerGender !== 'null' &&
+                selectedOwnerContact && selectedOwnerContact !== 'null') {
+                $('#autofill-wrapper').show();
+            } else {
+                $('#autofill-wrapper').hide();
+            }
 
             // Update road code select2 with stored value
-            optionHtmlRoadCode = selectedRoadCode 
-                ? `<option value="${roadCode}" selected="selected">${selectedRoadCode}</option>` 
+            optionHtmlRoadCode = selectedRoadCode
+                ? `<option value="${roadCode}" selected="selected">${selectedRoadCode}</option>`
                 : `<option selected=""></option>`;
             $('#road_code').prepend(optionHtmlRoadCode).select2({
                 ajax: {
@@ -498,11 +714,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             });
 
             // Update bin select2 with stored value
-            optionHtmlBIN = selectedBINValue 
-                ? `<option value="${selectedBINValue}" selected="selected">${selectedBINText}</option>` 
+            optionHtmlBIN = selectedBINValue
+                ? `<option value="${selectedBINValue}" selected="selected">${selectedBINText}</option>`
                 : `<option selected=""></option>`;
-
-             
 
             $('#bin').prepend(optionHtmlBIN).select2({
                 ajax: {
@@ -521,18 +735,63 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 width: '100%',
             });
         }
+        const savedApplicantName = localStorage.getItem("applicant_name");
+        const savedApplicantGender = localStorage.getItem("applicant_gender");
+        const savedApplicantContact = localStorage.getItem("applicant_contact");
 
+        if (savedApplicantName && savedApplicantName !== 'null' && !$('#applicant_name').val()) $('#applicant_name').val(savedApplicantName);
+        if (savedApplicantGender && savedApplicantGender !== 'null' && !$('#applicant_gender').val()) $('#applicant_gender').val(savedApplicantGender);
+        if (savedApplicantContact && savedApplicantContact !== 'null' && !$('#applicant_contact').val()) $('#applicant_contact').val(savedApplicantContact);
         // Store selected values in localStorage
         $('#road_code').on('change', function() {
             var selectedRoadCode = $(this).find('option:selected').text();
             localStorage.setItem("selectedRoadCode", selectedRoadCode);
+            var selectedRoadValue = $(this).find('option:selected').attr('value');
+            localStorage.setItem("selectedRoadValue", selectedRoadValue);
         });
 
-        $('#bin').on('change', function() {
-            var selectedBINValue = $(this).find('option:selected').attr('value');
-            var selectedBINText = $(this).find('option:selected').text();
-            localStorage.setItem("selectedBINValue", selectedBINValue);
-            localStorage.setItem("selectedBINText", selectedBINText);
+        $('#service_provider_name_display').on('input', function () {
+            localStorage.setItem(
+                'service_provider_name',
+                $(this).val()
+            );
+        });
+
+        // Auto-select road_code when a BIN is chosen
+    $('#bin').on('change', function() {
+        var selectedBINValue = $(this).find('option:selected').attr('value');
+        var selectedBINText = $(this).find('option:selected').text();
+        localStorage.setItem("selectedBINValue", selectedBINValue);
+        localStorage.setItem("selectedBINText", selectedBINText);
+
+        if (!$(this).val()) return;
+
+        // Fetch road code associated with the selected BIN
+        if (selectedBINValue) {
+            $.ajax({
+                url: "{{ route('roadlines.get-road-names') }}",
+                data: { bin: selectedBINValue, search: '' },
+                success: function(data) {
+                    var items = data.results || (Array.isArray(data) ? data : []);
+                    if (items.length === 1) {
+                        var road = items[0];
+                        // Set the road_code select2 value
+                        var roadOption = new Option(road.text, road.id, true, true);
+                        $('#road_code').empty().append(roadOption).trigger('change');
+                        localStorage.setItem("selectedRoadCode", road.text);
+                        localStorage.setItem("selectedRoadValue", road.id);
+                    } else if (items.length > 1) {
+                        // If multiple roads, optionally open the dropdown for manual selection
+                        $('#road_code').val(null).trigger('change');
+                    }
+                },
+                error: function() {
+                    console.error("Failed to fetch road code for BIN");
+                }
+            });
+        }
+
+        $('#bin').select2('open');
         });
 
         $('#customer_name, #customer_gender, #customer_contact')
@@ -540,7 +799,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 if ($('#autofill').is(':checked')) {
                     autoFillDetails();
                 }
-            });
+        });
 
         checkDetailsAndUpdateCheckbox();
         // Function to check if the Owner and Applicant details are the same
@@ -580,7 +839,83 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
    
 
     });
+
+    document.addEventListener('DOMContentLoaded', () => {
+  // 1) Grab your select by its id
+  const sel = document.getElementById('desludging_vehicle_size');
+
+  // 2) Listen for changes
+  sel.addEventListener('change', async () => {
+    const selectValue = sel.value;
+    if (!selectValue) return;
+
+    try {
+      // 3) Fire a POST request with the capacity
+      const res = await fetch("{{ route('sequence.byCapacity') }}", {
+        method: 'POST',   // must be POST to send a JSON body
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document
+            .querySelector('meta[name="csrf-token"]')
+            .getAttribute('content'),
+        },
+        body: JSON.stringify({ capacity: selectValue })
+      });
+
+      const data = await res.json();
+
+    } catch (err) {
+      console.error('Request failed:', err);
+    }
+  });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const sizeSel = document.getElementById('desludging_vehicle_size');
+    const nameInput = document.getElementById('service_provider_name');
+    const idInput = document.getElementById('service_provider_id');
+
+    sizeSel.addEventListener('change', async () => {
+        const capacity = sizeSel.value;
+        if (!capacity) return;
+
+        try {
+            const res = await fetch("{{ route('sequence.byCapacity') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ capacity: Number(capacity) })
+            });
+
+            const data = await res.json();
+            const spName = data.next_name ?? '';
+            const spId   = data.next_id ?? '';
+
+            // set form values
+            nameInput.value = spName;
+            idInput.value   = spId;
+
+    
+            localStorage.setItem('service_provider_name', spName);
+            localStorage.setItem('service_provider_id', spId);
+
+        } catch (e) {
+            nameInput.value = '';
+            idInput.value = '';
+            localStorage.removeItem('service_provider_name');
+            localStorage.removeItem('service_provider_id');
+        }
+    });
+        const storedName = localStorage.getItem('service_provider_name');
+        const storedId   = localStorage.getItem('service_provider_id');
+
+        if (storedName) nameInput.value = storedName;
+        if (storedId)   idInput.value   = storedId;
+});
+
+
 </script>
 
 @endpush
-

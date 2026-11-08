@@ -17,6 +17,7 @@ An Edit Layout for all forms
         @include('layouts.components.error-alert')
         <div class="card-body">
             {!! Form::open(['url' => $formAction, 'class' => 'form-horizontal','method'=>'PATCH']) !!}
+            <input type="hidden" name="is_anf" value="{{ $application->is_anf ? '1' : '0' }}">
             @include('layouts.partial-form', ['submitButtonText' => __('Save')])
             {!! Form::close() !!}
         </div>
@@ -28,7 +29,10 @@ An Edit Layout for all forms
              const today = new Date().toISOString().split('T')[0];
             
             // Set the max attribute to today's date
-            document.getElementById('proposed_emptying_date').setAttribute('min', today);
+            const proposedEmptyingDate = document.getElementById('proposed_emptying_date');
+            if (proposedEmptyingDate) {
+                proposedEmptyingDate.setAttribute('min', today);
+            }
 
         function autoFillDetails() {
             $(document).ready(function() {
@@ -146,31 +150,36 @@ An Edit Layout for all forms
         }
 
         $(document).ready(function() {
-
-            let house_number = '{{ $application->bin }}';
-            var option = new Option(house_number, house_number, true, true);
-            $('#bin').val(house_number).trigger('change');
-
-            // manually trigger the `select2:select` event
-            $('#bin').trigger('select2:select');
-
-            if ('{{ old('address') }}'!==''){
-                $('#address').select2().val('{{ old('address') }}').trigger('change');
-                onAddressChange();
+            if (!@json((bool) $application->is_anf)) {
+                const houseNumber = @json($application->bin);
+                if (houseNumber && $('#bin').length) {
+                    const option = new Option(houseNumber, houseNumber, true, true);
+                    $('#bin').append(option).val(houseNumber).trigger('change');
+                    $('#bin').trigger('select2:select');
+                    $('#bin').on('change', onAddressChange);
+                }
             }
-
-            $('#bin').on('change',onAddressChange);
             checkDetailsAndUpdateCheckbox();
 
         });
 
          // Function to check if the Owner and Applicant details are the same
     function checkDetailsAndUpdateCheckbox() {
+        const ownerName = document.getElementById('customer_name');
+        const ownerGender = document.getElementById('customer_gender');
+        const ownerContact = document.getElementById('customer_contact');
+        const sameAsOwnerCheckbox = document.getElementById('autofill');
+
+        // ANF applications do not have owner fields until a building is linked.
+        if (!ownerName || !ownerGender || !ownerContact || !sameAsOwnerCheckbox) {
+            return;
+        }
+
         // Get the values of the Owner and Applicant Details
         const ownerDetails = {
-            name: document.getElementById('customer_name').value,
-            gender: document.getElementById('customer_gender').value,
-            contact: document.getElementById('customer_contact').value
+            name: ownerName.value,
+            gender: ownerGender.value,
+            contact: ownerContact.value
         };
 
         const applicantDetails = {
@@ -178,9 +187,6 @@ An Edit Layout for all forms
             gender: document.getElementById('applicant_gender').value,
             contact: document.getElementById('applicant_contact').value
         };
-
-        // Get the checkbox element
-        const sameAsOwnerCheckbox = document.getElementById('autofill');
 
         // Compare Owner and Applicant details
         const isSame = ownerDetails.name === applicantDetails.name &&

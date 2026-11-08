@@ -16,6 +16,9 @@ use App\Http\Controllers\Api\SewerApiController;
 use App\Http\Controllers\Api\SwmPaymentApiController;
 use App\Http\Controllers\Api\TaxPaymentApiController;
 use App\Http\Controllers\Api\WaterSupplyPaymentApiController;
+use App\Http\Controllers\Fsm\ApplicationController;
+use App\Http\Controllers\Api\SludgeCollectionController;
+use App\Http\Controllers\Api\ContainmentsApiController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -64,6 +67,7 @@ Route::group([
     |
     */
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/footer', [AuthController::class, 'footer']);
 
     /*
     |
@@ -94,14 +98,6 @@ Route::group([
     | /save-emptying : Save the emptying data
     |
     */
-    Route::group(['name' => 'emptyingService'],function (){
-        Route::get('/assessed-applications',[EmptyingServiceController::class,'getAssessedApplications']);
-        Route::get('/treatment-plants',[EmptyingServiceController::class,'getTreatmentPlants']);
-        Route::get('/vacutugs',[EmptyingServiceController::class, 'getVacutugs']);
-        Route::get('/drivers',[EmptyingServiceController::class,'getDrivers']);
-        Route::get('/emptiers',[EmptyingServiceController::class,'getEmptiers']);
-        Route::post('/save-emptying',[EmptyingServiceController::class,'save']);
-    });
 
     /*
     |
@@ -159,6 +155,11 @@ Route::group([
 
         });
 
+        Route::group(['name' => 'building'], function () {
+        Route::get('/buildings/form-fields', [BuildingApiController::class, 'getAddBuildingFormFields']);
+        Route::post('/buildings/save', [BuildingApiController::class, 'storeBuildingDataMobile']);
+        Route::get('/map/building-by-point', [BuildingSurveyController::class, 'locateBuildingByPoint']);
+    });
    // Write endpoints — force JSON on validation/auth/throttle failures
     Route::middleware([
         'auth:sanctum',
@@ -258,5 +259,29 @@ Route::group([
         Route::get('/swmPayments/export', [SwmPaymentApiController::class, 'export']);
         Route::get('/swmPayments/exportunmatched', [SwmPaymentApiController::class, 'exportunmatched']);
         Route::put('/swmPayments/update/{swm_customer_id}', [SwmPaymentApiController::class, 'update']);
+    });
+
+    Route::group(['name' => 'sludgecollection'], function () {
+        Route::get('assessed-sludgeapplications', [SludgeCollectionController::class, 'getAssessedSludgeApplications']);
+        Route::get('/sludgedisposal-form-fields/{application_id}', [SludgeCollectionController::class, 'getSludgeDisposalFormFields']);
+        Route::post('/save-sludge', [SludgeCollectionController::class, 'store']);
+    });
+
+     Route::group(['name' => 'emptyingService'], function () {
+        Route::get('/assessed-applications', [EmptyingServiceController::class, 'getAssessedApplications']);
+        Route::get('/treatment-plants', [EmptyingServiceController::class, 'getTreatmentPlants']);
+        Route::get('/vacutugs', [EmptyingServiceController::class, 'getVacutugs']);
+        Route::get('/drivers', [EmptyingServiceController::class, 'getDrivers']);
+        Route::get('/emptiers', [EmptyingServiceController::class, 'getEmptiers']);
+        Route::post('/save-emptying', [EmptyingServiceController::class, 'store']);
+        Route::get('/get-treatment-plant', [EmptyingServiceController::class, 'getTreatmentPlantDetails']);
+        Route::get('/emptyingForm-fields/{application_id}', [EmptyingServiceController::class, 'getMultiTripFormFields']);
+        Route::patch('applications/{id}/resolve-anf', [ApplicationController::class, 'resolveAnf'])->name('api.application.resolve-anf');
+    });
+
+    Route::group(['name' => 'containment'], function () {
+        Route::get('/containments/form-fields', [ContainmentsApiController::class, 'getAddContainmentFormFields']);
+        Route::post('/containments/save', [ContainmentsApiController::class, 'store']);
+        Route::post('/addContainment/{bin}', [BuildingApiController::class, 'addContainment']);
     });
 });

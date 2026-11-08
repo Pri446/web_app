@@ -278,13 +278,13 @@
                     defaultContent: '-'
                 },
                 {
-                    data: 'next_emptying_date',
-                    name: 'next_emptying_date',
+                    data: 'house_number',
+                    name: 'house_number',
                     defaultContent: '-'
                 },
                 {
-                    data: 'house_number',
-                    name: 'house_number',
+                    data: 'next_emptying_date',
+                    name: 'next_emptying_date',
                     defaultContent: '-'
                 },
                 {

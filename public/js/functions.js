@@ -12,6 +12,9 @@ function deleteAction(form) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
+            if (window.globalLoader && window.globalLoader.isManagedPath()) {
+                window.globalLoader.show(Swal.getConfirmButton());
+            }
             form.submit();
         }
     });
@@ -40,17 +43,227 @@ function resetDataTable(dataTable) {
     });
 }
 
-/*
-    Function for displaying ajax loader
-*/
-function displayAjaxLoader(message) {
-    $("#loading-content").text(message);
-    $(".loading-overlay")[0].classList.toggle('is-active');
+/* Inline loader for FSM and Public Health actions. */
+(function (window, $) {
+    'use strict';
+
+    var activeControl = null;
+    var activeSpinner = null;
+    var lastTrigger = null;
+
+    function isManagedPath(pathname) {
+        var segments = (pathname || window.location.pathname)
+            .toLowerCase()
+            .split('/')
+            .filter(Boolean);
+        var fsmIndex = segments.indexOf('fsm');
+        var publicHealthIndex = segments.indexOf('publichealth');
+        var isModule = fsmIndex !== -1 || publicHealthIndex !== -1;
+        var isContainment = fsmIndex !== -1 && segments[fsmIndex + 1] === 'containments';
+        var isDashboard = segments.some(function (segment) {
+            return segment.indexOf('dashboard') !== -1;
+        });
+        var isExcluded = isContainment || isDashboard;
+        return isModule && !isExcluded;
+    }
+
+    function resolveControl(control) {
+        var candidate = control || lastTrigger || document.activeElement;
+        if (candidate && candidate.jquery) {
+            candidate = candidate[0];
+        }
+        var resolved = candidate && candidate.closest
+            ? candidate.closest('.btn, .main-sidebar a.nav-link, button, input[type="submit"]')
+            : null;
+        return resolved && !resolved.hasAttribute('data-loader-ignore') ? resolved : null;
+    }
+
+    function show(control) {
+        if (activeControl) {
+            return false;
+        }
+
+        activeControl = resolveControl(control);
+        if (!activeControl) {
+            return false;
+        }
+
+        activeControl.dataset.loaderTabindex = activeControl.getAttribute('tabindex') || '';
+        activeControl.setAttribute('aria-disabled', 'true');
+        activeControl.setAttribute('aria-busy', 'true');
+        activeControl.setAttribute('tabindex', '-1');
+        activeControl.classList.add('global-loader-disabled', 'global-loader-control');
+
+        activeSpinner = document.createElement('span');
+        activeSpinner.className = 'fas fa-spinner fa-spin global-loader-spinner';
+        activeSpinner.setAttribute('aria-hidden', 'true');
+        if (activeControl.tagName === 'INPUT') {
+            activeControl.insertAdjacentElement('afterend', activeSpinner);
+        } else {
+            activeControl.appendChild(activeSpinner);
+        }
+        return true;
+    }
+
+    function hide() {
+        if (activeSpinner) {
+            activeSpinner.remove();
+        }
+        if (activeControl) {
+            activeControl.removeAttribute('aria-disabled');
+            activeControl.removeAttribute('aria-busy');
+            activeControl.classList.remove('global-loader-disabled', 'global-loader-control');
+            if (activeControl.dataset.loaderTabindex) {
+                activeControl.setAttribute('tabindex', activeControl.dataset.loaderTabindex);
+            } else {
+                activeControl.removeAttribute('tabindex');
+            }
+            delete activeControl.dataset.loaderTabindex;
+        }
+        activeControl = null;
+        activeSpinner = null;
+        lastTrigger = null;
+    }
+
+    function filenameFromResponse(response, fallback) {
+        var disposition = response.headers.get('Content-Disposition') || '';
+        var utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        var plain = disposition.match(/filename="?([^";]+)"?/i);
+        return utf8 ? decodeURIComponent(utf8[1]) : (plain ? plain[1] : fallback);
+    }
+
+    async function download(url, fallbackFilename, control) {
+        if (!show(control)) {
+            return;
+        }
+
+        try {
+            var downloadUrl = new URL(url, window.location.href);
+            var options = { credentials: 'same-origin' };
+            if (downloadUrl.origin === window.location.origin) {
+                options.headers = { 'X-Requested-With': 'XMLHttpRequest' };
+            }
+            var response = await fetch(downloadUrl.href, options);
+            if (!response.ok) {
+                throw new Error('Download failed with status ' + response.status);
+            }
+
+            var objectUrl = URL.createObjectURL(await response.blob());
+            var link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filenameFromResponse(response, fallbackFilename || 'export');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+        } catch (error) {
+            if (window.Swal) {
+                Swal.fire({ icon: 'error', title: 'Oops...', text: 'The file could not be downloaded.' });
+            }
+            throw error;
+        } finally {
+            hide();
+        }
+    }
+
+    window.globalLoader = {
+        show: show,
+        hide: hide,
+        download: download,
+        isLoading: function () { return Boolean(activeControl); },
+        isManagedPath: isManagedPath
+    };
+
+    document.addEventListener('click', function (event) {
+        var clickedControl = event.target.closest
+            ? event.target.closest('.btn, .main-sidebar a.nav-link, button, input[type="submit"]')
+            : null;
+
+        if (clickedControl && clickedControl.hasAttribute('data-loader-ignore')) {
+            lastTrigger = null;
+            return;
+        }
+
+        if (activeControl && clickedControl === activeControl) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
+
+        lastTrigger = clickedControl;
+        window.setTimeout(function () {
+            if (!activeControl) {
+                lastTrigger = null;
+            }
+        }, 0);
+    }, true);
+    window.addEventListener('pageshow', hide);
+
+    $(function () {
+        $('.main-sidebar').on('click', 'a.nav-link[href]', function (event) {
+            var href = this.getAttribute('href');
+            if (!href || href === '#' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+            var destination = new URL(this.href, window.location.href);
+            if (destination.origin === window.location.origin && isManagedPath(destination.pathname) &&
+                !show(this)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        });
+
+        if (!isManagedPath()) {
+            return;
+        }
+
+        $(document).on('submit', 'form', function (event) {
+            if (event.isDefaultPrevented() || (this.checkValidity && !this.checkValidity())) {
+                return;
+            }
+            var submitter = event.originalEvent && event.originalEvent.submitter;
+            if (!show(submitter)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        });
+
+        $(document).on('click', 'a.btn[href]', function (event) {
+            var href = this.getAttribute('href');
+            if (event.isDefaultPrevented() || !href || href === '#' || this.hasAttribute('data-toggle') ||
+                this.target === '_blank' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+            if (!show(this)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        });
+
+        $(document).ajaxStart(function () { show(); });
+        $(document).ajaxStop(hide);
+        $(document).ajaxError(hide);
+    });
+})(window, window.jQuery);
+
+function displayAjaxLoader(message, control) {
+    if (window.globalLoader.isManagedPath()) {
+        return window.globalLoader.show(control);
+    }
+
+    $('#loading-content').text(message || 'Loading...');
+    $('.loading-overlay').addClass('is-active');
+    return true;
 }
 
 function removeAjaxLoader() {
-    $("#loading-content").text("");
-    $(".loading-overlay")[0].classList.toggle('is-active');
+    if (window.globalLoader.isManagedPath()) {
+        window.globalLoader.hide();
+        return;
+    }
+
+    $('#loading-content').text('');
+    $('.loading-overlay').removeClass('is-active');
 }
 
 /*
@@ -76,22 +289,12 @@ $.fn.serializeObject = function () {
 function exportToCsv(event) {
     event.preventDefault();
     var filterData = $('#filter-form').serializeObject();
-    displayAjaxLoader();
-    try {
-        var a = document.createElement('a');
-        a.href = event.target.href + "?" + $.param(filterData);
-        a.download = 'report.csv';
-        a.click();
-        a.remove();
-        removeAjaxLoader();
-    } catch (e) {
-        removeAjaxLoader();
-        Swal.fire({
-            icon: 'error',
-            title: 'Oops...',
-            text: "Error!",
-        });
-    }
+    var separator = event.currentTarget.href.indexOf('?') === -1 ? '?' : '&';
+    window.globalLoader.download(
+        event.currentTarget.href + separator + $.param(filterData),
+        'report.csv',
+        event.currentTarget
+    ).catch(function () {});
 }
 // function to prevent multiple submits in form
 function preventMultipleSubmit() {
@@ -99,28 +302,56 @@ function preventMultipleSubmit() {
 };
 
 $(document).ready(function () {
-    // Check if the create_user checkbox is checked on page load
-    if ($('#create_user').is(":checked")) {
-        $('#user-password').show();
-    } else {
-        $('#user-password').hide();
-    }
+    createUser();
+    $('#create_user').on('change', createUser);
 });
 
 // function to check if user is to be created or not
 function createUser() {
-    $('#create_user').on('change', function () {
-        if ($('#create_user').is(":checked")) {
+    const createUserSelected = $('#create_user').is(":checked");
+    const passwordSection = $('#user-password');
 
-            $('#user-password').show();
-        }
-        else {
-            $('#user-password').hide();
-
-        }
-    });
+    passwordSection.toggle(createUserSelected);
+    // Hidden account fields must not be submitted or validated by the browser.
+    passwordSection.find('input').prop('disabled', !createUserSelected);
 }
 
+
+// Keep scrolling table headers aligned while the sidebar changes content width.
+$(document).ready(function () {
+    const content = document.querySelector('.content-wrapper');
+    if (!content || !$.fn.dataTable) {
+        return;
+    }
+
+    let resizeFrame = null;
+    let previousWidth = content.getBoundingClientRect().width;
+    function adjustTableWidths() {
+        if (resizeFrame !== null) {
+            return;
+        }
+        resizeFrame = window.requestAnimationFrame(function () {
+            resizeFrame = null;
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+        });
+    }
+
+    if (window.ResizeObserver) {
+        const observer = new window.ResizeObserver(function () {
+            const width = content.getBoundingClientRect().width;
+            if (width !== previousWidth) {
+                previousWidth = width;
+                adjustTableWidths();
+            }
+        });
+        observer.observe(content);
+    } else {
+        $(window).on('resize', adjustTableWidths);
+        $(document).on('shown.lte.pushmenu collapsed-done.lte.pushmenu', function () {
+            window.setTimeout(adjustTableWidths, 350);
+        });
+    }
+});
 
 // building page onload functions for dynamic display according to dropdown
 
@@ -1241,5 +1472,3 @@ function onloadDynamicContainmentType() {
         $('#ctpt-toilet').hide();
     }
     }
-
-

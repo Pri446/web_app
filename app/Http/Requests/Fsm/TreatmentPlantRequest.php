@@ -97,7 +97,7 @@ class TreatmentPlantRequest extends FormRequest
                 'regex:/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix'
             ],
             'status' => 'required',
-            'password' => ['required_if:create_user,on', 'nullable', Password::min(8)
+            'password' => ['exclude_unless:create_user,on', 'required_if:create_user,on', 'nullable', Password::min(8)
                 ->letters()
                 ->mixedCase()
                 ->numbers()

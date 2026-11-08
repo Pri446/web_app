@@ -9,8 +9,21 @@ use App\Services\BuildingInfo\BuildingStructureService;
 use App\Http\Requests\BuildingInfo\BuildingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use App\Services\Fsm\ApplicationService;
+use App\Models\BuildingInfo\Owner;
+use App\Models\Fsm\ContainmentType;
+use Illuminate\Support\Facades\DB;
+use App\Models\BuildingInfo\BuildContain;
+use App\Http\Requests\Fsm\Api\StoreContainmentRequest;
+use App\Http\Requests\BuildingInfo\BuildingMobileRequest;
+use Illuminate\Support\Facades\Auth;
+use App\Helpers\KeywordMatcher;
+use App\Models\BuildingInfo\SanitationSystem;
+use App\Models\LayerInfo\Ward;
+use App\Models\UtilityInfo\Roadline;
+use App\Models\BuildingInfo\StructureType;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use DB;
+
 
 /**
  * @OA\SecurityScheme(
@@ -99,10 +112,14 @@ class BuildingApiController extends Controller
      * @var BuildingStructureService
      */
     protected $buildingStructureService;
+    protected ApplicationService $applicationService;
 
-    public function __construct(BuildingStructureService $buildingStructureService)
-    {
+    public function __construct(
+        BuildingStructureService $buildingStructureService,
+        ApplicationService $applicationService
+    ) {
         $this->buildingStructureService = $buildingStructureService;
+        $this->applicationService = $applicationService;
     }
 
     /**
@@ -589,6 +606,467 @@ class BuildingApiController extends Controller
                 'success' => false,
                 'error' => 'Building export could not be generated.',
                 'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+     public function getAddBuildingFormFields(Request $request)
+    {
+        $wards = Ward::orderBy('ward', 'asc')->pluck('ward', 'ward')->all();
+
+        $roads = Roadline::get(['code', 'name'])
+            ->mapWithKeys(function ($item) {
+                return [$item->code => ($item->name ? $item->code . ' - ' . $item->name : $item->code)];
+            })->toArray();
+
+        $structureTypes = StructureType::orderBy('type', 'asc')->pluck('type', 'id')->all();
+
+        $wardOptions = collect($wards)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values()->all();
+        $roadOptions = collect($roads)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values()->all();
+        $structureTypeOptions = collect($structureTypes)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values()->all();
+
+        $sanitationSystems = SanitationSystem::orderBy('sanitation_system', 'asc')
+            ->whereNotIn('id', [11])
+            ->whereIn('id', [3, 4])
+            ->pluck('sanitation_system', 'id')
+            ->all();
+
+        $sanitationSystemOptions = collect($sanitationSystems)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values()->all();
+
+        $containmentTypes = ContainmentType::distinct()->pluck('type', 'id')->all();
+        $containmentTypeOptions = collect($containmentTypes)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values()->all();
+
+        $containmentSanitationIds = SanitationSystem::whereIn('id', [3, 4])->pluck('id')->toArray();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'form_fields' => [
+                    [
+                        'fields' => [
+                            [
+                                'label' => 'Application ID',
+                                'name' => 'id',
+                                'input_type' => 'hidden',
+                                'disabled' => true,
+                                'prefilled' => true,
+                                'required' => true,
+                                'validation' => 'required|string|max:255',
+                                'placeholder' => 'Enter Application ID',
+                                'value' => null,
+                            ],
+                        ],
+                    ],
+                    [
+                        'group' => 'Owner Information',
+                        'group_key' => 'owner_information',
+                        'fields' => [
+                            [
+                                'label' => 'Owner Name',
+                                'name' => 'owner_name',
+                                'input_type' => 'text',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|string|max:255',
+                                'placeholder' => 'Enter owner name',
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Owner NID',
+                                'name' => 'nid',
+                                'input_type' => 'text',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => false,
+                                'validation' => 'required|string|max:20',
+                                'placeholder' => 'Enter national ID number',
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Owner Gender',
+                                'name' => 'owner_gender',
+                                'input_type' => 'select',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|in:Male,Female,Others',
+                                'placeholder' => '--- Select gender ---',
+                                'options' => [
+                                    ['value' => 'Male', 'label' => 'Male'],
+                                    ['value' => 'Female', 'label' => 'Female'],
+                                    ['value' => 'Others', 'label' => 'Others'],
+                                ],
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Owner Contact Number',
+                                'name' => 'owner_contact',
+                                'input_type' => 'text',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|string|max:15',
+                                'placeholder' => 'Enter contact number',
+                                'value' => null,
+                            ],
+                        ],
+                    ],
+                    [
+                        'group' => 'Building Information',
+                        'group_key' => 'building_information',
+                        'fields' => [
+                            [
+                                'label' => 'Ward Number',
+                                'name' => 'ward',
+                                'input_type' => 'select',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|exists:wards,ward',
+                                'placeholder' => '--- Select ward ---',
+                                'options' => $wardOptions,
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Road Code',
+                                'name' => 'road_code',
+                                'input_type' => 'select',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|exists:roadlines,code',
+                                'placeholder' => '--- Select road ---',
+                                'options' => $roadOptions,
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'House Number',
+                                'name' => 'house_number',
+                                'input_type' => 'text',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|string|max:50',
+                                'placeholder' => 'Enter house number',
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Construction Date',
+                                'name' => 'construction_year',
+                                'input_type' => 'date',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|date|before_or_equal:today',
+                                'placeholder' => 'Select construction date',
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Structure Type',
+                                'name' => 'structure_type_id',
+                                'input_type' => 'select',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|integer|exists:structure_types,id',
+                                'placeholder' => '--- Select structure type ---',
+                                'options' => $structureTypeOptions,
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Number of Floors',
+                                'name' => 'floor_count',
+                                'input_type' => 'number',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|integer|min:1|max:200',
+                                'placeholder' => 'Enter number of floors',
+                                'value' => null,
+                            ],
+                        ],
+                    ],
+                    [
+                        'group' => 'Sanitation System Information',
+                        'group_key' => 'sanitation_system_information',
+                        'fields' => [
+                            [
+                                'label' => 'Presence of Toilet',
+                                'name' => 'toilet_status',
+                                'input_type' => 'select',
+                                'disabled' => true,
+                                'prefilled' => true,
+                                'required' => true,
+                                'validation' => 'required|in:yes,no',
+                                'placeholder' => '--- Select ---',
+                                'options' => [
+                                    ['value' => 'yes', 'label' => 'Yes'],
+                                    ['value' => 'no', 'label' => 'No'],
+                                ],
+                                'value' => 'yes',
+                            ],
+                            [
+                                'label' => 'Toilet Connection',
+                                'name' => 'sanitation_system_id',
+                                'input_type' => 'select',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|integer|exists:sanitation_systems,id',
+                                'placeholder' => '--- Select toilet connection ---',
+                                'options' => $sanitationSystemOptions,
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Latitude',
+                                'name' => 'lat',
+                                'input_type' => 'hidden',
+                                'disabled' => true,
+                                'prefilled' => true,
+                                'required' => false,
+                                'value' => $request->lat ?? null,
+                            ],
+                            [
+                                'label' => 'Longitude',
+                                'name' => 'lng',
+                                'input_type' => 'hidden',
+                                'disabled' => true,
+                                'prefilled' => true,
+                                'required' => false,
+                                'value' => $request->lng ?? null,
+                            ],
+                        ],
+                    ],
+                    [
+                        'group' => 'Containment Information',
+                        'group_key' => 'containment_information',
+                        'show_when' => [
+                            'field' => 'sanitation_system_id',
+                            'operator' => 'in',
+                            'value' => $containmentSanitationIds,
+                        ],
+                        'fields' => [
+                            [
+                                'label' => 'Containment Type',
+                                'name' => 'type_id',
+                                'input_type' => 'select',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|integer|exists:containment_types,id',
+                                'placeholder' => '--- Select containment type ---',
+                                'options' => $containmentTypeOptions,
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Containment Size (m³)',
+                                'name' => 'size',
+                                'input_type' => 'number',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => true,
+                                'validation' => 'required|numeric|gt:0',
+                                'placeholder' => 'Enter containment size',
+                                'value' => null,
+                            ],
+                            [
+                                'label' => 'Construction Date',
+                                'name' => 'construction_date',
+                                'input_type' => 'date',
+                                'disabled' => false,
+                                'prefilled' => false,
+                                'required' => false,
+                                'validation' => 'nullable|date|before_or_equal:today',
+                                'placeholder' => 'Select construction date',
+                                'value' => null,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'message' => __('Building form fields retrieved successfully.'),
+        ]);
+    }
+
+    public function storeBuildingDataMobile(BuildingMobileRequest $request)
+    {
+
+        DB::beginTransaction();
+
+        try {
+            $lastBin = Building::withTrashed()
+                ->select('bin')
+                ->orderByRaw("CAST(REPLACE(UPPER(bin), 'B', '') AS INTEGER) DESC")
+                ->lockForUpdate()
+                ->first()?->bin;
+            $nextBinNumber = $lastBin ? (int) str_replace(['B', 'b'], '', $lastBin) + 1 : 1;
+            $newBin = 'B' . sprintf('%06d', $nextBinNumber);
+            if (!in_array((int) $request->sanitation_system_id, [3, 4], true)) {
+                throw new \Exception('Only sanitation_system_id 3 or 4 is allowed for mobile API.');
+            }
+            $sanitationSystem = SanitationSystem::find($request->sanitation_system_id);
+            if (!$sanitationSystem) {
+                throw new \Exception('Invalid sanitation_system_id.');
+            }
+            // Build WKT from lat/lng
+            $lat = (float) $request->lat;
+            $lng = (float) $request->lng;
+            $offset = 0.0001;
+            $wkt = "MULTIPOLYGON((({$lng} {$lat},"
+                . ($lng + $offset) . " {$lat},"
+                . ($lng + $offset) . " " . ($lat + $offset) . ","
+                . "{$lng} {$lat})))";
+
+            $building = new Building();
+            $building->bin = $newBin;
+            $building->ward = $request->ward;
+            $building->road_code = $request->road_code;
+            $building->house_number = $request->house_number;
+            $building->structure_type_id = $request->structure_type_id;
+            $building->floor_count = $request->floor_count;
+            $building->construction_year = $request->construction_year;
+            $building->toilet_status = true;
+            $building->sanitation_system_id = $request->sanitation_system_id;
+            $building->user_id = Auth::id();
+            $building->verification_status = 1;
+            $building->geom = DB::raw("ST_GeomFromText('{$wkt}', 4326)");
+            $building->estimated_area = DB::raw("ST_Area(ST_Transform('SRID=4326;{$wkt}'::geometry, 4326)::geography)");
+
+            $request->merge([
+                'bin' => $newBin,
+                'toilet_status' => true,
+                'sanitation_system' => $sanitationSystem->sanitation_system,
+            ]);
+
+            $building->save();
+            $this->storeOwnerInfo($request);
+            $this->buildingStructureService->storeContainmentInfo($flag = 'containment', $type = 'create', $request);
+
+            if ($request->id) {
+                $building->refresh();
+                $containment = $building->containments()->first();
+
+                if ($containment) {
+                    $this->applicationService->resolveAnf(
+                        (int) $request->id,
+                        $newBin,
+                        $containment->id
+                    );
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Building created successfully',
+
+            ], 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Building could not be created',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function storeOwnerInfo($request)
+    {
+
+        $owner = new Owner();
+        $owner->bin = $request->bin;
+
+        $owner->owner_name = $request->owner_name ? $request->owner_name : null;
+        $owner->owner_gender = $request->owner_gender ? $request->owner_gender : null;
+        $owner->owner_contact = $request->owner_contact ? $request->owner_contact : null;
+        $owner->nid = $request->nid ? $request->nid : null;
+
+        $owner->save();
+    }
+
+
+    public function storeBuildContainInfo($bin, $containment_id)
+    {
+        $build_contain = new BuildContain;
+        $build_contain->bin = $bin;
+        $build_contain->containment_id = $containment_id;
+        $build_contain->save();
+    }
+
+    public function addContainment(StoreContainmentRequest $request, $bin)
+    {
+        DB::beginTransaction();
+        try {
+            $building = Building::where('bin', $bin)->firstOrFail();
+            $request->merge(['bin' => $bin]);
+            $sanitation = SanitationSystem::find($building->sanitation_system_id);
+            $sanitationSystem = $sanitation?->sanitation_system;
+            if ((bool) $building->toilet_status === false || is_null($building->sanitation_system_id) || is_null($building->toilet_status)) {
+               $this->buildingStructureService->storeContainmentInfo(
+                    'containment',
+                    'createContainOnly',
+                    $request
+                );
+            } elseif (KeywordMatcher::matchKeywords($sanitationSystem, ['shared'])) {
+               $this->buildingStructureService->storeContainmentInfo(
+                    'shared',
+                    'create',
+                    $request
+                );
+                $building->save();
+            } elseif (
+                KeywordMatcher::matchKeywords($sanitationSystem, ['septic', 'pit']) &&
+                !KeywordMatcher::matchKeywords($sanitationSystem, ['shared'])
+            ) {
+                $this->buildingStructureService->storeContainmentInfo(
+                    'containment',
+                    'create',
+                    $request
+                );
+            } elseif (KeywordMatcher::matchKeywords($sanitationSystem, ['drain', 'sewer', 'onsite', 'water', 'ground', 'composting'])) {
+                 $this->buildingStructureService->storeContainmentInfo(
+                    'containment',
+                    'createContainOnly',
+                    $request
+                );
+            } elseif (KeywordMatcher::matchKeywords($sanitationSystem, ['community'])) {
+
+               $this->buildingStructureService->storeContainmentInfo(
+                    'communal',
+                    'update',
+                    $request
+                );
+            }
+            // ✅ Resolve ANF if application id present (single block — not duplicated)
+            if ($request->id) {
+                $building->refresh();
+                $containment = $building->containments()->latest()->first();
+
+                if ($containment) {
+                    $this->applicationService->resolveAnf(
+                        (int) $request->id,
+                        $bin,
+                        $containment->id
+                    );
+                }
+            }
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Containment added successfully to Building ' . $bin . '.',
+                'data' => ['anf_resolved' => $request->id ? true : false],
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Containment could not be added.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

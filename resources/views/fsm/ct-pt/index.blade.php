@@ -276,16 +276,19 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     caretaker_name = $('#caretaker_name').val();
                     status = $('#status').val();
                     sanitary_supplies_disposal_facility = $('#sanitary_supplies_disposal_facility').val();
-                window.location.href = "{!! url('fsm/ctpt/export?searchData=') !!}" + searchData +
-                    
-                    "&bin=" + bin +
-                    "&house_address=" + house_address +
-                    "&name=" + name +
-                    "&type=" + type +
-                    "&ward=" + ward +
-                    "&caretaker_name=" + caretaker_name +
-                    "&status=" + status +
-                    "&sanitary_supplies_disposal_facility=" + sanitary_supplies_disposal_facility ;
+                window.globalLoader.download(
+                    "{!! url('fsm/ctpt/export?searchData=') !!}" + searchData +
+                        "&bin=" + bin +
+                        "&house_address=" + house_address +
+                        "&name=" + name +
+                        "&type=" + type +
+                        "&ward=" + ward +
+                        "&caretaker_name=" + caretaker_name +
+                        "&status=" + status +
+                        "&sanitary_supplies_disposal_facility=" + sanitary_supplies_disposal_facility,
+                    'ctpt.csv',
+                    this
+                ).catch(function () {});
             });
 
 

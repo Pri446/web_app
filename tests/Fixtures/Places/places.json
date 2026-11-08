@@ -1,0 +1,180 @@
+[
+    {
+        "id": 1,
+        "test-data-description": "Create place",
+        "payload": {
+            "name": "test",
+            "ward": 1,
+            "geom": "POINT(85.3240 27.7040)",
+            "type": "Chowk",
+            "unique_reference_id": "2"
+        },
+        "expected": {
+            "name": "test",
+            "ward": 1,
+            "type": "Chowk",
+            "unique_reference_id": "2"
+        }
+    },
+    {
+        "id": 2,
+        "test-data-description": "Create a place without optional fields",
+        "payload": {
+            "name": "Small Temple",
+            "ward": 3,
+            "geom": "POINT(85.3000 27.7000)",
+            "unique_reference_id": "PLACE-002"
+        },
+        "expected": {
+            "name": "Small Temple",
+            "ward": 3,
+            "type": null,
+            "unique_reference_id": "PLACE-002"
+        }
+    },
+    {
+        "id": 3,
+        "test-data-description": "Duplicate reference id",
+        "payload": {
+            "name": "Kathmandu Durbar Square",
+            "ward": 11,
+            "geom": "POINT(85.3240 27.7040)",
+            "type": "Cultural Heritage",
+            "unique_reference_id": "PLACE-001"
+        },
+        "expected": {
+            "unique_reference_id": "PLACE-001"
+        }
+    },
+    {
+        "id": 4,
+        "test-data-description": "Reject place creation without required name",
+        "payload": {
+            "name": "",
+            "ward": 3,
+            "geom": "POINT(85.3000 27.7000)",
+            "unique_reference_id": "PLACE-NAME-001"
+        },
+        "expected": {
+            "unique_reference_id": "PLACE-NAME-001"
+        },
+        "validation_errors": [
+            "name"
+        ]
+    },
+    {
+        "id": 5,
+        "test-data-description": "Update existing place record",
+        "payload": {
+            "name": "Updated Temple Name",
+            "ward": 4,
+            "geom": "POINT(85.3100 27.7100)",
+            "type": "Temple",
+            "unique_reference_id": "UPDATE-PLACE-001"
+        },
+        "expected": {
+            "name": "Updated Temple Name",
+            "ward": 4,
+            "type": "Temple",
+            "unique_reference_id": "UPDATE-PLACE-001"
+        }
+    },
+    {
+        "id": 6,
+        "test-data-description": "Reject place name longer than 200 characters",
+        "payload": {
+            "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "ward": 3,
+            "geom": "POINT(85.3000 27.7000)",
+            "type": "Chowk",
+            "unique_reference_id": "LENGTH-001"
+        },
+        "validation_errors": [
+            "name"
+        ]
+    },
+    {
+        "id": 7,
+        "test-data-description": "Data visibility: active record present in table listing",
+        "payload": {
+            "name": "Visible Active Place",
+            "ward": 6,
+            "geom": "POINT(85.3000 27.7000)",
+            "type": "Heritage",
+            "unique_reference_id": "TABLE-VISIBILITY-001"
+        },
+        "expected": {
+            "unique_reference_id": "TABLE-VISIBILITY-001"
+        }
+    },
+    {
+        "id": 8,
+        "test-data-description": "Data visibility: soft-deleted record excluded from table listing",
+        "payload": {
+            "name": "Deleted Place Record",
+            "ward": 6,
+            "geom": "POINT(85.3000 27.7000)",
+            "type": "Heritage",
+            "unique_reference_id": "DELETED-PLACE-001"
+        },
+        "expected": {
+            "unique_reference_id": "DELETED-PLACE-001"
+        }
+    },
+    {
+        "id": 9,
+        "test-data-description": "Delete place action",
+        "payload": {
+            "name": "Place To Delete",
+            "ward": 2,
+            "geom": "POINT(85.3000 27.7000)",
+            "type": "School",
+            "unique_reference_id": "DELETE-PLACE-001"
+        },
+        "expected": {
+            "unique_reference_id": "DELETE-PLACE-001"
+        }
+    },
+    {
+        "id": 10,
+        "test-data-description": "Leading and trailing whitespace is trimmed",
+        "payload": {
+            "name": "                    Small Temple                    ",
+            "ward": 3,
+            "geom": "POINT(85.3000 27.7000)",
+            "unique_reference_id": "WHITESPACE-001"
+        },
+        "expected": {
+            "name": "Small Temple",
+            "unique_reference_id": "WHITESPACE-001"
+        }
+    },
+    {
+        "id": 11,
+        "test-data-description": "Unicode input is accepted and stored correctly",
+        "payload": {
+            "name": "सानो मन्दिर",
+            "ward": 3,
+            "geom": "POINT(85.3000 27.7000)",
+            "unique_reference_id": "UNICODE-001"
+        },
+        "expected": {
+            "name": "सानो मन्दिर",
+            "unique_reference_id": "UNICODE-001"
+        }
+    },
+    {
+        "id": 12,
+        "test-data-description": "SQL-like input is handled as literal text",
+        "payload": {
+            "name": "Robert'); DROP TABLE users;--",
+            "ward": 2,
+            "geom": "POINT(85.3240 27.7040)",
+            "unique_reference_id": "SQL-001"
+        },
+        "expected": {
+            "name": "Robert'); DROP TABLE users;--",
+            "unique_reference_id": "SQL-001"
+        }
+    }
+]

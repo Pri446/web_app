@@ -8,6 +8,8 @@ use App\Http\Requests\Fsm\EmptyingApiRequest;
 use App\Http\Requests\Fsm\EmptyingRequest;
 use App\Models\Fsm\Application;
 use App\Models\Fsm\Emptying;
+use App\Models\Fsm\SludgeCollection;
+use App\Models\Fsm\TreatmentPlant;
 use App\Services\Fsm\EmptyingService;
 use DateTimeZone;
 use Exception;
@@ -64,11 +66,16 @@ class EmptyingController extends Controller
      */
     public function create(int $id)
     {
+        $exists = Emptying::where('application_id', $id)->exists();
+        $application = Application::findOrFail($id);
+        
         return view('fsm.emptying.create',[
             'formAction' => $this->emptyingService->getCreateFormAction(),
             'formFields' => $this->emptyingService->getCreateFormFields($id),
             'indexAction' => url()->previous(),
-            'application_id' => $id
+            'application_id' => $id,
+            'exists' => $exists,
+            'is_anf'         => (bool) $application->is_anf,
         ]);
     }
 
@@ -78,9 +85,9 @@ class EmptyingController extends Controller
      * @param EmptyingRequest $request
      * @return RedirectResponse|Redirector
      */
-    public function store(EmptyingRequest $request)
+     public function store(EmptyingRequest $request)
     {
-        return $this->emptyingService->createEmptying($request);
+        return $this->emptyingService->createEmptying($request, 'web');
     }
 
     /**
@@ -93,7 +100,7 @@ class EmptyingController extends Controller
     {
        
         $emptying = Emptying::find($id);
-        
+       
         if ($emptying) {
             $page_title = __("Emptying Details");
             $formFields = $this->emptyingService->getShowFormFields($emptying);
@@ -112,7 +119,11 @@ class EmptyingController extends Controller
      */
     public function edit($id)
     {
-        $emptying = Emptying::find($id);
+        $emptying = Emptying::findOrFail($id);
+        $application = Application::with('emptying')
+            ->findOrFail($emptying->application_id);
+        $is_anf = (bool) $application->is_anf;
+
         if( !(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department')) )
         {
             if($emptying->created_at->diffInDays(today()) > 1)
@@ -120,15 +131,20 @@ class EmptyingController extends Controller
                 return redirect('fsm/application')->with('error',__('Cannot update Emptying Information 24 hours after creation. Please contact Sanitation Department for more information.'));
             }
         }
-        if ($emptying) {
-            $page_title = __("Edit Emptying Service Details");
-            $formFields = $this->emptyingService->getEditFormFields($emptying);
-            $formAction = $this->emptyingService->getEditFormAction($emptying);
-            $indexAction = url()->previous();
-            return view('fsm.emptying.edit',compact('page_title','formFields','formAction','indexAction','emptying'));
-        } else {
-            abort(404);
-        }
+        $page_title = __("Edit Emptying Service Details");
+        $formFields = $this->emptyingService->getEditFormFields($emptying);
+        $formAction = $this->emptyingService->getEditFormAction($emptying);
+        $indexAction = url()->previous();
+
+        return view('fsm.emptying.edit', compact(
+            'page_title',
+            'formFields',
+            'formAction',
+            'indexAction',
+            'emptying',
+            'application',
+            'is_anf'
+        ));
     }
 
     /**
@@ -160,79 +176,110 @@ class EmptyingController extends Controller
      * @param  int  $id
      * @return Redirector|RedirectResponse
      */
-    public function destroy($id)
-    {
-        try {
-            $emptying = Emptying::findOrFail($id);
-            if($emptying->sludge_collection()->exists())
-            {
-                return redirect(route('emptying.index'))->with('error',__('Cannot delete Emptying that has assocaited Sludge Collection Information.'));
+public function destroy($id)
+{
+    try {
+        $emptying = Emptying::findOrFail($id);
+
+        if ($emptying->feedback()->exists()) {
+            return redirect(route('emptying.index'))
+                ->with('error', __('Cannot delete Emptying that has associated Feedback Information.'));
+        }
+
+        // allowing super admin and sanitation department to delete anytime,
+        // else only allowing deletion within 24 hours.
+        if (!(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department'))) {
+            if ($emptying->created_at->diffInDays(today()) > 1) {
+                return redirect(route('emptying.index'))
+                    ->with('error', __('Cannot delete Emptying Information 24 hours after creation. Please contact Sanitation Department for more information.'));
             }
-            if($emptying->feedback()->exists())
-            {
-                return redirect(route('emptying.index'))->with('error',__('Cannot delete Emptying that has assocaited Feedback Information.'));
-            }
-            // allowing super admin and sanitation department to delete anytime, else only allowing deletion within 24 hours.
-            if( !(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department')) )
-            {
-                if($emptying->created_at->diffInDays(today()) > 1)
-                {
-                    return redirect(route('emptying.index'))->with('error',__('Cannot delete Emptying Information 24 hours after creation. Please contact Sanitation Department for more information.'));
-                }
-            }
-            // updating emptying status for particular application 
-            $application = Application::findOrFail($emptying->application_id);
-            $application->emptying_status=false;
+        }
+
+        $application = Application::findOrFail($emptying->application_id);
+        $sludgecollection = SludgeCollection::where('application_id', $emptying->application_id)->first();
+
+        // If sludge collection exists and trip_no mismatches
+        if ($sludgecollection && $emptying->trip_no != $sludgecollection->trip_no) {
+            return redirect('fsm/emptying')->with([
+                'popup_confirm' => true,
+                'popup_message' => __('This Emptying is linked to a different Sludge Collection. Deleting it will also delete the entire application. Do you want to proceed?'),
+                'application_id' => $emptying->application_id
+            ]);
+        }
+
+        // If sludge collection exists and matches, block deletion
+        if ($sludgecollection && $emptying->trip_no == $sludgecollection->trip_no) {
+            return redirect(route('emptying.index'))
+                ->with('error', __('Cannot delete Emptying that has associated Sludge Collection Log Information.'));
+        }
+
+        // updating emptying status for particular application
+        if ($application->sludge_collection_status == 0) {
+
+            $application->emptying_status = 0;
             $application->save();
+
             // deleting emptying record
             $emptying->delete();
-            // updating containments emptied information
+
+            // updating containment info
             $containment = Containment::findOrFail($application->containment_id);
-            // decreasing times emptied by 1 
-            if($containment->no_of_times_emptied > 0)
-            {
-                $containment->no_of_times_emptied = $containment->no_of_times_emptied - 1;
+
+            if ($containment->no_of_times_emptied > 0) {
+                $containment->no_of_times_emptied -= 1;
             }
-            // if times emptied is zero, nullifying all values
-            if ($containment->no_of_times_emptied == 0)
-            {
-                $containment->emptied_status = false;
+
+            if ($containment->no_of_times_emptied == 0) {
+                $containment->emptied_status = 0;
                 $containment->last_emptied_date = null;
                 $containment->next_emptying_date = null;
             }
-            // else, fetching old application data of previous emptying and updating the values
-            else
-            {
-                $previous_application = Application::where('containment_id',$application->containment_id)
-                ->where('id','!=',$application->id)
-                ->where('emptying_status',true)
-                ->whereNULL('deleted_at')
-                ->orderBy('created_at', 'desc')->get();
-                if($previous_application[0]->emptying()->exists())
-                {
-                    $previous_emptying = Emptying::where('application_id',$previous_application[0]->id)
-                    ->where('id','!=',$application->id)
-                    ->whereNULL('deleted_at')
-                    ->orderBy('created_at', 'desc')->get();
-                    if(!empty($previous_emptying))
-                    {
-                        $containment->emptied_status = true;
-                        $containment->last_emptied_date = $previous_emptying[0]->emptied_date;
-                        $containment->next_emptying_date = $previous_emptying[0]->emptied_date->addYears(3);
-                    }
+        } else {
+
+            $containment = Containment::findOrFail($application->containment_id);
+
+            $previous_application = Application::where('containment_id', $application->containment_id)
+                ->where('id', '!=', $application->id)
+                ->whereIn('emptying_status', [1, 2])
+                ->whereNull('deleted_at')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            if ($previous_application && $previous_application->emptying()->exists()) {
+
+                $previous_emptying = Emptying::where('application_id', $previous_application->id)
+                    ->whereNull('deleted_at')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if ($previous_emptying) {
+                    $containment->emptied_status = true;
+                    $containment->last_emptied_date = $previous_emptying->emptied_date;
+                    $containment->next_emptying_date = $previous_emptying->emptied_date->addYears(3);
                 }
-                else
-                {
-                    $containment->last_emptied_date = null;
-                    $containment->next_emptying_date = null;
-                }
+            } else {
+                $containment->last_emptied_date = null;
+                $containment->next_emptying_date = null;
             }
-            $containment->save();
-            return redirect('fsm/emptying')->with('success',__('Emptying deleted successfully.'));
-        } catch (\Exception $e) {
-            return redirect('fsm/emptying')->with('error',__('Failed to delete Emptying.'));
         }
+
+        $containment->save();
+
+        return redirect('fsm/emptying')
+            ->with('success', __('Emptying deleted successfully.'));
+
+    } catch (\Throwable $e) {
+        \Log::error('Emptying delete failed', [
+            'emptying_id' => $id,
+            'error' => $e->getMessage()
+        ]);
+
+        return redirect(route('emptying.index'))
+            ->with('error', __('Something went wrong while deleting the Emptying. Please try again.'));
     }
+}
+
+
 
     /**
      * Export applications to csv.
@@ -248,5 +295,24 @@ class EmptyingController extends Controller
         } catch (\Throwable $e) {
             return redirect(route('emptying.index'))->with('error',__('Failed to export emptyings.'));
         }
+    }
+    
+    public function capacityTreatmentPlant()
+    {
+        $totalCapacity = (float) TreatmentPlant::where('status', true)->whereIn('type', [3,5])->get();
+
+        $totalBooked = (float) Application::sum(DB::raw('COALESCE(desludging_vehicle_size, 0)'));
+
+        $available = max($totalCapacity -  $totalBooked, 0.0);
+        $remainingAfter = $available;
+        $blocked = ($totalCapacity <= 0) || ($totalBooked >= $totalCapacity);
+
+        return response()->json([
+        'total_capacity'  => $totalCapacity,
+        'booked_total'    => $totalBooked,
+        'available'       => $available,
+        'remaining_after' => $remainingAfter,
+        'blocked'         => $blocked,
+    ]);
     }
 }

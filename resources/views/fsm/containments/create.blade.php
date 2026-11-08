@@ -9,6 +9,9 @@
 
     {{-- @include('errors.list') --}}
     {!! Form::open([ 'action' => ['Fsm\ContainmentController@storeContainment', $id],'files' => true, 'class' => 'form-horizontal']) !!}
+		@if(request()->has('application_id'))
+			<input type="hidden" name="application_id" value="{{ request()->get('application_id') }}">
+		@endif
 		@include('fsm.containments.partial-form', ['submitButtomText' => 'Save'])
 	<div class="card-footer">
 

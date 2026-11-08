@@ -698,7 +698,7 @@ class FsmDashboardService
             SELECT months.month_val AS month, sp.company_name AS spname, count(a.id) AS count
             FROM (SELECT m AS month_val FROM GENERATE_SERIES(1,12) m) AS months
             LEFT JOIN fsm.applications a ON months.month_val = extract(month FROM a.created_at)
-                AND a.deleted_at IS NULL   AND a.emptying_status IS TRUE
+                AND a.deleted_at IS NULL   AND a.emptying_status > 0
             LEFT JOIN fsm.service_providers sp ON sp.id = a.service_provider_id
             $whereRawServiceProvider $where
             GROUP BY months.month_val, sp.company_name

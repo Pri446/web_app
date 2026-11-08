@@ -160,8 +160,12 @@ $(function() {
         var searchData = $('input[type=search]').val();
         var indicator_id = $('#indicator_id').val();
         var year = $('#year').val();
-        window.location.href = "{!! url('fsm/kpi-targets/export?searchData=') !!}" + searchData +
-            "&indicator_id=" + indicator_id + "&year=" + year;
+        window.globalLoader.download(
+            "{!! url('fsm/kpi-targets/export?searchData=') !!}" + searchData +
+                "&indicator_id=" + indicator_id + "&year=" + year,
+            'kpi-targets.csv',
+            this
+        ).catch(function () {});
     })
 
 });

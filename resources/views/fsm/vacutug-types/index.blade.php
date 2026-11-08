@@ -209,12 +209,16 @@ $(function() {
         license_plate_number = $('#license_plate_number').val();
         capacity = $('#capacity').val();
         width = $('#width').val();
-        window.location.href = "{!! url('fsm/desludging-vehicles/export?searchData=') !!}" + searchData +
-            "&service_provider_id=" + service_provider_id +
-            "&license_plate_number=" + license_plate_number +
-            "&capacity=" + capacity +
-            "&width=" + width +
-            "&status=" + status;
+        window.globalLoader.download(
+            "{!! url('fsm/desludging-vehicles/export?searchData=') !!}" + searchData +
+                "&service_provider_id=" + service_provider_id +
+                "&license_plate_number=" + license_plate_number +
+                "&capacity=" + capacity +
+                "&width=" + width +
+                "&status=" + status,
+            'desludging-vehicles.csv',
+            this
+        ).catch(function () {});
     });
 
 });

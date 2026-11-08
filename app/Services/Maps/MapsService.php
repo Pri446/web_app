@@ -617,7 +617,7 @@ class MapsService {
             LEFT JOIN fsm.emptyings e ON e.application_id = a.id AND e.deleted_at IS NULL
             WHERE a.deleted_at IS NULL"
             . " AND a.application_date = '$start_date'"
-            . " AND a.emptying_status = true AND a.sludge_collection_status = false";
+            . " AND a.emptying_status > 0 AND (a.sludge_collection_status = 0 OR a.sludge_collection_status IS NULL)";
 
         $results = DB::select($query);
         // Construct another query to retrieve service provider details
@@ -631,7 +631,7 @@ class MapsService {
                 LEFT JOIN fsm.emptyings e ON e.application_id = a.id AND e.deleted_at IS NULL
                 WHERE a.deleted_at IS NULL"
             . " AND a.application_date = '$start_date'"
-            . " AND a.emptying_status = true AND a.sludge_collection_status = false"
+            . " AND a.emptying_status > 0 AND (a.sludge_collection_status = 0 OR a.sludge_collection_status IS NULL)"
             . " GROUP BY s.company_name");
 
         $data = array();
@@ -746,7 +746,7 @@ class MapsService {
                 LEFT JOIN fsm.service_providers s ON s.id = a.service_provider_id AND s.deleted_at IS NULL
                 LEFT JOIN fsm.emptyings e ON e.application_id = a.id AND e.deleted_at IS NULL
                 WHERE a.deleted_at IS NULL"
-            . " AND a.emptying_status = true AND a.sludge_collection_status = false"
+            . " AND a.emptying_status > 0 AND (a.sludge_collection_status = 0 OR a.sludge_collection_status IS NULL)"
             . " $whereUser "
             . " GROUP BY s.company_name");
         
@@ -783,7 +783,7 @@ class MapsService {
     public function getApplicationNotTPContainmentsYearMonth($year, $month)
     {
         // Define the initial WHERE clause based on certain conditions
-        $whereCondition = " AND a.emptying_status = true AND a.sludge_collection_status = false";
+        $whereCondition = " AND a.emptying_status > 0 AND (a.sludge_collection_status = 0 OR a.sludge_collection_status IS NULL)";
         // Append condition for filtering by year if provided
         if ($year) {
             $whereCondition .= " AND extract(year from application_date) = '$year'";
@@ -1616,7 +1616,7 @@ class MapsService {
             FROM fsm.containments c
             JOIN fsm.applications a ON a.containment_id = c.id AND a.deleted_at IS NULL
             WHERE c.deleted_at IS NULL
-            AND a.deleted_at is null AND a.emptying_status is false"
+            AND a.deleted_at is null AND (a.emptying_status = 0 OR a.emptying_status IS NULL)"
             . "$whereUser"
             . " AND a.proposed_emptying_date BETWEEN ? AND ?";
 

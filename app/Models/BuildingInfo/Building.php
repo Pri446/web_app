@@ -23,6 +23,7 @@ class Building extends Model
     protected $table = 'building_info.buildings';
     protected $primaryKey = 'bin';
     public $incrementing = false;
+    protected $keyType = 'string';
     protected $fillable = ["ward","road_code", "sewer_code","drain_code"];
     protected $with =['StructureType', 'FunctionalUse','SanitationSystem','Owners','Lic'];
     // public function sanitation_system_types(){

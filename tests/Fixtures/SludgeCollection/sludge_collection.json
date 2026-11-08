@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "test-data-description": "Valid sludge collection log creation with required fields",
+    "payload": {
+      "application_id": 1,
+      "treatment_plant_id": 1,
+      "date": "2026-09-20",
+      "entry_time": "10:00",
+      "exit_time": "11:00",
+      "tipping_fee_amount": 500,
+      "tipping_fee_receipt_no": "TIP-2026-001"
+    },
+    "expected": {
+      "tipping_fee_receipt_no": "TIP-2026-001",
+      "tipping_fee_amount": 500
+    }
+  },
+  {
+    "id": 2,
+    "test-data-description": "Empty payload for sludge collection creation triggers required field validation failure",
+    "payload": {
+      "treatment_plant_id": "",
+      "date": "",
+      "entry_time": "",
+      "exit_time": "",
+      "tipping_fee_amount": "",
+      "tipping_fee_receipt_no": ""
+    },
+    "validation_errors": [
+      "treatment_plant_id",
+      "date",
+      "entry_time",
+      "exit_time",
+      "tipping_fee_amount",
+      "tipping_fee_receipt_no"
+    ]
+  },
+  {
+    "id": 3,
+    "test-data-description": "Invalid exit_time before entry_time triggers exit_time validation failure",
+    "payload": {
+      "treatment_plant_id": 1,
+      "date": "2026-09-20",
+      "entry_time": "11:00",
+      "exit_time": "10:00",
+      "tipping_fee_amount": 500,
+      "tipping_fee_receipt_no": "TIP-2026-002"
+    },
+    "validation_errors": [
+      "exit_time"
+    ]
+  }
+]

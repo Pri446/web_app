@@ -37,26 +37,25 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 </div>
             </div>
             <div class="form-group row ">
-                {!! Form::label('no_of_trips',__('No. of Trips'),['class' => 'col-sm-3 control-label']) !!}
+                {!! Form::label('total_time',__('Total Time'),['class' => 'col-sm-3 control-label']) !!}
                 <div class="col-sm-6">
-                    {!! Form::label(null,$sludgeCollection->no_of_trips,['class' => 'form-control', 'placeholder' => __('No. of Trips')]) !!}
-                </div>
-            </div>
-             <div class="form-group row ">
-                {!! Form::label('date',__('Entry Time'),['class' => 'col-sm-3 control-label']) !!}
-                <div class="col-sm-6">
-                    {!! Form::label(null,$sludgeCollection->entry_time? date('h:i A', strtotime($sludgeCollection->entry_time)) : null,['class' => 'form-control']) !!}
-                </div>
-            </div>
-           
-            <div class="form-group row ">
-                {!! Form::label('date',__('Exit Time'),['class' => 'col-sm-3 control-label']) !!}
-                <div class="col-sm-6">
-                    {!! Form::label(null,$sludgeCollection->exit_time? date('h:i A', strtotime($sludgeCollection->exit_time)) : null,['class' => 'form-control']) !!}
+                    {!! Form::label(null,$sludgeCollection->total_time,['class' => 'form-control']) !!}
                 </div>
             </div>
             
-
+            <div class="form-group row ">
+                {!! Form::label('tipping_fee_receipt_no',__('Tipping Fee Receipt No'),['class' => 'col-sm-3 control-label']) !!}
+                <div class="col-sm-6">
+                    {!! Form::label(null,$sludgeCollection->tipping_fee_receipt_no,['class' => 'form-control']) !!}
+                </div>
+            </div>
+            
+            <div class="form-group row ">
+                {!! Form::label('tipping_fee_amount',__('Tipping Fee Amount'),['class' => 'col-sm-3 control-label']) !!}
+                <div class="col-sm-6">
+                    {!! Form::label(null,$sludgeCollection->tipping_fee_amount,['class' => 'form-control']) !!}
+                </div>
+            </div>
             
 
             <div class="form-group row">

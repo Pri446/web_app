@@ -15,6 +15,36 @@ class ServiceProviderCrudTest extends TestCase
 {
     use DatabaseTransactions;
 
+    public function test_provider_table_defaults_to_newest_first_and_allows_column_sorting(): void
+    {
+        $older = $this->createServiceProvider();
+        $older->company_name = 'ZZZ sorting ' . $older->id;
+        $older->created_at = now()->subDay();
+        $older->save();
+        $newer = $this->createServiceProvider();
+        $newer->company_name = 'AAA sorting ' . $newer->id;
+        $newer->created_at = now();
+        $newer->save();
+
+        $this->actingAs($this->testUser())->withoutMiddleware();
+        $parameters = [
+            'company_name' => 'sorting', 'ward' => '', 'email' => '',
+            'contact_person' => '', 'company_location' => '', 'status' => '',
+            'draw' => 1, 'start' => 0, 'length' => 10,
+            'columns' => [['data' => 'company_name', 'name' => 'company_name', 'orderable' => 'true']],
+        ];
+        $this->getJson('/fsm/service-providers/data?' . http_build_query($parameters))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $newer->id)
+            ->assertJsonPath('data.1.id', $older->id);
+
+        $parameters['order'] = [['column' => 0, 'dir' => 'desc']];
+        $this->getJson('/fsm/service-providers/data?' . http_build_query($parameters))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $older->id)
+            ->assertJsonPath('data.1.id', $newer->id);
+    }
+
     /** @test */
     public function it_creates_a_service_provider(): void
     {

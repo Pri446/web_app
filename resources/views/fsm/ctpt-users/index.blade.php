@@ -168,9 +168,13 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 var searchData = $('input[type=search]').val();
                 var toilet_id = $('#toilet_id').val();
                 var date = $('#date').val();
-                window.location.href = "{!! url('fsm/ctpt-users/export?searchData=') !!}" + searchData +
-                    "&toilet_id=" + $('#toilet_id').val() +
-                    "&date=" + $('#date').val();
+                window.globalLoader.download(
+                    "{!! url('fsm/ctpt-users/export?searchData=') !!}" + searchData +
+                        "&toilet_id=" + $('#toilet_id').val() +
+                        "&date=" + $('#date').val(),
+                    'ctpt-users.csv',
+                    this
+                ).catch(function () {});
             });
 
           

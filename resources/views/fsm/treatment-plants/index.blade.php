@@ -286,28 +286,38 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             caretaker_number = $('#caretaker_number').val();
                             status = $('#status').val();
                             type = $('#type').val();
-                            window.location.href = "{!! url('fsm/treatment-plants/export?searchData=') !!}" + searchData +
-                                "&name=" + name +
-                                "&caretaker_name=" + caretaker_name + "&caretaker_number=" +
-                                caretaker_number + "&capacity_per_day=" + capacity_per_day +
-                                "&status=" + status + "&type=" + type;
+                            window.globalLoader.download(
+                                "{!! url('fsm/treatment-plants/export?searchData=') !!}" + searchData +
+                                    "&name=" + name +
+                                    "&caretaker_name=" + caretaker_name + "&caretaker_number=" +
+                                    caretaker_number + "&capacity_per_day=" + capacity_per_day +
+                                    "&status=" + status + "&type=" + type,
+                                'treatment-plants.csv',
+                                this
+                            ).catch(function () {});
                         });
 
                         $("#export-shp").on("click", function(e) {
                             e.preventDefault();
                             var cql_param = getCQLParams();
-                            window.location.href =
+                            window.globalLoader.download(
                                 "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
-                                cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Treatment Plants.zip";
+                                    cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Treatment Plants.zip",
+                                'Treatment Plants.zip',
+                                this
+                            ).catch(function () {});
 
                         })
 
                         $("#export-kml").on("click", function(e) {
                             e.preventDefault();
                             var cql_param = getCQLParams();
-                            window.location.href =
+                            window.globalLoader.download(
                                 "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
-                                cql_param + " &outputFormat=KML&format_options=filename:Treatment Plants.kml";
+                                    cql_param + " &outputFormat=KML&format_options=filename:Treatment Plants.kml",
+                                'Treatment Plants.kml',
+                                this
+                            ).catch(function () {});
                         });
 
                         function getCQLParams() {

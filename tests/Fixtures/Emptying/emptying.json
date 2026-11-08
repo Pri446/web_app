@@ -1,0 +1,93 @@
+[
+  {
+    "id": 1,
+    "test-data-description": "Valid emptying service entry creation",
+    "payload": {
+      "application_id": 1,
+      "service_receiver_name": "Shyam Sundar",
+      "service_receiver_gender": "Male",
+      "service_receiver_contact": "9851122334",
+      "emptying_reason": "Full containment",
+      "volume_of_sludge": 1.0,
+      "desludging_vehicle_id": 1,
+      "treatment_plant_id": 1,
+      "driver": 1,
+      "emptier1": 1,
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "trip_count": 1,
+      "trip_no": 1,
+      "receipt_number": "REC-2026-001",
+      "total_cost": 2500
+    },
+    "expected": {
+      "service_receiver_name": "Shyam Sundar",
+      "service_receiver_contact": "9851122334",
+      "receipt_number": "REC-2026-001",
+      "total_cost": 2500
+    }
+  },
+  {
+    "id": 2,
+    "test-data-description": "Empty payload for emptying creation triggers required field validation failure",
+    "payload": {
+      "service_receiver_name": "",
+      "service_receiver_gender": "",
+      "service_receiver_contact": "",
+      "emptying_reason": "",
+      "volume_of_sludge": "",
+      "desludging_vehicle_id": "",
+      "treatment_plant_id": "",
+      "driver": "",
+      "emptier1": "",
+      "start_time": "",
+      "end_time": "",
+      "trip_count": "",
+      "trip_no": "",
+      "receipt_number": "",
+      "total_cost": ""
+    },
+    "validation_errors": [
+      "service_receiver_name",
+      "service_receiver_gender",
+      "service_receiver_contact",
+      "emptying_reason",
+      "volume_of_sludge",
+      "desludging_vehicle_id",
+      "treatment_plant_id",
+      "driver",
+      "emptier1",
+      "start_time",
+      "end_time",
+      "trip_count",
+      "trip_no",
+      "receipt_number",
+      "total_cost"
+    ]
+  },
+  {
+    "id": 3,
+    "test-data-description": "Sludge volume exceeding containment size triggers volume_of_sludge validation failure",
+    "payload": {
+      "application_id": 1,
+      "service_receiver_name": "Shyam Sundar",
+      "service_receiver_gender": "Male",
+      "service_receiver_contact": "9851122334",
+      "emptying_reason": "Full containment",
+      "volume_of_sludge": 999.0,
+      "desludging_vehicle_id": 1,
+      "treatment_plant_id": 1,
+      "driver": 1,
+      "emptier1": 1,
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "trip_count": 1,
+      "trip_no": 1,
+      "receipt_number": "REC-2026-999",
+      "total_cost": 2500
+    },
+    "validation_errors": [
+      "volume_of_sludge"
+    ]
+  }
+]

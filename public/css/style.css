@@ -273,6 +273,25 @@ Disable anchor tags
   flex-direction: column;
 }
 
+.global-loader-disabled {
+  pointer-events: none !important;
+}
+
+.global-loader-control {
+  cursor: wait !important;
+  opacity: 0.75;
+}
+
+.global-loader-spinner {
+  margin-left: 0.45rem;
+}
+
+.main-sidebar .global-loader-spinner {
+  float: right;
+  margin-top: 0.25rem;
+  margin-right: 0.25rem;
+}
+
 
 /* ///////////////LANDING PAGE/////////////////// */
 

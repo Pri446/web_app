@@ -1,0 +1,53 @@
+[
+  {
+    "id": 1,
+    "test-data-description": "Valid ANF application creation with required fields",
+    "payload": {
+      "is_anf": "1",
+      "anf_ward": 1,
+      "anf_locality": "Test Locality",
+      "anf_nearest_locality": "Test Landmark",
+      "customer_name": "Ram Bahadur",
+      "customer_gender": "Male",
+      "customer_contact": "9841234567",
+      "applicant_name": "Hari Prasad",
+      "applicant_gender": "Male",
+      "applicant_contact": "9841987654",
+      "service_provider_id": 1,
+      "desludging_vehicle_size": "5000",
+      "landmark": "Near Main Market"
+    },
+    "expected": {
+      "applicant_name": "Hari Prasad",
+      "applicant_contact": "9841987654",
+      "customer_name": "Ram Bahadur",
+      "service_provider_id": 1
+    }
+  },
+  {
+    "id": 2,
+    "test-data-description": "Empty payload for application creation triggers required field validation failure",
+    "payload": {
+      "road_code": "",
+      "bin": "",
+      "customer_name": "",
+      "customer_gender": "",
+      "applicant_name": "",
+      "applicant_gender": "",
+      "applicant_contact": "",
+      "service_provider_id": "",
+      "desludging_vehicle_size": ""
+    },
+    "validation_errors": [
+      "road_code",
+      "bin",
+      "customer_name",
+      "customer_gender",
+      "applicant_name",
+      "applicant_gender",
+      "applicant_contact",
+      "service_provider_id",
+      "desludging_vehicle_size"
+    ]
+  }
+]

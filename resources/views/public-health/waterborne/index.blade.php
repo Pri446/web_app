@@ -172,9 +172,13 @@ $(function() {
         var searchData = $('input[type=search]').val();
                 var infected_disease = $('#infected_disease').val();
                 var year = $('#year').val();
-        window.location.href = "{!! url('publichealth/waterborne/export?searchData=') !!}" + searchData +
-            "&year=" + $('#year option:selected ').val()+
-            "&infected_disease=" + $('#infected_disease option:selected ').val()
+        window.globalLoader.download(
+            "{!! url('publichealth/waterborne/export?searchData=') !!}" + searchData +
+                "&year=" + $('#year option:selected ').val() +
+                "&infected_disease=" + $('#infected_disease option:selected ').val(),
+            'waterborne-cases.csv',
+            this
+        ).catch(function () {});
 
     })
 
