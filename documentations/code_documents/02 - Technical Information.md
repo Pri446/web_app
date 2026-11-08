@@ -95,6 +95,14 @@ When a user login normally, session expires in two hours for now. It can be chan
 
 When a user login with remember me, session will be stored in cookie and it will expire when cookie expires. For now, cookie expiry time is 3 days. It can also be changed via .env file with REMEMBER_ME variable.
 
+## Authentication and Web Security Reference
+
+The release requirements for clickjacking protection (BASEIMIS-41), login rate limiting (BASEIMIS-44), and password-reset account privacy (BASEIMIS-47) are documented in [24 - Authentication and Web Security](24%20-%20Authentication%20and%20Web%20Security.md). That document identifies the application files, expected responses, test coverage, and deployment checks.
+
+Deployment configuration includes the six `LOGIN_RATE_LIMIT_*` settings, explicit `TRUSTED_PROXIES`, a shared cache such as Redis when multiple application servers are used, and working reset-email delivery. Laravel owns the anti-framing headers; Nginx and other forwarding services must preserve them without duplication or conflicting values. Rebuild the application configuration cache after environment changes, following the secure deployment sequence documented below.
+
+These requirements apply when the release contains the corresponding application fixes. Documentation alone does not enable them. The three fixes introduce no database schema or relationship changes.
+
 ## NPM Package Manager
 
 The system uses NPM for package management. All packages that are required is installed using NPM. The installed package is then initialized in the app.js file found in app/resources/js/app.js and app/resources/js/bootstrap.js. Similarly, the css files of the package is initialized in the app.scss file found in app/resources/sass/app.scss. The files to be initialized can be found inside the node_modules.
@@ -510,4 +518,174 @@ The .env file for the project is present in the .env.example file. Ensure necess
 
 | \#GEOSERVER GEOSERVER_WORKSPACE = [workspace_name] GEOSERVER = http://[server_url]/geoserver/ GEOSERVER_URL = http://[server_url]/geoserver/[workspace_name] AUTH_KEY = [auth_key] |
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+## Secure Deployment User Seeding
+
+### Overview
+
+Deployment user accounts must not use fixed usernames, email addresses, or plaintext passwords stored in Laravel seeders, source code, comments, documentation, pipeline definitions, or Ansible inventory.
+
+Seed-user values are supplied at deployment time through protected environment variables. Laravel reads those variables through `config/seed_users.php`. Application code and seeders use `config('seed_users.accounts')` and must not call `env()` directly for seed-user values.
+
+This implementation addresses Jira issue `BASEIMIS-40` and keeps the standard deployment command fully automated and non-interactive.
+
+### Relevant Application Files
+
+| File | Responsibility |
+|------|----------------|
+| `.env.example` | Lists the required `SEED_*` variable names with empty values only. |
+| `config/seed_users.php` | Maps deployment environment variables into Laravel configuration and declares the required account roles. |
+| `app/Services/Deployment/SeedUserConfigurationValidator.php` | Validates required values, formats, password policy, and duplicate usernames or email addresses. |
+| `app/Exceptions/SeedUserConfigurationException.php` | Provides a generic exception containing safe variable names or configuration keys only. |
+| `app/Console/Commands/ValidateSeedUserConfiguration.php` | Implements the non-interactive deployment pre-check. |
+| `app/Console/Kernel.php` | Registers the validation command. |
+| `database/seeders/UsersTableSeeder.php` | Validates configuration, creates missing accounts, hashes initial passwords, and assigns roles. |
+| `database/factories/UserFactory.php` | Generates a random password for each factory-created user instead of using a shared default. |
+| `scripts/deployment/migrate-with-seed-user-check.sh` | Runs validation before migration and seeding using fail-fast execution. |
+
+### Environment Variable Pattern
+
+Each approved deployment account requires the following variables:
+
+```text
+SEED_<ACCOUNT>_NAME=
+SEED_<ACCOUNT>_USERNAME=
+SEED_<ACCOUNT>_EMAIL=
+SEED_<ACCOUNT>_PASSWORD=
+```
+
+The exact inventory is maintained in `.env.example`. Values in `.env.example` must remain empty.
+
+Actual values must come from one of the following approved sources:
+
+- Protected and masked CI/CD variables.
+- Ansible Vault.
+- An approved external secret manager.
+
+Secret values must not be passed as command-line arguments or printed through `echo`, `env`, `printenv`, `dump()`, `dd()`, `var_dump()`, application logging, or Ansible debug tasks.
+
+### Configuration Validation
+
+Before migrations or seeders are executed, run:
+
+```sh
+php artisan seed-users:validate-config
+```
+
+The command is non-interactive and has the following behavior:
+
+| Configuration state | Exit behavior |
+|---------------------|---------------|
+| Complete and valid | Exit code `0`; deployment may continue. |
+| Missing or invalid | Non-zero exit code; deployment must stop before migration. |
+
+The validator checks:
+
+- Required name, username, email, password, role, and user-type configuration.
+- Username format and length.
+- Email format and length.
+- Password compliance with the application's minimum structural password policy.
+- Case-insensitive duplicate usernames.
+- Case-insensitive duplicate email addresses.
+
+Validation errors may identify a safe environment-variable name or account key. They must never contain the supplied username, email address, password, or complete configuration array.
+
+### Seeder Behavior
+
+`UsersTableSeeder` independently invokes the shared validator before starting database writes. The CI/CD check is therefore not the only security control.
+
+After successful validation, the seeder:
+
+1. Processes provisioning inside a database transaction.
+2. Locates an existing account by its configured stable username.
+3. Creates the user only when the username does not already exist.
+4. Hashes the supplied password only during initial account creation.
+5. Assigns the required role idempotently.
+6. Does not reset or overwrite an existing user's password during repeated deployment.
+
+Existing passwords must be changed through an approved credential-rotation or administrative workflow, not through normal deployment seeding.
+
+### Deployment Sequence
+
+The required deployment order is:
+
+```text
+Load protected SEED_* variables
+            ↓
+Clear stale Laravel configuration cache
+            ↓
+Validate seed-user configuration
+            ↓
+Stop on validation failure
+            ↓
+Run migrations and seeders
+            ↓
+Remove seed-user variables from the command environment
+            ↓
+Rebuild the normal Laravel configuration cache without seed passwords
+```
+
+Commands:
+
+```sh
+php artisan config:clear
+php artisan seed-users:validate-config
+php artisan migrate --seed --force
+php artisan config:cache
+```
+
+The protected `SEED_*` environment must be available to `config:clear`, validation, migration, and seeding. The final `config:cache` command must execute in a clean process that does not receive seed-password variables. This prevents seed passwords from remaining in `bootstrap/cache/config.php` during normal application runtime.
+
+### CI/CD Requirements
+
+The CI/CD pipeline must:
+
+- Mark supported secret variables as protected and masked.
+- Disable shell tracing for secret-bearing steps.
+- Run validation before migration.
+- Preserve the validator's non-zero failure status.
+- Never use `allow_failure`, `continue-on-error`, `ignore_errors`, `|| true`, or an equivalent bypass for validation.
+- Run `php artisan migrate --seed --force` only after validation succeeds.
+- Prevent secrets from entering logs, artifacts, retry files, notifications, or support bundles.
+- Run an approved secret scanner against current source and reachable Git history.
+
+### Ansible Requirements
+
+Ansible must load the complete variable inventory from Vault or an approved secret manager and pass it through the task environment.
+
+```yaml
+- name: Validate deployment seed-user configuration
+  ansible.builtin.command: php artisan seed-users:validate-config
+  args:
+    chdir: "{{ application_path }}"
+  environment: "{{ seed_user_environment }}"
+  no_log: true
+
+- name: Run migrations and seeders after validation
+  ansible.builtin.command: php artisan migrate --seed --force
+  args:
+    chdir: "{{ application_path }}"
+  environment: "{{ seed_user_environment }}"
+  no_log: true
+```
+
+Every Ansible task that receives `seed_user_environment` must use `no_log: true`. The mapping must not be printed, registered and debugged, serialized into artifacts, or included in command strings. Validation failure must stop the play before database changes.
+
+### Credential Containment and Security Verification
+
+Source-code remediation does not make previously exposed credentials safe. Before release:
+
+1. Rotate or disable every exposed credential in every environment.
+2. Check other systems for password reuse.
+3. Invalidate active sessions, remember-me sessions, and API tokens.
+4. Review authentication and administrative logs for suspicious activity.
+5. Run an approved secret scanner against current source and reachable Git history.
+6. Coordinate Git-history cleanup only after credential rotation.
+7. Confirm that previously exposed credentials no longer authenticate.
+8. Confirm that repeated deployment does not reset an existing password.
+9. Complete VAPT security retesting before closing the finding.
+
+### Database and Data Dictionary Impact
+
+This remediation introduces no database table, column, relationship, constraint, or data-type change. It does not require a database migration or a data-dictionary update. Existing user, role, and role-assignment tables remain unchanged.
 

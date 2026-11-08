@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Http\Middleware\PreventClickjacking;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 use Redirect;
@@ -44,9 +45,13 @@ class Handler extends ExceptionHandler
     public function render($request, Throwable $exception)
     {
         if ($exception instanceof PostTooLargeException) {
-             return redirect()->back()->with('error', 'The uploaded file is too large. Please upload a file smaller than the allowed size.' ); // 413 Payload Too Large
+             $response = redirect()->back()->with('error', 'The uploaded file is too large. Please upload a file smaller than the allowed size.' ); // 413 Payload Too Large
+        } else {
+            $response = parent::render($request, $exception);
         }
 
-        return parent::render($request, $exception);
+        $response->prepare($request);
+
+        return app(PreventClickjacking::class)->applyHeaders($response);
     }
 }
