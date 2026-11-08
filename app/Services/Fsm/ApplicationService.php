@@ -1,6 +1,6 @@
 <?php
 // Last Modified Date: 11-04-2024
-// Developed By: Innovative Solution Pvt. Ltd. (ISPL)  
+// Developed By: Innovative Solution Pvt. Ltd. (ISPL)
 namespace App\Services\Fsm;
 
 use App\Classes\FormField;
@@ -26,6 +26,7 @@ use App\Models\UtilityInfo\Roadline;
 use Carbon\Carbon;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
 use Venturecraft\Revisionable\Revision;
@@ -39,6 +40,8 @@ use App\Models\Fsm\VacutugType;
 use App\Enums\ApplicationStatus;
 use App\Enums\FeedbackStatus;
 use App\Models\Fsm\Emptying;
+use App\Services\ApplicationCustomerPiiPresenter;
+use App\Services\OwnerPiiPresenter;
 
 
 class ApplicationService
@@ -51,14 +54,19 @@ class ApplicationService
     protected $createPartialForm, $createFormFields, $createFormAction;
     protected $showFormFields, $editFormFields, $filterFormFields;
     protected $reportRoute;
+    private ApplicationCustomerPiiPresenter $customerPiiPresenter;
+    private OwnerPiiPresenter $ownerPiiPresenter;
     /**
      * Constructs a new ApplicationService object.
      *
      *
      */
-    public function __construct()
-    {
-
+    public function __construct(
+        ApplicationCustomerPiiPresenter $customerPiiPresenter,
+        OwnerPiiPresenter $ownerPiiPresenter
+    ) {
+        $this->customerPiiPresenter = $customerPiiPresenter;
+        $this->ownerPiiPresenter = $ownerPiiPresenter;
         $this->createPartialForm = 'fsm.application.partial-form';
         $nextSpId = $this->getNextServiceProviderId();
         $nextSpName = $this->getNextServiceProviderName();
@@ -243,7 +251,6 @@ class ApplicationService
                     inputId: 'applicant_name',
                     placeholder: __('Applicant Name'),
                 ),
-
             ],
             [
                 new FormField(
@@ -343,6 +350,17 @@ class ApplicationService
                     inputId: 'date_to',
                     required: true,
                     placeholder: __('Date To'),
+                ),
+                // Owner Name is conditional on an active PII reveal. Keeping
+                // it in the final group prevents a visible gap between normal
+                // filters when the field is omitted from the locked UI.
+                new FormField(
+                    label: __('Owner Name'),
+                    labelFor: 'customer_name',
+                    labelClass: 'col-md-2 col-form-label ',
+                    inputType: 'text',
+                    inputId: 'customer_name',
+                    placeholder: __('Owner Name'),
                 ),
             ],
         ];
@@ -516,7 +534,7 @@ class ApplicationService
      *
      * @return array
      */
-    public function getShowFormFields($application)
+    public function getShowFormFields($application, bool $revealCustomerPii = false)
     {
         $isAnf = (bool) $application->is_anf;
         $address = $isAnf
@@ -588,6 +606,12 @@ class ApplicationService
                 ),
             ];
 
+        // Decryption is explicit and occurs only after the controller has
+        // verified the temporary Application customer-PII grant.
+        $customerPii = $revealCustomerPii
+            ? $this->customerPiiPresenter->presentPlaintext($application)
+            : $this->customerPiiPresenter->presentMasked($application);
+
         $this->showFormFields = [
             [
                 "title" => $isAnf ? __('Address (House Number Unknown)') : __('Address'),
@@ -604,22 +628,21 @@ class ApplicationService
                         labelFor: 'customer_name',
                         inputType: 'label',
                         inputId: 'customer_name',
-                        labelValue: $application->customer_name  ?? __('Owner Name'),
+                        labelValue: $customerPii['customer_name'],
                     ),
                     new FormField(
                         label: __('Owner Gender'),
                         labelFor: 'customer_gender',
                         inputType: 'label',
                         inputId: 'customer_gender',
-                        labelValue: $application->customer_gender  ?? __('Owner Gender'),
+                        labelValue: $customerPii['customer_gender'],
                     ),
                     new FormField(
                         label: __('Owner Contact (Phone)'),
                         labelFor: 'customer_contact',
                         inputType: 'label',
                         inputId: 'customer_contact',
-                        labelValue: $application->customer_contact ?? __('Owner Contact (Phone)'),
-
+                        labelValue: $customerPii['customer_contact'],
                     ),
                 ],
             ];
@@ -681,7 +704,7 @@ class ApplicationService
      *
      * @return array
      */
-    public function getEditFormFields($application)
+    public function getEditFormFields($application, bool $revealCustomerPii = false)
     {
         // Load service provider relation if not already loaded
         $application->loadMissing('service_provider');
@@ -741,7 +764,6 @@ class ApplicationService
                     inputId: 'anf_ward',
                     selectValues: Ward::orderBy('ward')->pluck('ward', 'ward')->toArray(),
                     selectedValue: old('anf_ward', $application->ward),
-                    required: true,
                     placeholder: __('Ward Number')
                 ),
                 new FormField(
@@ -750,7 +772,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_locality',
                     inputValue: old('anf_locality', $application->anf_locality),
-                    required: true,
                     placeholder: __('Locality Name')
                 ),
                 new FormField(
@@ -759,7 +780,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_nearest_locality',
                     inputValue: old('anf_nearest_locality', $application->anf_nearest_locality),
-                    required: true,
                     placeholder: __('Nearest Landmark')
                 ),
             ]
@@ -804,6 +824,10 @@ class ApplicationService
                 ),
             ];
 
+        $customerPii = $revealCustomerPii
+            ? $this->customerPiiPresenter->presentPlaintext($application)
+            : $this->customerPiiPresenter->presentMasked($application);
+
         $this->editFormFields = [
             [
                 "title" => $isAnf ? __('Address (House Number Unknown)') : __('Address'),
@@ -820,9 +844,9 @@ class ApplicationService
                         labelFor: 'customer_name',
                         inputType: 'text',
                         inputId: 'customer_name',
-                        inputValue: $application->customer_name,
+                        inputValue: $customerPii['customer_name'],
                         placeholder: __('Owner Name'),
-                        disabled: true
+                        disabled: !$revealCustomerPii
                     ),
                     new FormField(
                         label: __('Owner Gender'),
@@ -830,18 +854,18 @@ class ApplicationService
                         inputType: 'select',
                         inputId: 'customer_gender',
                         selectValues: ["Male" => "Male", "Female" => "Female", "Others" => "Others"],
-                        selectedValue: $application->customer_gender,
+                        selectedValue: $customerPii['customer_gender'],
                         placeholder: __('Owner Gender'),
-                        disabled: true
+                        disabled: !$revealCustomerPii
                     ),
                     new FormField(
                         label: __('Owner Contact (Phone)'),
                         labelFor: 'customer_contact',
-                        inputType: 'number',
+                        inputType: 'text',
                         inputId: 'customer_contact',
-                        inputValue: $application->customer_contact,
+                        inputValue: $customerPii['customer_contact'],
                         placeholder: __('Owner Contact (Phone)'),
-                        disabled: true,
+                        disabled: !$revealCustomerPii,
                     ),
                 ],
             ];
@@ -1002,21 +1026,45 @@ class ApplicationService
      */
     public function getAllApplications(Request $request)
     {
+        // Select only columns consumed by the table. Applicant name/contact
+        // are the operational fields displayed by the v2.0.3 Application
+        // list. Encrypted customer/owner PII is intentionally not included in
+        // the DataTable JSON response, even while owner lookup mode is active.
+        $columns = [
+            'applications.id',
+            'applications.bin',
+            'applications.containment_id',
+            'applications.application_date',
+            'applications.proposed_emptying_date',
+            'applications.road_code',
+            'applications.applicant_name',
+            'applications.applicant_contact',
+            'applications.emptying_status',
+            'applications.sludge_collection_status',
+            'applications.feedback_status',
+            'applications.trip_count',
+            'applications.ward',
+            'applications.service_provider_id',
+            'building_info.buildings.house_number AS house_address',
+        ];
 
         if (Auth::user()->hasRole('Service Provider - Admin') || Auth::user()->hasRole('Service Provider - Help Desk')) {
-            return  Application::select('applications.*', 'building_info.buildings.house_number AS house_address')
+            return Application::select($columns)
+                ->setEagerLoads([])
                 ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')
                 ->whereNull('applications.deleted_at')
                 ->where('applications.service_provider_id', Auth::user()->service_provider_id);
         } else if (Auth::user()->hasRole('Treatment Plant - Admin')) {
-            return Application::select('applications.*', 'building_info.buildings.house_number AS house_address')
+            return Application::select($columns)
+                ->setEagerLoads([])
                 ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')->whereHas("emptying", function ($q) use ($request) {
                     $q->where("treatment_plant_id", "=", Auth::user()->treatment_plant_id)
                         ->whereIn('emptying_status', [1, 2])
                         ->whereNull('deleted_at');
                 });
         } else {
-            return Application::select('applications.*', 'building_info.buildings.house_number AS house_address')
+            return Application::select($columns)
+                ->setEagerLoads([])
                 ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')
                 ->whereNull('applications.deleted_at');
         }
@@ -1028,12 +1076,38 @@ class ApplicationService
      * @return DataTables
      * @throws Exception
      */
-    public function getDatatable(Request $request)
+    public function getDatatable(
+        Request $request,
+        bool $revealCustomerPii = false
+    )
     {
+        $matchingApplicationIds = null;
+        $customerNameSearch = mb_substr(
+            trim((string) $request->input('customer_name', '')),
+            0,
+            100
+        );
+
+        if ($revealCustomerPii && $customerNameSearch !== '') {
+            $matchingApplicationIds = [];
+
+            // Randomized AES-GCM cannot support SQL LIKE. The temporary
+            // compatibility search decrypts names in PHP only when unlocked.
+            foreach (Application::select(['id', 'customer_name'])->cursor() as $application) {
+                $ciphertext = $application->getAttributes()['customer_name'] ?? null;
+
+                if ($this->customerPiiPresenter->customerNameContains(
+                    $ciphertext,
+                    $customerNameSearch
+                )) {
+                    $matchingApplicationIds[] = $application->id;
+                }
+            }
+        }
 
         return DataTables::of($this->getAllApplications($request))
 
-            ->filter(function ($query) use ($request) {
+            ->filter(function ($query) use ($request, $matchingApplicationIds) {
                 if ($request->bin) {
                     $query->whereHas('buildings', function ($query) use ($request) {
                         $query->where('bin', 'ILIKE', '%' . $request->bin . '%');
@@ -1045,6 +1119,9 @@ class ApplicationService
                 }
                 if ($request->applicant_name) {
                     $query->where('applicant_name', 'ILIKE', '%' . $request->applicant_name . '%');
+                }
+                if ($matchingApplicationIds !== null) {
+                    $query->whereIn('applications.id', $matchingApplicationIds);
                 }
                 if ($request->ward) {
                     $query->where('applications.ward', $request->ward);
@@ -1308,8 +1385,11 @@ class ApplicationService
         if ($request->validated()) {
             try {
                 DB::transaction(function () use ($request, $isAnf) {
-
                     $appData = $request->all();
+                    $customerName = $request->input('customer_name');
+                    $customerContact = $request->input('customer_contact');
+                    $customerGender = $request->input('customer_gender');
+
                     if ($isAnf) {
                         $appData['road_code'] = null;
                         $appData['bin'] = null;
@@ -1319,7 +1399,25 @@ class ApplicationService
                     } else {
                         $appData['anf_locality'] = null;
                         $appData['anf_nearest_locality'] = null;
+                        $sourceBuilding = Building::where('bin', '=', $request->bin)->firstOrFail();
+                        $sourceOwner = $sourceBuilding->owners;
+                        $ownerPii = $sourceOwner
+                            ? $this->ownerPiiPresenter->presentPlaintext($sourceOwner)
+                            : [];
+                        $customerName = $request->filled('customer_name')
+                            ? $request->input('customer_name')
+                            : ($ownerPii['owner_name'] ?? null);
+                        $customerContact = $request->filled('customer_contact')
+                            ? $request->input('customer_contact')
+                            : ($ownerPii['owner_contact'] ?? null);
+                        $customerGender = $request->filled('customer_gender')
+                            ? $request->input('customer_gender')
+                            : ($ownerPii['owner_gender'] ?? null);
                     }
+
+                    $appData['customer_name'] = $customerName;
+                    $appData['customer_contact'] = $customerContact;
+                    $appData['customer_gender'] = $customerGender;
 
                     // ✅ Single create call
                     $application = Application::create($appData);
@@ -1341,9 +1439,9 @@ class ApplicationService
                         $application->ward             = $request->anf_ward;
                         $application->anf_locality     = $request->anf_locality;
                         $application->anf_nearest_locality = $request->anf_nearest_locality;
-                        $application->customer_name    = $request->customer_name ?? null;
-                        $application->customer_contact = $request->customer_contact ?? null;
-                        $application->customer_gender  = $request->customer_gender ?? null;
+                        $application->customer_name    = $customerName;
+                        $application->customer_contact = $customerContact;
+                        $application->customer_gender  = $customerGender;
                     } else {
                         // ---- NORMAL PATH: existing BIN/building logic ----
                         $application->anf_locality     = null;
@@ -1353,15 +1451,17 @@ class ApplicationService
                         $owner    = $building->owners;
 
                         $application->containment_id   = $request->containment_id;
-                        $application->customer_name    = $request->customer_name    ?? $owner->owner_name;
-                        $application->customer_contact = $request->customer_contact ?? $owner->owner_contact;
-                        $application->customer_gender  = $request->customer_gender  ?? $owner->owner_gender;
+                        $application->customer_name    = $customerName;
+                        $application->customer_contact = $customerContact;
+                        $application->customer_gender  = $customerGender;
 
-                        $owner->fill([
-                            "owner_name"    => $request->customer_name    ?? $owner->owner_name,
-                            "owner_gender"  => $request->customer_gender  ?? $owner->owner_gender,
-                            "owner_contact" => $request->customer_contact ?? $owner->owner_contact,
-                        ])->save();
+                        if ($owner) {
+                            $owner->fill([
+                                "owner_name"    => $customerName,
+                                "owner_gender"  => $customerGender,
+                                "owner_contact" => $customerContact,
+                            ])->save();
+                        }
 
                         $building->fill([
                             "ward"      => $request->ward ?? $building->ward,
@@ -1385,9 +1485,9 @@ class ApplicationService
 
                     // ✅ Applicant autofill — works correctly for both paths
                     if ($request->autofill === 'on') {
-                        $application->applicant_name    = $application->customer_name    ?? null;
-                        $application->applicant_contact = $application->customer_contact ?? null;
-                        $application->applicant_gender  = $application->customer_gender  ?? null;
+                        $application->applicant_name    = $customerName;
+                        $application->applicant_contact = $customerContact;
+                        $application->applicant_gender  = $customerGender;
                     } else {
                         $application->applicant_name    = $request->applicant_name;
                         $application->applicant_contact = $request->applicant_contact;
@@ -1479,13 +1579,13 @@ class ApplicationService
                             $etoUserIds   = array_values(array_unique($etoUserIds));
                         }
                     }
-                   
+
                 });
             } catch (\Illuminate\Database\QueryException $e) {
                 \Log::error('Database error in application creation: ' . $e->getMessage());
                 return redirect()->back()->withInput()
                     ->with('error', __('Database error occurred. Please try again.'));
-                    
+
             } catch (\Throwable $e) {
                 \Log::error('Application creation failed: ' . $e->getMessage() . ' line ' . $e->getLine() . ' file ' . $e->getFile());
                 return redirect()->back()->withInput()
@@ -1543,26 +1643,20 @@ class ApplicationService
                 'bin',
                 'ward',
                 'containment_id',
-                'customer_name',
-                'customer_gender',
-                'customer_contact',
             ]));
+
+            // This attribute is intentionally assigned explicitly because it
+            // is not mass assignable on the Application model. Without this,
+            // the edit form appeared to accept a new capacity but the saved
+            // application retained its previous vehicle size.
+            $application->desludging_vehicle_size = $request->input('desludging_vehicle_size');
 
             if (!$isAnf) {
                 $building = Building::where('bin', '=', $application->bin)->firstOrFail();
-                $owner = $building->owners;
                 $application->containment_id = $request->containment_id ?? $application->containment_id;
-                $application->customer_name = $request->customer_name ?? $owner->owner_name;
-                $application->customer_contact = $request->customer_contact ?? $owner->owner_contact;
-                $application->customer_gender = $request->customer_gender ?? $owner->owner_gender;
-                $owner->fill(
-                    [
-                        "owner_name" => $request->customer_name ?? $owner->owner_name,
-                        "owner_gender" => $request->customer_gender ?? $owner->owner_gender,
-                        "owner_contact" => $request->customer_contact ?? $owner->owner_contact,
-                        "containment_id" => $request->containment_id ?? $application->containment_id
-                    ]
-                )->save();
+                // Customer snapshot and Building owner are independent after
+                // creation. Normal Application edits must not silently rewrite
+                // either identity from the other record.
                 $building->fill([
                     "ward" => $request->ward ?? $building->ward,
                     "road_code" => $request->road_code ?? $building->road_code
@@ -1619,7 +1713,6 @@ class ApplicationService
         // Retrieve request parameters
         $house_number = $request->bin;
         $house_address = $request->house_address;
-        $customer_name = $request->customer_name;
         $ward = $request->ward;
         $application_id = $request->application_id;
         $emptying_status = $request->emptying_status;
@@ -1637,9 +1730,6 @@ class ApplicationService
             __('BIN'),
             __('House Number'),
             __('Ward Number'),
-            __('Owner Name'),
-            __('Owner Gender'),
-            __('Owner Contact (Phone)'),
             __('Application Date'),
             __('Applicant Name'),
             __('Applicant Gender'),
@@ -1664,9 +1754,6 @@ class ApplicationService
                 'b.house_number as house_address',
                 'a.road_code',
                 'a.ward',
-                'a.customer_name',
-                'a.customer_gender',
-                'a.customer_contact',
                 'a.application_date',
                 'a.applicant_name',
                 'a.applicant_gender',
@@ -1701,10 +1788,6 @@ class ApplicationService
         }
         if (!empty($house_address)) {
             $query->where('b.house_number', 'ILIKE', '%' . $house_address . '%');
-        }
-
-        if (!empty($customer_name)) {
-            $query->where('a.customer_name', 'ILIKE', '%' . $customer_name . '%');
         }
         if (!empty($ward)) {
             $query->where('a.ward', $ward);
@@ -1753,9 +1836,6 @@ class ApplicationService
                     $application->bin,
                     $application->house_address,
                     $application->ward,
-                    $application->customer_name,
-                    $application->customer_gender,
-                    $application->customer_contact,
                     $application->application_date,
                     $application->applicant_name,
                     $application->applicant_gender,
@@ -1774,7 +1854,6 @@ class ApplicationService
                 $writer->addRow($values);
             }
         });
-
         // Close the CSV file
         $writer->close();
     }
@@ -1961,7 +2040,7 @@ class ApplicationService
 
         return PDF::View('fsm.applications.application_report', compact('application', 'containment'))->inline('Application Report.pdf');
     }
-    public function getBuildingDetails(Request $request)
+    public function getBuildingDetails(Request $request, bool $revealOwnerPii = false)
     {
         try {
             // Fetch building by BIN
@@ -1970,12 +2049,21 @@ class ApplicationService
 
             // Use the `getContainmentIds` function to fetch filtered containment IDs
             $containmentIds = $building->containments->pluck('id');
-            $containment_size = Containment::where('id', $building->containments->first()->id)->pluck('size')->first();
-    
+            $firstContainment = $building->containments->first();
+            $containmentSize = $firstContainment
+                ? Containment::where('id', $firstContainment->id)->value('size')
+                : null;
+
             // Fetch additional related data
             $owner = $building->owners;
             $road = $building->roadlines;
             $application = Application::orderBy('id', 'DESC')->where('bin', $request->bin)->first();
+
+            // Only a password-confirmed, authorized controller request can
+            // enable this flag. Never serialize the Owner model itself.
+            $ownerPii = $revealOwnerPii && $owner
+                ? $this->ownerPiiPresenter->presentPlaintext($owner)
+                : null;
 
             // Check if containments are empty
 
@@ -1986,9 +2074,11 @@ class ApplicationService
             // Return the response
             return JsonResponse::fromJsonString(json_encode([
                 'test' => $road,
-                "customer_name" => $owner->owner_name ?? null,
-                "customer_gender" => $owner->owner_gender ?? null,
-                "customer_contact" => $owner->owner_contact ?? null,
+                "customer_name" => $ownerPii['owner_name'] ?? null,
+                "customer_gender" => $ownerPii['owner_gender'] ?? null,
+                "customer_contact" => $ownerPii['owner_contact'] ?? null,
+                "owner_pii_locked" => !$revealOwnerPii,
+                "customer_pii_locked" => !$revealOwnerPii,
                 "road" => $road->code ?? null,
                 "building_accessible" => $building->desludging_vehicle_accessible ?? null,
                 "ward" => $building->ward ?? null,
@@ -1997,7 +2087,7 @@ class ApplicationService
                 "population_served" => $building->population_served ?? null,
                 "toilet_count" => $building->toilet_count ?? null,
                 "status" => !empty($containmentIds),
-                "containment_size" => $containment_size
+                "containment_size" => $containmentSize
 
             ]), 200);
         } catch (Throwable $e) {
@@ -2029,9 +2119,10 @@ class ApplicationService
 
     public function getNextServiceProviderId(?int $capacity = null): ?int
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true);
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order');
 
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
@@ -2042,9 +2133,11 @@ class ApplicationService
 
     public function getNextServiceProviderName(?string $capacity = null): ?string
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true)->with('service_provider');
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order')
+            ->with('service_provider');
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
         }
@@ -2095,8 +2188,10 @@ class ApplicationService
             throw new \Exception(__('This application is not an Address Not Found (ANF) application or has already been resolved.'));
         }
 
-        // Find containment by code field
-        $containment = Containment::where('id', $containmentCode)->firstOrFail();
+        // Find containment by id or public_id
+        $containment = Str::isUuid($containmentCode)
+            ? Containment::where('public_id', $containmentCode)->firstOrFail()
+            : Containment::where('id', $containmentCode)->firstOrFail();
 
         // Check no duplicate containment in applications table (covers both not started and in-progress multi-trip)
         $alreadyExists = Application::where('containment_id', $containment->id)
@@ -2109,7 +2204,9 @@ class ApplicationService
             throw new \Exception(__('Error! This containment already has a running application.'));
         }
 
-        $building = Building::where('bin', $bin)->firstOrFail();
+        $building = Str::isUuid($bin)
+            ? Building::where('public_id', $bin)->firstOrFail()
+            : Building::where('bin', $bin)->firstOrFail();
 
         // Ensure the containment belongs to the selected building
         if (!$building->containments()->where('containments.id', $containment->id)->exists()) {

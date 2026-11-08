@@ -9357,7 +9357,8 @@ $.ajax({
                 }
                 if (layer == 'buildings_tax_status_layer')
                 {
-                    params.PROPERTYNAME = 'tax_code,bin,ward,owner_name,owner_contact,due_year';
+                    // Property Tax map requests must never receive owner PII.
+                    params.PROPERTYNAME = 'tax_code,bin,ward,due_year';
                 }
                 if (layer == 'buildings_water_payment_status_layer')
                 {
@@ -11144,7 +11145,7 @@ $.ajax({
                     'roadlines_layer': 'code,name,carrying_width,hierarchy,surface_type,length,right_of_way',
                     'sewerlines_layer': 'code,diameter,location,length,road_code,treatmentplant_type',
                     'waterborne_hotspots_layer': 'hotspot_location,ward,disease_type,no_of_cases,male_cases,female_cases,other_cases,no_of_fatalities,male_fatalities,female_fatalities,other_fatalities,notes',
-                    'buildings_tax_status_layer': 'tax_code,bin,ward,owner_name,owner_contact,due_year',
+                    'buildings_tax_status_layer': 'tax_code,bin,ward,due_year',
                     'buildings_water_payment_status_layer': 'water_customer_id,bin,ward,customer_name,customer_contact,due_year',
                     'watersupply_network_layer': 'code,diameter,length,project_name,type,material_type',
                     'buildings_swm_payment_status_layer' : 'swm_customer_id,bin,ward,customer_name,customer_contact,due_year',
@@ -11465,7 +11466,7 @@ $.ajax({
 
             var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,owner_name,owner_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,due_year,geom&outputFormat=" + outputFormat;
 
             if (format === 'csv') {
                 fetch(exportLink)

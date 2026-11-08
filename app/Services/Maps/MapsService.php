@@ -1,6 +1,6 @@
 <?php
 // Last Modified Date: 12-04-2024
-// Developed By: Innovative Solution Pvt. Ltd. (ISPL)  
+// Developed By: Innovative Solution Pvt. Ltd. (ISPL)
 namespace App\Services\Maps;
 
 use App\BuildOwner;
@@ -84,7 +84,7 @@ class MapsService {
 
 
         $page_title = __("Map");
-        
+
         // Fetching road hierarchy data
         $roadHierarchy = Roadline::whereNotNull('hierarchy')->groupBy('hierarchy')->pluck('hierarchy','hierarchy');
          // Fetching road surface types data
@@ -92,8 +92,8 @@ class MapsService {
         $road_code = Roadline::get(['code', 'name'])->mapWithKeys(function ($item) {
             return [$item->code => ($item->name ? $item->code . ' - ' . $item->name : $item->code)];
         })->toArray();
-        $bboxValues = DB::select("SELECT 
-            (ST_XMin(bbox) || ',' || ST_YMin(bbox) || ',' || ST_XMax(bbox) || ',' || ST_YMax(bbox)) AS bbox_values 
+        $bboxValues = DB::select("SELECT
+            (ST_XMin(bbox) || ',' || ST_YMin(bbox) || ',' || ST_XMax(bbox) || ',' || ST_YMax(bbox)) AS bbox_values
             FROM (
                 SELECT ST_Extent(geom) AS bbox FROM layer_info.citypolys
             ) AS extent_subquery
@@ -107,8 +107,8 @@ class MapsService {
 
 
         $location = SewerLine::whereNotNull('location')->distinct('location')->pluck('location','location')->all();
-        
-        return view('maps.index', compact('page_title', 'wards', 'location','dueYears', 'maxDate','treatmentPlants', 
+
+        return view('maps.index', compact('page_title', 'wards', 'location','dueYears', 'maxDate','treatmentPlants',
         'minDate', 'bldguse', 'usecatg', 'pickWardResults', 'pickDateResults', 'pickStructureResults', 'cover_type','roadHierarchy', 'roadSurfaceTypes','surface_type',
         'bboxstring','road_code', 'approvedWmsServers'
     ));
@@ -116,18 +116,18 @@ class MapsService {
 
     /**
      * Retrieves the latitude and longitude coordinates of containment areas associated with a given building.
-     * 
+     *
      * @return array An array containing latitude and longitude coordinates of containment areas.
      */
 
-    public function getBuildingToContainment() 
+    public function getBuildingToContainment()
     {
 
         $bin = request()->bin;
         // query to retrieve latitude and longitude from the database
         $query = "SELECT ST_Y (ST_Transform (c.geom, 4326)) AS lat, ST_X (ST_Transform (c.geom, 4326)) AS long
                 FROM fsm.containments c
-                WHERE c.deleted_at IS NULL 
+                WHERE c.deleted_at IS NULL
                     AND c.id IN (
                         SELECT bc.containment_id
                         FROM building_info.build_contains bc
@@ -152,7 +152,7 @@ class MapsService {
 
     /**
      * Retrieves containment information for buildings based on a given containment ID.
-     * 
+     *
      * @return array Array containing building information including BIN and geometry.
      */
 
@@ -224,6 +224,7 @@ class MapsService {
      */
     public function containmentExtent($id, $value)
     {
+
             // Get the minimum X coordinate of the containment extent
             $xmin = array_pluck(DB::select(DB::raw("select st_xmin(ST_Extent(geom)) from fsm.containments where " . $id . " = '" . $value . "'")), 'st_xmin')[0];
             // Get the minimum Y coordinate of the containment extent
@@ -255,22 +256,22 @@ class MapsService {
      * @param mixed $value The attribute value.
      * @return array An array containing the extent (xmin, ymin, xmax, ymax) and centroid (lat, long) coordinates.
      */
-    public function buildingExtent($bin, $value) {
+    public function buildingExtent($public_id, $value) {
 
 
             $val1 = "building_info.buildings";
              // Get the minimum X coordinate of the building extent
-            $xmin = array_pluck(DB::select(DB::raw("select st_xmin(ST_Extent(geom)) from building_info.buildings where " . $bin . " = '" . $value . "'")), 'st_xmin')[0];
+            $xmin = array_pluck(DB::select(DB::raw("select st_xmin(ST_Extent(geom)) from building_info.buildings where " . $public_id . " = '" . $value . "'")), 'st_xmin')[0];
              // Get the minimum Y coordinate of the building extent
-            $ymin = array_pluck(DB::select(DB::raw("select st_ymin(ST_Extent(geom)) from building_info.buildings where " . $bin . " = '" . $value . "'")), 'st_ymin')[0];
+            $ymin = array_pluck(DB::select(DB::raw("select st_ymin(ST_Extent(geom)) from building_info.buildings where " . $public_id . " = '" . $value . "'")), 'st_ymin')[0];
              // Get the maximum X coordinate of the building extent
-            $xmax = array_pluck(DB::select(DB::raw("select st_xmax(ST_Extent(geom)) from building_info.buildings where " . $bin . " = '" . $value . "'")), 'st_xmax')[0];
+            $xmax = array_pluck(DB::select(DB::raw("select st_xmax(ST_Extent(geom)) from building_info.buildings where " . $public_id . " = '" . $value . "'")), 'st_xmax')[0];
              // Get the maximum Y coordinate of the building extent
-            $ymax = array_pluck(DB::select(DB::raw("select st_ymax(ST_Extent(geom)) from building_info.buildings where " . $bin . " = '" . $value . "'")), 'st_ymax')[0];
+            $ymax = array_pluck(DB::select(DB::raw("select st_ymax(ST_Extent(geom)) from building_info.buildings where " . $public_id . " = '" . $value . "'")), 'st_ymax')[0];
 
             // Get the latitude and longitude of the centroid of the building
-            $lat = array_pluck(DB::select(DB::raw("select ST_Y (ST_Transform (ST_Centroid(geom), 4326)) as lat from building_info.buildings where " . $bin . " = '" . $value . "'")), 'lat')[0];
-            $long = array_pluck(DB::select(DB::raw("select ST_X (ST_Transform (ST_Centroid(geom), 4326)) as long from building_info.buildings where " . $bin . " = '" . $value . "'")), 'long')[0];
+            $lat = array_pluck(DB::select(DB::raw("select ST_Y (ST_Transform (ST_Centroid(geom), 4326)) as lat from building_info.buildings where " . $public_id . " = '" . $value . "'")), 'lat')[0];
+            $long = array_pluck(DB::select(DB::raw("select ST_X (ST_Transform (ST_Centroid(geom), 4326)) as long from building_info.buildings where " . $public_id . " = '" . $value . "'")), 'long')[0];
 
             // Return an array containing the extent coordinates and centroid coordinates
             return array(
@@ -293,7 +294,7 @@ class MapsService {
      * @return array An array containing the xmin, ymin, xmax, ymax values of the extent, and the geometry of the linestring feature.
      */
 
-    public function lineStringExtent($layer, $code, $value) 
+    public function lineStringExtent($layer, $code, $value)
     {
            // Retrieve the minimum x-coordinate of the bounding box of the geometry
             $xmin = array_pluck(DB::select(DB::raw("select st_xmin(ST_Extent(geom)) from " . $layer . " where " . $code . " = '" . $value . "'")), 'st_xmin')[0];
@@ -312,11 +313,11 @@ class MapsService {
 
             // Return an array containing the bounding box coordinates and the geometry
             return array(
-                'xmin' => $xmin, 
-                'ymin' => $ymin, 
-                'xmax' => $xmax, 
-                'ymax' => $ymax, 
-                'geom' => $geom, 
+                'xmin' => $xmin,
+                'ymin' => $ymin,
+                'xmax' => $xmax,
+                'ymax' => $ymax,
+                'geom' => $geom,
             );
 
 
@@ -363,7 +364,7 @@ class MapsService {
      * @return array Containment survey extent containing xmin, ymin, xmax, ymax, latitude, and longitude.
      */
 
-    public function containmentSurveyExtent($param) 
+    public function containmentSurveyExtent($param)
     {
         $xmin = $ymin = $xmax = $ymax = $lat = $long = '';
         // Retrieve containment survey based on provided criteria ($val2 and $val3)
@@ -425,7 +426,7 @@ class MapsService {
      * @return array An array of containment connected to building coordinates.
      */
 
-    public function getContainmentBuildings($field, $value) 
+    public function getContainmentBuildings($field, $value)
     {
         // SQL query to select the bin, latitude, and longitude of buildings
         $query = "SELECT bin, ST_Y (ST_Transform (ST_Centroid(b.geom), 4326)) as lat, ST_X (ST_Transform (ST_Centroid(b.geom), 4326)) as long
@@ -465,7 +466,7 @@ class MapsService {
     public function getNearestRoad($lat,$long)
     {
         $r_lat = $r_long = '';
-        // SQL query to select road information and closest point   
+        // SQL query to select road information and closest point
         $r_query = "SELECT r.code, ST_AsEWKT(ref_geom),r.name, ST_Y(ST_ClosestPoint(ST_Transform(r.geom,4326), ref_geom)) As r_lat, ST_X(ST_ClosestPoint(ST_Transform(r.geom,4326), ref_geom)) As r_long"
             . " FROM utility_info.roads As r, ST_Transform(ST_SetSRID(ST_Point(?,?),4326),4326) AS ref_geom"
             . " WHERE ST_DWithin(ST_Transform(r.geom,4326), ref_geom, 1000)"
@@ -504,7 +505,7 @@ class MapsService {
             $whereUser = "";
         }
         // Construct the SQL query to retrieve application data.
-        $query = "SELECT 
+        $query = "SELECT
                 s.company_name, a.id AS application_id,a.bin,a.application_date, a.emptying_status, a.feedback_status, a.sludge_collection_status, c.id AS containment_id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
             FROM fsm.applications a
             LEFT JOIN building_info.buildings b ON a.bin = b.bin AND b.deleted_at IS NULL
@@ -546,7 +547,7 @@ class MapsService {
 
     public function getApplicationContainmentsYearMonth($year, $month)
     {
-        // initialize the variable 
+        // initialize the variable
         $whereCondition = "";
 
         // Add conditions based on the $year variable
@@ -565,7 +566,7 @@ class MapsService {
             $whereUser = "";
         }
         // Constructing the SQL query to retrieve application data with certain conditions
-        $query = "SELECT 
+        $query = "SELECT
                 a.id AS application_id,a.bin, s.company_name, a.emptying_status, a.feedback_status, a.sludge_collection_status, c.id AS containment_id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
             FROM fsm.applications a
             LEFT JOIN building_info.buildings b ON a.bin = b.bin AND b.deleted_at IS NULL
@@ -606,7 +607,7 @@ class MapsService {
     public function getApplicationNotTPOnDate($start_date)
     {
         // Construct the SQL query to retrieve application data along with relevant details
-        $query = "SELECT 
+        $query = "SELECT
                 a.id AS application_id,a.application_date,a.bin,e.emptied_date,s.id,s.company_name, a.emptying_status, a.feedback_status, c.id AS containment_id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
             FROM fsm.applications a
             LEFT JOIN building_info.buildings b ON a.bin = b.bin AND b.deleted_at IS NULL
@@ -675,7 +676,7 @@ class MapsService {
             $whereUser = "";
         }
         // Construct the SQL query to retrieve application data along with related information:
-        $query = "SELECT 
+        $query = "SELECT
                     a.id AS application_id,a.bin, s.company_name, a.emptying_status, a.feedback_status, a.sludge_collection_status, c.id AS containment_id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
                 FROM fsm.applications a
                 LEFT JOIN building_info.buildings b ON a.bin = b.bin AND b.deleted_at IS NULL
@@ -722,7 +723,7 @@ class MapsService {
             $whereUser = "";
         }
          // Construct the SQL query to retrieve application data along with related information:
-        $query = "SELECT 
+        $query = "SELECT
                 a.id AS application_id,a.bin,a.application_date,s.id,s.company_name,e.emptied_date, c.id AS containment_id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
             FROM fsm.applications a
             LEFT JOIN building_info.buildings b ON a.bin = b.bin AND b.deleted_at IS NULL
@@ -749,7 +750,7 @@ class MapsService {
             . " AND a.emptying_status > 0 AND (a.sludge_collection_status = 0 OR a.sludge_collection_status IS NULL)"
             . " $whereUser "
             . " GROUP BY s.company_name");
-        
+
         $data = array();
         // Iterate over the results and format them into an array
         foreach ($results as $row) {
@@ -793,7 +794,7 @@ class MapsService {
             $whereCondition .= " AND extract(month from application_date) = '$month'";
         }
          // Construct the SQL query to retrieve application data along with related information:
-        $query = "SELECT 
+        $query = "SELECT
                 a.id AS application_id,a.bin,a.application_date,e.emptied_date,s.id,s.company_name, a.emptying_status, a.feedback_status, c.id AS containment_id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
             FROM fsm.applications a
             LEFT JOIN building_info.buildings b ON a.bin = b.bin AND b.deleted_at IS NULL
@@ -855,9 +856,9 @@ class MapsService {
     public function getUniqueContainmentEmptiedCount($geom, $whereUser)
     {
           // Construct the SQL query to retrieve the count of unique containment units that have been emptied
-           
+
            $query = "SELECT COUNT(DISTINCT c.id) AS total_count
-                FROM fsm.containments c 
+                FROM fsm.containments c
                 LEFT JOIN building_info.build_contains bc ON bc.containment_id = c.id AND bc.deleted_at IS NULL
                 LEFT JOIN building_info.buildings b ON bc.bin = b.bin AND b.deleted_at IS NULL
                 LEFT JOIN fsm.applications ap ON ap.bin = b.bin AND ap.deleted_at IS NULL
@@ -868,7 +869,7 @@ class MapsService {
                 . " AND (ST_Intersects(c.geom, ST_GeomFromText('" . $geom . "', 4326)))"
                 . " $whereUser"
                 . " AND c.emptied_status is true";
-           
+
             $feedbacks = DB::select($query);
             if(!empty($feedbacks)) {
             return $feedbacks[0]->total_count;
@@ -876,7 +877,7 @@ class MapsService {
                 return 0;
             }
     }
-    
+
     /**
      * Retrieves the count of feedbacks based on the provided geometry and user-specific conditions.
      *
@@ -898,12 +899,12 @@ class MapsService {
                 . " ON s.id = ap.service_provider_id"
                 . " WHERE (ST_Intersects(b.geom, ST_GeomFromText('" . $geom . "', 4326)))"
                 . " $whereUser";
-             
+
            $feedbacks = DB::select($query);
            return $feedbacks[0]->total_count;
-           
+
     }
-    
+
     /**
      * Retrieves feedback data related to FSM (Fecal Sludge Management) service quality based on provided geometry and optional user conditions.
      *
@@ -929,7 +930,7 @@ class MapsService {
 
             return DB::select($query);
     }
-    
+
     public function getFeedbackServiceQualityItoPrice($geom, $whereUser)
     {
         $query2 = "SELECT  COUNT(fb.id)"
@@ -943,7 +944,7 @@ class MapsService {
                 . " ON s.id = ap.service_provider_id"
                 . " WHERE (ST_Intersects(b.geom, ST_GeomFromText('" . $geom . "', 4326)))"
                 . " $whereUser";
-                
+
 
             return DB::select($query2);
     }
@@ -973,7 +974,7 @@ class MapsService {
 
     /**
      * Retrieves summary information about buildings along specified road codes.
-     * 
+     *
      * @param array $roadCodes An array of road codes for which to retrieve building information.
      * @return array An array containing buildings information and summary HTML
      */
@@ -991,7 +992,7 @@ class MapsService {
             COUNT(b.bin) filter (where b.sanitation_system_id = '8')::integer AS open_ground,
             COUNT(b.bin) filter (where b.sanitation_system_id = '9')::integer AS community_toilet,
             COUNT(b.bin) filter (where b.sanitation_system_id = '10')::integer AS open_defacation
-                    FROM building_info.buildings b 
+                    FROM building_info.buildings b
                     LEFT JOIN building_info.structure_types st ON b.structure_type_id = st.id"
                 . " WHERE b.road_code IN (" . implode(',', $roadCodes) . ")"
                 . "  AND b.deleted_at is null"
@@ -1017,7 +1018,7 @@ class MapsService {
             COUNT(b.bin) filter (where b.sanitation_system_id = '8')::integer AS open_ground,
             COUNT(b.bin) filter (where b.sanitation_system_id = '9')::integer AS community_toilet,
             COUNT(b.bin) filter (where b.sanitation_system_id = '10')::integer AS open_defacation
-                    FROM building_info.buildings b 
+                    FROM building_info.buildings b
                     LEFT JOIN building_info.structure_types st ON b.structure_type_id = st.id"
                 . " WHERE b.road_code IN (" . implode(',', $roadCodes) . ")"
                 . "  AND b.deleted_at is null"
@@ -1026,7 +1027,7 @@ class MapsService {
             $buildingResults = DB::select($buildingQuery);
              // Generate HTML content for popup based on summary data
             $popContentsHtml = $this->popUpContentHtml($buildingResults);
-            
+
             // Return the result as an array containing buildings information and summary HTML
             return ['buildings' => $buildings, 'summary' => $popContentsHtml];
 
@@ -1053,7 +1054,7 @@ class MapsService {
             $building['geom'] = $row1->geom;
             $buildings[] = $building;
         }
-        // Query to use a function to get point buffer buildings 
+        // Query to use a function to get point buffer buildings
         $buildingQuery = "Select * from fnc_getPointBufferBuildings($long::float, $lat::float, $distance);";
         $buildingResults = DB::select($buildingQuery);
         $popContentsHtml = $this->popUpContentHtml($buildingResults);
@@ -1096,7 +1097,7 @@ class MapsService {
             $building['geom'] = $row1->geom;
             $buildings[] = $building;
         }
-        // Query to use a function to get point buffer buildings 
+        // Query to use a function to get point buffer buildings
         $buildingQuery = "Select * from fnc_getPointBufferBuildings($long::float, $lat::float, $distance);";
         $buildingResults = DB::select($buildingQuery);
         $popContentsHtml = $this->popUpContentHtml($buildingResults);
@@ -1124,10 +1125,10 @@ class MapsService {
             $polygon_query = "SELECT ST_AsText(ST_Buffer(ST_GeomFromText('" . $bufferPolygonGeom . "', 4326)::GEOGRAPHY, " . $bufferDistancePolygon . ")) AS circle_geog";
             $polygon_result = DB::select($polygon_query);
             $polygon = $polygon_result[0]->circle_geog;
-    
+
             // Use array_push to add the polygon to the polygons array
             array_push($polygons, $polygon);
-    
+
             // Query to retrieve buildings that intersect with the buffer polygon
             $building_query = "SELECT b.bin, ST_AsText(b.geom) AS geom"
                 . " FROM building_info.buildings b"
@@ -1138,26 +1139,26 @@ class MapsService {
                 . " GROUP BY b.bin, b.structure_type_id, s.id ORDER BY s.id ASC";
             $results1 = DB::select($building_query);
             // Process building results and collect them
-           
+
             $allBuildings = array_merge($allBuildings, $results1);
             // Query to retrieve buildings using the stored function (this replicates the previous logic)
             $buildingQuery = "SELECT * FROM fnc_getBufferPolygonBuildings(ST_GeomFromText('" . $bufferPolygonGeom . "', 4326), $bufferDistancePolygon);";
             $buildingResults = DB::select($buildingQuery);
-    
+
             // Accumulate the results of the building function for all buffer polygons
              $allBuildingResults = array_merge($allBuildingResults, $buildingResults);
         }
-   
+
 
         foreach ($allBuildings as $row1) {
-            
+
             $building = [
                 'gid' => $row1->bin,
                 'geom' => $row1->geom
             ];
             $buildings[] = $building;
         }
-      
+
         // dd($building);
          // Aggregate results by structype
         $aggregatedResults = [];
@@ -1167,7 +1168,7 @@ class MapsService {
 
             if (!isset($aggregatedResults[$type])) {
                 // Store the first occurrence as an object
-                $aggregatedResults[$type] = clone $building; 
+                $aggregatedResults[$type] = clone $building;
             } else {
                 // Aggregate numeric fields
                 foreach ($building as $key => $value) {
@@ -1182,15 +1183,15 @@ class MapsService {
 
         // Convert associative array back to indexed array
 
-        $popContentsHtml .= $this->popUpContentHtml($aggregatedResults); 
+        $popContentsHtml .= $this->popUpContentHtml($aggregatedResults);
 
         return [
             'buildings' => $buildings,
             'popContentsHtml' => $popContentsHtml,
-            'polygon' => $polygons, 
+            'polygon' => $polygons,
         ];
     }
-    
+
 
 
 
@@ -1228,7 +1229,7 @@ class MapsService {
         // Query to retrieve buildings using a stored function
         $buildingQuery = "Select * from fnc_getBufferPolygonBuildings( ST_GeomFromText(" . "'" . "$bufferPolygonGeom" . "'" . ",4326), $bufferDistancePolygon) ;";
         $buildingResults = DB::select($buildingQuery);
-        
+
       // Generate HTML content for pop-up using the building query results
         $popContentsHtml = $this->popUpContentHtml($buildingResults);
         // Return the buildings array, pop-up HTML content, and polygon
@@ -1237,9 +1238,9 @@ class MapsService {
             'popContentsHtml' => $popContentsHtml,
             'polygon' => $polygon
         ];
-    
+
     }
-    
+
     /**
      * Generates HTML content for displaying building information in a table format.
      *
@@ -1247,7 +1248,7 @@ class MapsService {
      * @return string HTML content for displaying building information.
      */
     public function popUpContentHtml($buildingResults){
-     
+
         $total = 0;
         $total_sewer_network = 0;
         $total_drain_network = 0;
@@ -1259,7 +1260,7 @@ class MapsService {
         $total_open_ground = 0;
         $total_community_toilet = 0;
         $total_open_defacation = 0;
-        
+
         foreach ($buildingResults as $row1) {
 
             $total += $row1->count;
@@ -1274,7 +1275,7 @@ class MapsService {
             $total_community_toilet += $row1->community_toilet;
             $total_open_defacation += $row1->open_defacation;
         }
-        
+
         $tbody = '<tbody>';
         foreach ($buildingResults as $row1) {
             $tbody .= '<tr>';
@@ -1290,10 +1291,10 @@ class MapsService {
             if($total_open_ground > 0) { $tbody .= '<td>' . $row1->open_ground . '</td>'; }
             if($total_community_toilet > 0) { $tbody .= '<td>' . $row1->community_toilet . '</td>'; }
             if($total_open_defacation > 0) { $tbody .= '<td>' . $row1->open_defacation . '</td>'; }
-            $tbody .= '</tr>'; 
+            $tbody .= '</tr>';
             }
             $tbody .= '</tbody>';
-        
+
         $tfoot = '<tfoot>';
         $tfoot .= '<th>Total</th>';
         $tfoot .= '<th>' . $total . '</th>';
@@ -1570,7 +1571,7 @@ class MapsService {
      * Retrieves information about buildings within a ward or tax zone that have tax dues.
      *
      * @param string $where Additional SQL conditions to filter the query further (optional).
-     * @return array An array of associative arrays, each containing the latitude (lat) and longitude (long) 
+     * @return array An array of associative arrays, each containing the latitude (lat) and longitude (long)
      *               of a building within the specified ward or tax zone that has due taxes.
      */
 
@@ -1611,7 +1612,7 @@ class MapsService {
         } else {
             $whereUser = "";
         }
-        $query = "SELECT 
+        $query = "SELECT
                 c.id, ST_X(c.geom) AS long, ST_Y(c.geom) AS lat
             FROM fsm.containments c
             JOIN fsm.applications a ON a.containment_id = c.id AND a.deleted_at IS NULL
@@ -1642,11 +1643,11 @@ class MapsService {
      */
      public function getRoadInaccesibleISummaryInfo($width, $range)
     {
-       
+
         // Query to get the union of road geometries with specified width
         $query = "SELECT ST_AsText(ST_Union(geom)) AS geom FROM utility_info.roads WHERE carrying_width >= $width";
         $bufferQuery = DB::select($query);
-        
+
         $row = $bufferQuery[0];
         $polygon_query = "SELECT ST_AsText(ST_Buffer(ST_GeomFromText('" . $row->geom . "', 4326)::GEOGRAPHY, " . $range . ")) AS circle_geog";
         $polygon_result = DB::select($polygon_query);
@@ -1668,7 +1669,7 @@ class MapsService {
             . " WHERE ST_Intersects(ST_GeomFromText('$remainingPolygonGeom',4326), b.geom)"
             . " AND b.deleted_at IS NULL";
         $results1 = DB::select($building_query);
-        
+
             foreach ($results1 as $row1) {
                 $building = array();
                 $building['bin'] = $row1->bin;
@@ -1690,7 +1691,7 @@ class MapsService {
 
 
     }
-    
+
     /**
      * Retrieves summary information about inaccessible water bodies within a specified range.
      *
@@ -1713,20 +1714,20 @@ class MapsService {
             . " FROM building_info.buildings b"
             . " WHERE ST_Intersects(ST_GeomFromText('$polygon',4326), b.geom)"
             . " AND b.deleted_at IS NULL";
-        
+
         $results1 = DB::select($building_query);
-        
+
             foreach ($results1 as $row1) {
                 $building = array();
                 $building['bin'] = $row1->bin;
                 $building['geom'] = $row1->geom;
                 $buildings[] = $building;
             }
-           
-         // Query to retrieve buffer polygon buildings using a stored function   
+
+         // Query to retrieve buffer polygon buildings using a stored function
         $buildingQuery = "Select * from fnc_getBufferPolygonBuildings( ST_GeomFromText(" . "'" . "$polygon" . "'" . ",4326), $range) ;";
         $buildingResults = DB::select($buildingQuery);
-        
+
          // Generate population contents HTML for the buildings
         $popContentsHtml = $this->popUpContentHtml($buildingResults);
 
@@ -1749,17 +1750,17 @@ class MapsService {
  * @param float $distance The travel distance in meters .
  * @return array Returns an associative array containing:
  *               - 'polygon': an array of isochrone polygons (WKT) for each toilet.
- *               
+ *
  */
     public function getToiletIsochroneAreaLayers($distance)
     {
-        
+
         $toilet_geom = DB::SELECT("SELECT geom, name
-                FROM fsm.toilets 
-                WHERE deleted_at IS NULL 
+                FROM fsm.toilets
+                WHERE deleted_at IS NULL
                 AND type <> 'Community Toilet';");
 
-                $polygons = array(); 
+                $polygons = array();
                 $buildings = array();
         $i = 0;
         foreach($toilet_geom as $toilet)
@@ -1769,10 +1770,10 @@ class MapsService {
 
         $node_id_query = "WITH parameters AS (
                 SELECT
-                    ".$distance." AS max_cost, 
-                    ST_SetSRID(ST_Point(". $long .", ". $lat."),4326)::geometry AS origin, 
-                    4326 AS srid 
-                ), 
+                    ".$distance." AS max_cost,
+                    ST_SetSRID(ST_Point(". $long .", ". $lat."),4326)::geometry AS origin,
+                    4326 AS srid
+                ),
                 nearest_node AS (
                 SELECT
                     id,
@@ -1793,11 +1794,11 @@ class MapsService {
             FROM (
                 SELECT ST_Transform(ST_setSRID(the_geom, 4326),4326) as the_geom
                 FROM  pgr_drivingdistance('SELECT
-                id::integer AS id, 
-                source::integer AS source, 
-                target::integer AS target,                                    
-                distance::double precision AS cost 
-                FROM utility_info.roads_network_noded'::text, ".$node_id."::bigint, 
+                id::integer AS id,
+                source::integer AS source,
+                target::integer AS target,
+                distance::double precision AS cost
+                FROM utility_info.roads_network_noded'::text, ".$node_id."::bigint,
                 ".$distance."::double precision, false)
                 AS dij_result
             JOIN utility_info.roads_network_noded ON dij_result.edge = utility_info.roads_network_noded.id
@@ -1810,7 +1811,7 @@ class MapsService {
         array_push($polygons,$polygon );
         $i+=1;
         }
-        
+
         return [
             'polygon' => $polygons
         ];

@@ -62,7 +62,7 @@ class EmptyingRequest extends FormRequest
             'volume_of_sludge' => [
                 'required',
                 'numeric',
-                'min:0',
+                'gt:0',
                 function ($attribute, $value, $fail) use ($containmentSize, $totalSludgeVolume, $isAnf) {
                     // Skip volume check if ANF not yet resolved (no containment linked)
                     if ($isAnf) {
@@ -157,7 +157,7 @@ class EmptyingRequest extends FormRequest
             'trip_count.min'                   => __('The No. of Trips must be at least 1.'),
             'volume_of_sludge.required'        => __('The Sludge Volume (m³) is required.'),
             'volume_of_sludge.numeric'         => __('The Sludge Volume (m³) must be numeric.'),
-            'volume_of_sludge.min'             => __('The Sludge Volume (m³) must be at least 0.'),
+            'volume_of_sludge.gt'              => __('The Sludge Volume (m³) must be greater than 0.'),
             'desludging_vehicle_id.required'   => __('The Desludging Vehicle Number Plate is required.'),
             'desludging_vehicle_id.integer'    => __('The Desludging Vehicle Number Plate must be an integer.'),
             'driver.required'                  => __('The Driver Name is required.'),

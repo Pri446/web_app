@@ -12,7 +12,7 @@
         <div class="" style="margin-top: 2px">
             {!! Form::model($containment, [
                 'method' => 'PATCH',
-                'action' => ['Fsm\ContainmentController@update', $containment->id],
+                'action' => ['Fsm\ContainmentController@update', $containment->public_id],
                 'files' => true,
                 'class' => 'form-horizontal',
             ]) !!}

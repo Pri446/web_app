@@ -69,5 +69,6 @@ class Kernel extends HttpKernel
         'force.json' => \App\Http\Middleware\ForceJson::class,
         'security.headers' => \App\Http\Middleware\SecurityHeadersMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
+        'pii.no-cache' => \App\Http\Middleware\PreventPiiResponseCaching::class,
     ];
 }

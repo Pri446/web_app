@@ -32,6 +32,7 @@ class UserController extends Controller
     {
         $this->middleware('auth');
         $this->middleware('permission:List Users', ['only' => ['index','getData']]);
+        $this->middleware('permission:View User', ['only' => ['show']]);
         $this->middleware('permission:Add User', ['only' => ['create','store']]);
         $this->middleware('permission:Edit User', ['only' => ['edit','update']]);
         $this->middleware('permission:Delete User', ['only' => ['destroy']]);
@@ -119,9 +120,9 @@ class UserController extends Controller
      */
     public function show($id)
     {
-       
         $userDetail = User::findorfail($id);
-       
+        $this->authorizeUserRecord($userDetail);
+
         $user = $this->userService->getUserRelatedData($id);
        
         $status = UserStatus::getDescription($userDetail->status);
@@ -136,6 +137,40 @@ class UserController extends Controller
         } else {
             abort(404);
         }
+    }
+
+    /**
+     * Prevent users with a general view permission from enumerating user
+     * records outside the organisation they administer.
+     */
+    private function authorizeUserRecord(User $target): void
+    {
+        $actor = Auth::user();
+
+        if ($actor->hasAnyRole([
+            'Super Admin',
+            'Municipality - Super Admin',
+            'Municipality - IT Admin',
+            'Municipality - Executive',
+        ])) {
+            return;
+        }
+
+        $authorized = $actor->id === $target->id;
+
+        if ($actor->hasRole('Municipality - Sanitation Department')) {
+            $authorized = in_array($target->user_type, [
+                'Service Provider',
+                'Treatment Plant',
+                'Help Desk',
+            ], true);
+        } elseif ($actor->service_provider_id) {
+            $authorized = $actor->service_provider_id === $target->service_provider_id;
+        } elseif ($actor->treatment_plant_id) {
+            $authorized = $actor->treatment_plant_id === $target->treatment_plant_id;
+        }
+
+        abort_unless($authorized, 403);
     }
 
     /**

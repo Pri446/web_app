@@ -14,6 +14,8 @@ use App\Models\Fsm\Emptying;
 use App\Models\Fsm\ServiceProvider;
 use App\Models\Fsm\VacutugType;
 use App\Services\Fsm\ApplicationService;
+use App\Services\ApplicationPiiAccessService;
+use App\Services\OwnerPiiAuditService;
 use Exception;
 use App\Models\Fsm\Containment;
 use Illuminate\Http\JsonResponse;
@@ -32,10 +34,23 @@ use DB;
 class ApplicationController extends Controller
 {
     protected ApplicationService $applicationService;
+    protected ApplicationPiiAccessService $applicationPiiAccess;
+    protected OwnerPiiAuditService $piiAudit;
 
-    public function __construct(ApplicationService $applicationService)
-    {
+    public function __construct(
+        ApplicationService $applicationService,
+        ApplicationPiiAccessService $applicationPiiAccess,
+        OwnerPiiAuditService $piiAudit
+    ) {
         $this->applicationService = $applicationService;
+        $this->applicationPiiAccess = $applicationPiiAccess;
+        $this->piiAudit = $piiAudit;
+        $this->middleware('pii.no-cache')->only([
+            'getData',
+            'buildingDetails',
+            'show',
+            'edit',
+        ]);
     }
 
     /**
@@ -52,8 +67,33 @@ class ApplicationController extends Controller
         $filterFormFields = $this->applicationService->getFilterFormFields();
         $application_months = DB::select("select distinct extract(month from application_date) as date1 from fsm.applications where deleted_at is null order by date1 asc");
         $application_years = DB::select("select distinct extract(year from application_date) as date1 from fsm.applications where deleted_at is null order by date1 desc");
+        $customerPiiListUnlocked = $this->customerPiiListIsUnlocked();
+        $canUnlockCustomerPii = $this->applicationPiiAccess->canUnlock(Auth::user());
+        $canExportCustomerPii = Auth::user()->can('List Applications')
+            && Auth::user()->can('View Application Customer PII')
+            && Auth::user()->can('Unlock Application Customer PII')
+            && Auth::user()->can('Export Application Customer PII');
+        $customerPiiUnlockSeconds = $customerPiiListUnlocked
+            ? $this->applicationPiiAccess->secondsRemaining(
+                Auth::user(),
+                'list',
+                ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+            )
+            : 0;
 
-        return view('fsm.applications.index', compact('createBtnLink', 'createBtnTitle', 'filterFormFields', 'exportBtnLink', 'reportBtnLink', 'application_months', 'application_years'));
+        return view('fsm.applications.index', compact(
+            'createBtnLink',
+            'createBtnTitle',
+            'filterFormFields',
+            'exportBtnLink',
+            'reportBtnLink',
+            'application_months',
+            'application_years',
+            'customerPiiListUnlocked',
+            'canUnlockCustomerPii',
+            'canExportCustomerPii',
+            'customerPiiUnlockSeconds'
+        ));
     }
 
     /**
@@ -65,7 +105,25 @@ class ApplicationController extends Controller
      */
     public function getData(Request $request)
     {
-        return $this->applicationService->getDatatable($request);
+        $revealed = $this->customerPiiListIsUnlocked();
+
+        if ($revealed) {
+            $this->piiAudit->record(
+                'application_customer_pii_bulk_viewed',
+                true,
+                Auth::user(),
+                null,
+                [
+                    'surface' => 'application_data_table',
+                    'page_start' => (int) $request->input('start', 0),
+                    'page_length' => (int) $request->input('length', 10),
+                    'customer_name_filter_used' => $request->filled('customer_name'),
+                ],
+                'password_reentry'
+            );
+        }
+
+        return $this->applicationService->getDatatable($request, $revealed);
     }
 
     /**
@@ -106,10 +164,25 @@ class ApplicationController extends Controller
             }
         }
 
+        $user = Auth::user();
+
+        // Add Application deliberately reuses the short-lived grant created
+        // from the Application list. Merely having the permissions is not
+        // enough: the user must also have completed password re-entry and the
+        // owner_lookup scope must still be unexpired on the server.
+        $ownerPiiLookupUnlocked = $user
+            && $user->can('Add Application')
+            && $this->applicationPiiAccess->isUnlocked(
+                $user,
+                'owner_lookup',
+                ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+            );
+
         return view('fsm.applications.create', [
             'formAction' => $this->applicationService->getCreateFormAction(),
             'formFields' => $this->applicationService->getCreateFormFields(),
             'indexAction' => $this->applicationService->getIndexAction(),
+            'ownerPiiLookupUnlocked' => $ownerPiiLookupUnlocked,
             'action_type' => $action_type,
             'anfWardOptions' => Ward::orderBy('ward')->pluck('ward', 'ward')->toArray(),
             'scheduleRoadText' => $scheduleRoadText,
@@ -126,7 +199,46 @@ class ApplicationController extends Controller
      */
     public function buildingDetails(Request $request)
     {
-        return $this->applicationService->getBuildingDetails($request);
+        $validated = $request->validate([
+            'bin' => ['required', 'string', 'max:100'],
+        ]);
+        $user = $request->user() ?? Auth::user();
+
+        // SECURITY BOUNDARY: the JavaScript flag and disabled/masked inputs
+        // are presentation only. This server-side check runs for every BIN
+        // lookup, so an expired, revoked, or forged browser request receives
+        // no plaintext owner fields.
+        $revealOwnerPii = $user
+            && $user->can('Add Application')
+            && $this->applicationPiiAccess->isUnlocked(
+                $user,
+                'owner_lookup',
+                ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+            );
+
+        $response = $this->applicationService->getBuildingDetails(
+            $request,
+            $revealOwnerPii
+        );
+
+        if ($revealOwnerPii) {
+            // Audit the identifier and outcome, never the decrypted owner
+            // values. The no-cache middleware protects this response in the
+            // same way as the Application list and detail responses.
+            $this->piiAudit->record(
+                'application_owner_pii_lookup_viewed',
+                $response->getStatusCode() < 400,
+                $user,
+                null,
+                [
+                    'surface' => 'application_create',
+                    'bin' => (string) $validated['bin'],
+                ],
+                'password_reentry'
+            );
+        }
+
+        return $response;
     }
 
     /**
@@ -178,7 +290,21 @@ class ApplicationController extends Controller
 
         if ($application) {
             $page_title = __('Application Details');
-            $formFields = $this->applicationService->getShowFormFields($application);
+            $customerPiiUnlocked = $this->customerPiiIsUnlocked($application, 'view');
+            $formFields = $this->applicationService->getShowFormFields(
+                $application,
+                $customerPiiUnlocked
+            );
+            if ($customerPiiUnlocked) {
+                $this->piiAudit->record(
+                    'application_customer_pii_viewed',
+                    true,
+                    Auth::user(),
+                    null,
+                    ['application_id' => (int) $application->id, 'surface' => 'application_details'],
+                    'password_reentry'
+                );
+            }
             $indexAction = $this->applicationService->getIndexAction();
 
             return view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'))
@@ -199,7 +325,21 @@ class ApplicationController extends Controller
         $application = Application::find($id);
         if ($application) {
             $page_title = __("Edit Application");
-            $formFields = $this->applicationService->getEditFormFields($application);
+            $customerPiiUnlocked = $this->customerPiiIsUnlocked($application, 'edit');
+            $formFields = $this->applicationService->getEditFormFields(
+                $application,
+                $customerPiiUnlocked
+            );
+            if ($customerPiiUnlocked) {
+                $this->piiAudit->record(
+                    'application_customer_pii_viewed',
+                    true,
+                    Auth::user(),
+                    null,
+                    ['application_id' => (int) $application->id, 'surface' => 'application_edit'],
+                    'password_reentry'
+                );
+            }
             $formAction = $this->applicationService->getEditFormAction($application);
             $indexAction = $this->applicationService->getIndexAction();
             return view('fsm.applications.edit', compact('page_title', 'formFields', 'formAction', 'indexAction', 'application'), ['cardForm' => true]);
@@ -217,7 +357,67 @@ class ApplicationController extends Controller
      */
     public function update(ApplicationRequest $request, $id)
     {
+        $application = Application::findOrFail($id);
+        $containsCustomerPii = collect([
+            'customer_name',
+            'customer_gender',
+            'customer_contact',
+        ])->contains(function ($field) use ($request) {
+            return $request->filled($field);
+        });
+
+        // Browser-disabled fields are not a security boundary. A crafted
+        // request that changes customer PII must also hold the edit grant.
+        if ($containsCustomerPii
+            && !$this->customerPiiIsUnlocked($application, 'edit')) {
+            $this->piiAudit->record(
+                'application_customer_pii_update_denied',
+                false,
+                Auth::user(),
+                null,
+                ['application_id' => (int) $application->id],
+                'session'
+            );
+            abort(403, __('Application customer PII must be unlocked before it can be changed.'));
+        }
+
+        if ($containsCustomerPii) {
+            $this->piiAudit->record(
+                'application_customer_pii_update_authorized',
+                true,
+                Auth::user(),
+                null,
+                ['application_id' => (int) $application->id],
+                'password_reentry'
+            );
+        }
+
         return $this->applicationService->updateApplication($request, $id);
+    }
+
+    private function customerPiiListIsUnlocked(): bool
+    {
+        $user = Auth::user();
+
+        return $user && $this->applicationPiiAccess->isUnlocked(
+            $user,
+            'list',
+            ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+        );
+    }
+
+    private function customerPiiIsUnlocked(
+        Application $application,
+        string $scope
+    ): bool {
+        $user = Auth::user();
+
+        return $user
+            && $this->applicationPiiAccess->isUnlocked(
+                $user,
+                $scope,
+                (string) $application->id
+            );
     }
 
     /**
@@ -389,7 +589,6 @@ class ApplicationController extends Controller
         ]);
 
         $capacity = $data['capacity'];
-        $svc->ServiceProviderOrder($capacity);
 
         return response()->json([
             'next_id'   => $svc->getNextServiceProviderId($capacity),

@@ -32,7 +32,7 @@
                   <td>{{ $building->estimated_area }}</td>
                   <td>{{ $building->functionalUse->name }}</td>
                   <td>
-                  {!! Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $containment->id, $building->bin]]) !!}
+                  {!! Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $containment->public_id, $building->public_id]]) !!}
                     @can('Delete Building from Containment')
                     <button title="Remove Connection of Containment From Building" type="submit" class="btn btn-info btn-xs delete">&nbsp;<i class="fa fa-trash"></i>&nbsp;</button>
                     @endcan

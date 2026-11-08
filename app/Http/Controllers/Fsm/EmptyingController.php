@@ -31,6 +31,14 @@ class EmptyingController extends Controller
 
     public function __construct(EmptyingService $emptyingService)
     {
+        $this->middleware('auth');
+        $this->middleware('permission:List Emptyings', ['only' => ['index', 'getData']]);
+        $this->middleware('permission:View Emptying', ['only' => ['show']]);
+        $this->middleware('permission:Add Emptying', ['only' => ['create', 'store']]);
+        $this->middleware('permission:Edit Emptying', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:Delete Emptying', ['only' => ['destroy']]);
+        $this->middleware('permission:View Emptyings History', ['only' => ['history']]);
+        $this->middleware('permission:Export Emptyings', ['only' => ['export']]);
         $this->emptyingService = $emptyingService;
     }
 
@@ -42,7 +50,15 @@ class EmptyingController extends Controller
     public function index(Request $request)
     {
         $filterFormFields = $this->emptyingService->getFilterFormFields();
-        $containment_code = $request->containment_code ? $request->containment_code : '';
+        $containment_code = '';
+        if ($request->filled('containment_public_id')) {
+            $containment_code = Containment::where('public_id', $request->containment_public_id)
+                ->firstOrFail()
+                ->id;
+        } elseif ($request->filled('containment_code')) {
+            // Temporary compatibility for existing bookmarks.
+            $containment_code = $request->containment_code;
+        }
         $exportBtnLink = Auth::user()->can('Export Emptyings')?$this->emptyingService->getExportRoute():null;
         return view('fsm.emptying.index',compact('filterFormFields','exportBtnLink','containment_code'));
     }
@@ -98,17 +114,42 @@ class EmptyingController extends Controller
      */
     public function show($id)
     {
-       
-        $emptying = Emptying::find($id);
-       
-        if ($emptying) {
-            $page_title = __("Emptying Details");
-            $formFields = $this->emptyingService->getShowFormFields($emptying);
-            $indexAction = url()->previous();
-            return view('layouts.show',compact('page_title','formFields','emptying','indexAction'));
-        } else {
-            abort(404);
+        $emptying = Emptying::findOrFail($id);
+        $this->authorizeEmptyingRecord($emptying);
+
+        $page_title = __("Emptying Details");
+        $formFields = $this->emptyingService->getShowFormFields($emptying);
+        $indexAction = url()->previous();
+        return view('layouts.show',compact('page_title','formFields','emptying','indexAction'));
+    }
+
+    /**
+     * Scope direct record access to the actor's municipality-level authority,
+     * service provider, treatment plant, or records created by that actor.
+     */
+    private function authorizeEmptyingRecord(Emptying $emptying): void
+    {
+        $actor = Auth::user();
+
+        if ($actor->hasAnyRole([
+            'Super Admin',
+            'Municipality - Super Admin',
+            'Municipality - IT Admin',
+            'Municipality - Sanitation Department',
+            'Municipality - Executive',
+        ])) {
+            return;
         }
+
+        $authorized = $emptying->user_id === $actor->id;
+
+        if ($actor->service_provider_id) {
+            $authorized = $emptying->service_provider_id === $actor->service_provider_id;
+        } elseif ($actor->treatment_plant_id) {
+            $authorized = $emptying->treatment_plant_id === $actor->treatment_plant_id;
+        }
+
+        abort_unless($authorized, 403);
     }
 
     /**
@@ -122,6 +163,7 @@ class EmptyingController extends Controller
         $emptying = Emptying::findOrFail($id);
         $application = Application::with('emptying')
             ->findOrFail($emptying->application_id);
+        $application_id = $application->id;
         $is_anf = (bool) $application->is_anf;
 
         if( !(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department')) )
@@ -143,6 +185,7 @@ class EmptyingController extends Controller
             'indexAction',
             'emptying',
             'application',
+            'application_id',
             'is_anf'
         ));
     }

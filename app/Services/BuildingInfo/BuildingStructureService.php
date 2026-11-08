@@ -35,10 +35,18 @@ use App\Models\BuildingInfo\SanitationSystem;
 use App\Http\Requests\BuildingInfo\BuildingRequest;
 use App\Models\BuildingInfo\SanitationSystemTechnology;
 use Intervention\Image\Facades\Image;
+use App\Services\OwnerPiiPresenter;
 use App\Helpers\ImageOptimizationHelper;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class BuildingStructureService
 {
+    private OwnerPiiPresenter $ownerPiiPresenter;
+
+    public function __construct(OwnerPiiPresenter $ownerPiiPresenter)
+    {
+        $this->ownerPiiPresenter = $ownerPiiPresenter;
+    }
 
     public function storeBuildingData(Request $request)
     {
@@ -334,15 +342,20 @@ class BuildingStructureService
     public function storeOwnerInfo($request)
     {
         $owner = Owner::where('bin', $request->bin)->whereNULL('deleted_at')->first();
-        if (empty($owner)) {
-            $owner = new Owner();
-            $owner->bin = $request->bin;    
+        $isNewOwner = empty($owner);
 
+        if ($isNewOwner) {
+            $owner = new Owner();
+            $owner->bin = $request->bin;
         }
-        $owner->owner_name = $request->owner_name ? $request->owner_name : null;
-        $owner->owner_gender = $request->owner_gender ? $request->owner_gender : null;
-        $owner->owner_contact = $request->owner_contact ? $request->owner_contact : null;
-        $owner->nid = $request->nid ? $request->nid : null;
+
+        foreach (['owner_name', 'owner_gender', 'owner_contact', 'nid'] as $field) {
+            if ($isNewOwner || $request->filled($field)) {
+                $owner->{$field} = $request->filled($field)
+                    ? $request->input($field)
+                    : null;
+            }
+        }
 
         $owner->save();
     }
@@ -738,7 +751,6 @@ class BuildingStructureService
         $ward = isset($_GET['ward']) ? $_GET['ward'] : null;
         $functional_use = isset($_GET['functional_use_id']) ? $_GET['functional_use_id'] : null;
         $roadcd = isset($_GET['roadcd']) ? $_GET['roadcd'] : null;
-        $ownername = isset($_GET['ownername']) ? $_GET['ownername'] : null;
         $toilet = isset($_GET['toilet']) ? $_GET['toilet'] : null;
         $toiletconn = isset($_GET['toiletconn']) ? $_GET['toiletconn'] : null;
         $watersourc = isset($_GET['watersourc']) ? $_GET['watersourc'] : null;
@@ -751,10 +763,6 @@ class BuildingStructureService
         $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : null;
         $columns = [
             __('BIN'),
-            __('Owner Name'),
-            __('Owner NID'),
-            __('Owner Gender'),
-            __('Owner Contact Number'),
             __('BIN of Main Building'),
             __('Ward'),
             __('Road Code'),
@@ -809,7 +817,6 @@ class BuildingStructureService
                  ->whereNull('bt.deleted_at'); // Check if deleted_at is NULL
         })
         ->LeftJoin('fsm.toilets as t', 'bt.toilet_id', '=', 't.id') // Added join with fsm.toilets
-        ->LeftJoin('building_info.owners', 'b.bin', '=', 'owners.bin')
         ->select(
             'b.bin',
             'b.tax_code',
@@ -848,10 +855,6 @@ class BuildingStructureService
             'b.diff_abled_female_pop',
             'b.diff_abled_others_pop',
             'b.verification_status',
-            'owners.owner_name',
-            'owners.owner_gender',
-            'owners.owner_contact',
-            'owners.nid',
             'lic.community_name as community_name',
             'b.low_income_hh',
             'b.watersupply_pipe_code',
@@ -881,10 +884,6 @@ class BuildingStructureService
 
         if (!empty($roadcd)) {
             $query->where('b.road_code', $roadcd);
-        }
-
-        if (!empty($ownername)) {
-            $query->where('building_info.owners.owner_name', 'ILIKE', '%' .  $ownername . '%');
         }
 
         if (!empty($toilet)) {
@@ -932,7 +931,6 @@ class BuildingStructureService
                  ->whereNull('bt.deleted_at'); // Check if deleted_at is NULL
         })
         ->LeftJoin('fsm.toilets as t', 'bt.toilet_id', '=', 't.id') // Added join with fsm.toilets
-        ->join('building_info.owners', 'b.bin', '=', 'owners.bin')
         ->select(
             'b.bin',
             'b.tax_code',
@@ -971,10 +969,6 @@ class BuildingStructureService
             'b.diff_abled_female_pop',
             'b.diff_abled_others_pop',
             'b.verification_status',
-            'owners.owner_name',
-            'owners.owner_gender',
-            'owners.owner_contact',
-            'owners.nid',
             'lic.community_name as community_name',
             'b.low_income_hh',
             'b.watersupply_pipe_code',
@@ -987,10 +981,6 @@ class BuildingStructureService
         foreach ($buildings as $building) {
             $values = [];
             $values[] = $building->bin;
-            $values[] = $building->owner_name;
-            $values[] = $building->nid;
-            $values[] = $building->owner_gender;
-            $values[] = $building->owner_contact;
             $values[] = $building->building_associated_to;
             $values[] = $building->ward;
             $values[] = $building->road_code;
@@ -1043,103 +1033,148 @@ class BuildingStructureService
 
         $writer->close();
     }
-    public function fetchData(Request $request)
+    public function fetchData(Request $request, bool $revealOwnerPii = false)
     {
-        $buildingData = Building::LeftJoin('building_info.owners', 'building_info.buildings.bin', '=', 'building_info.owners.bin')
-            ->LeftJoin('building_info.structure_types', 'building_info.structure_types.id', '=', 'building_info.buildings.structure_type_id')
-            ->LeftJoin('building_info.sanitation_systems', 'building_info.buildings.sanitation_system_id', '=', 'building_info.sanitation_systems.id')
+        $matchingOwnerBins = null;
+        $ownerNameSearch = mb_substr(
+            trim((string) $request->input('ownername', '')),
+            0,
+            100
+        );
+
+        if ($revealOwnerPii && $ownerNameSearch !== '') {
+            $matchingOwnerBins = [];
+
+            foreach (Owner::select(['bin', 'owner_name'])->cursor() as $owner) {
+                $ownerName = $owner->getAttributes()['owner_name'] ?? null;
+
+                try {
+                    if ($this->ownerPiiPresenter->ownerNameContains(
+                        $ownerName,
+                        $ownerNameSearch
+                    )) {
+                        $matchingOwnerBins[] = $owner->bin;
+                    }
+                } catch (DecryptException $exception) {
+                    // Fail closed for legacy/invalid PII. The encryption
+                    // verification command reports the affected rows without
+                    // exposing their values.
+                    continue;
+                }
+            }
+
+            $matchingOwnerBins = array_values(array_unique($matchingOwnerBins));
+        }
+
+        // A query-builder allowlist prevents Building's automatically loaded
+        // relationships from leaking owner records into the JSON response.
+        $buildingData = DB::table('building_info.buildings AS b')
+            ->leftJoin('building_info.owners AS o', 'b.bin', '=', 'o.bin')
+            ->leftJoin('building_info.structure_types AS st', 'st.id', '=', 'b.structure_type_id')
+            ->leftJoin('building_info.sanitation_systems AS ss', 'b.sanitation_system_id', '=', 'ss.id')
             ->select(
-                'building_info.buildings.bin AS bin',
-                'building_info.buildings.house_number AS house_number',
-                'building_info.buildings.structure_type_id AS structure_type_id',
-                'building_info.structure_types.type AS type',
-                'building_info.buildings.ward AS ward',
-                'building_info.buildings.functional_use_id AS functional_use_id',
-                'building_info.buildings.floor_count AS floor_count',
-                'building_info.buildings.toilet_status AS toilet_status',
-                'building_info.buildings.road_code AS road_code',
-                'building_info.owners.owner_name AS owner_name',
-                'building_info.sanitation_systems.sanitation_system as sanitation_system_id'
+                'b.bin AS bin',
+                'b.public_id AS public_id',
+                'b.house_number AS house_number',
+                'st.type AS type',
+                'b.ward AS ward',
+                'b.floor_count AS floor_count',
+                'b.toilet_status AS toilet_status',
+                'b.road_code AS road_code',
+                'o.owner_name AS owner_name',
+                'ss.sanitation_system AS sanitation_system_id'
             )
-            ->whereNull('building_info.buildings.deleted_at');
+            ->whereNull('b.deleted_at');
         return DataTables::of($buildingData)
-            ->filter(function ($query) use ($request) {
+            ->filter(function ($query) use ($request, $matchingOwnerBins) {
                 if ($request->bin) {
-                    $query->where('building_info.buildings.bin','ILIKE', '%'.$request->bin .'%');
+                    $query->where('b.bin','ILIKE', '%'.$request->bin .'%');
                 }
 
                 if ($request->structype) {
-                    $query->where('structure_type_id', $request->structype);
+                    $query->where('b.structure_type_id', $request->structype);
                 }
 
                 if ($request->ward) {
-                    $query->where('ward', $request->ward);
+                    $query->where('b.ward', $request->ward);
                 }
 
                 if ($request->functional_use) {
-                    $query->where('functional_use_id', '=', $request->functional_use);
+                    $query->where('b.functional_use_id', '=', $request->functional_use);
                 }
 
                 if ($request->roadcd) {
-                    $query->where('road_code', $request->roadcd);
+                    $query->where('b.road_code', $request->roadcd);
                 }
 
                 if ($request->toilet) {
-                    $query->where('toilet_status', $request->toilet);
+                    $query->where('b.toilet_status', $request->toilet);
                 }
 
                 if ($request->watersourc) {
-                    $query->where('water_source_id', $request->watersourc);
+                    $query->where('b.water_source_id', $request->watersourc);
                 }
 
                 if ($request->well_prese) {
-                    $query->where('well_presence_status', $request->well_prese);
+                    $query->where('b.well_presence_status', $request->well_prese);
                 }
 
-                if ($request->ownername) {
-                    $query->whereHas('Owners', function ($query) use ($request) {
-                        $query->where('owner_name', 'ILIKE', '%' .  $request->ownername . '%');
-                    });
-                }
                 if ($request->sanitation_system_id) {
-                    $query->where('sanitation_system_id', $request->sanitation_system_id);
+                    $query->where('b.sanitation_system_id', $request->sanitation_system_id);
                 }
                 if ($request->floor_count) {
 
-                    $query->where('floor_count','ILIKE', $request->floor_count .'%');
+                    $query->where('b.floor_count','ILIKE', $request->floor_count .'%');
                 }
                 if ($request->house_number) {
 
-                    $query->where('house_number','ILIKE', '%'.  $request->house_number.'%');
+                    $query->where('b.house_number','ILIKE', '%'.  $request->house_number.'%');
+                }
+                if ($matchingOwnerBins !== null) {
+                    $query->whereIn(
+                        'b.bin',
+                        $matchingOwnerBins
+                    );
                 }
                 if ($request->date_from && $request->date_to) {
-                    $query->whereDate('construction_year', '>=', $request->date_from);
-                    $query->whereDate('construction_year', '<=', $request->date_to);
+                    $query->whereDate('b.construction_year', '>=', $request->date_from);
+                    $query->whereDate('b.construction_year', '<=', $request->date_to);
                 }
 
                 if ($request->use_category_select) {
 
-                    $query->where('use_category_id','ILIKE', '%'.  $request->use_category_select.'%');
+                    $query->where('b.use_category_id','ILIKE', '%'.  $request->use_category_select.'%');
+                }
+            })
+            ->editColumn('owner_name', function ($model) use ($revealOwnerPii) {
+                if (!$revealOwnerPii) {
+                    return $this->ownerPiiPresenter->maskFully($model->owner_name);
+                }
+
+                try {
+                    return $this->ownerPiiPresenter->presentPlaintextValue($model->owner_name);
+                } catch (DecryptException $exception) {
+                    return $this->ownerPiiPresenter->maskFully($model->owner_name);
                 }
             })
             ->addColumn('action', function ($model) {
 
-                $content = \Form::open(['method' => 'DELETE', 'route' => ['buildings.destroy', $model->bin]]);
+                $content = \Form::open(['method' => 'DELETE', 'route' => ['buildings.destroy', $model->public_id]]);
 
                 if (auth()->user()->can('View Containments Connected to Buildings')) {
-                    $content .= '<a title="' . e(__("View Containments Connected to Building")) . '" data-id="' . $model->bin . '" class="containment btn btn-info btn-sm mb-1" data-toggle="modal" data-target="#containmentsModal"><i class="fa-solid fa-building"></i></a> ';
+                    $content .= '<a title="' . e(__("View Containments Connected to Building")) . '" data-id="' . $model->public_id . '" class="containment btn btn-info btn-sm mb-1" data-toggle="modal" data-target="#containmentsModal"><i class="fa-solid fa-building"></i></a> ';
                 }
 
                 if (auth()->user()->can('Edit Building Structure')) {
-                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("BuildingInfo\BuildingController@edit", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("BuildingInfo\BuildingController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-edit"></i></a> ';
                 }
 
                 if (auth()->user()->can('View Building Structure')) {
-                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("BuildingInfo\BuildingController@show", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("BuildingInfo\BuildingController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-list"></i></a> ';
                 }
 
                 if (auth()->user()->can('View Building Structures History')) {
-                    $content .= '<a title="' . e(__("History")) . '" href="' . action("BuildingInfo\BuildingController@history", [$model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("BuildingInfo\BuildingController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-history"></i></a> ';
                 }
 
                 if (auth()->user()->can('Delete Building Structure')) {
@@ -1147,10 +1182,10 @@ class BuildingStructureService
                 }
 
                 if (auth()->user()->can('View Building On Map')) {
-                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'public_id', 'val' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-map-marker"></i></a> ';
                 }
                 if (auth()->user()->can('View Nearest Road To Building On Map')) {
-                    $content .= '<a title="' . e(__("Nearest Road")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin, 'action' => 'building-road']) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-road"></i></a> ';
+                    $content .= '<a title="' . e(__("Nearest Road")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'public_id', 'val' => $model->public_id, 'action' => 'building-road']) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-road"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -1159,6 +1194,7 @@ class BuildingStructureService
             ->editColumn('toilet_status', function ($model) {
                 return is_null($model->toilet_status) ? '-' : ($model->toilet_status ? 'Yes' : 'No');
             })
+            ->removeColumn('public_id')
             ->make(true);
     }
     // buildings drop down (bin of pre connected building, application page-> house_number )

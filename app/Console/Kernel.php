@@ -9,6 +9,15 @@ use Illuminate\Support\Facades\Log;
 class Kernel extends ConsoleKernel
 {
     protected $commands = [
+        \App\Console\Commands\CheckPiiConfiguration::class,
+        \App\Console\Commands\EncryptExistingOwnerPii::class,
+        \App\Console\Commands\VerifyOwnerPiiEncryption::class,
+        \App\Console\Commands\EncryptExistingApplicationCustomerPii::class,
+        \App\Console\Commands\VerifyApplicationCustomerPiiEncryption::class,
+        \App\Console\Commands\EncryptExistingPropertyTaxOwnerPii::class,
+        \App\Console\Commands\VerifyPropertyTaxOwnerPiiEncryption::class,
+        \App\Console\Commands\MigratePiiFeature::class,
+        \App\Console\Commands\MigrateUrlBindingFeature::class,
         \App\Console\Commands\KpiCron::class,
 
         // update table counts

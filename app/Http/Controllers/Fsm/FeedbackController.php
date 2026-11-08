@@ -212,10 +212,15 @@ class FeedbackController extends Controller{
 
         $feedback = Feedback::find($id);
         $application = Application::find($feedback->application_id);
-        $feedback->application_id = $request->application_id? $request->application_id : null;
-        $feedback->customer_name = $request->customer_name ? $request->customer_name : null;
-        $feedback->customer_gender = $request->customer_gender ? $request->customer_gender : null;
-        $feedback->customer_number = $request->customer_number ? $request->customer_number : null;
+        // Keep the feedback bound to its existing application; the readonly
+        // browser field is presentation only and must not be trusted.
+        $feedback->application_id = $application->id;
+        // Feedback's legacy customer_* columns are an operational applicant
+        // snapshot. Never accept these values from the browser and never copy
+        // the encrypted customer_* PII stored by the Application module.
+        $feedback->customer_name = $application->applicant_name;
+        $feedback->customer_gender = $application->applicant_gender;
+        $feedback->customer_number = $application->applicant_contact;
         $feedback->fsm_service_quality = (bool)$request->fsm_service_quality ;
         $feedback->wear_ppe = (bool)$request->wear_ppe;
         $feedback->comments = $request->comments ? $request->comments : null;
@@ -243,9 +248,11 @@ class FeedbackController extends Controller{
         }
         $feedback = new Feedback;
         $feedback->application_id = $request->application_id? $request->application_id : null;
-        $feedback->customer_name = $request->customer_name ? $request->customer_name : null;
-        $feedback->customer_gender = $request->customer_gender ? $request->customer_gender : null;
-        $feedback->customer_number = $request->customer_number ? $request->customer_number : null;
+        // Applicant information is the approved downstream identity. Resolve
+        // it server-side so a modified form cannot inject owner/customer PII.
+        $feedback->customer_name = $application->applicant_name;
+        $feedback->customer_gender = $application->applicant_gender;
+        $feedback->customer_number = $application->applicant_contact;
         $feedback->fsm_service_quality = (bool)$request->fsm_service_quality ;
         $feedback->wear_ppe = (bool)$request->wear_ppe;
         $feedback->comments = $request->comments ? $request->comments : null;
@@ -317,7 +324,17 @@ class FeedbackController extends Controller{
         $query = DB::table('fsm.feedbacks AS f')
             ->join('auth.users AS u', 'f.user_id', '=', 'u.id')
             ->join('fsm.applications AS a', 'f.application_id', '=', 'a.id')
-            ->select('f.*')
+            // Export the Application applicant fields directly. The encrypted
+            // customer_* fields are intentionally never selected or decrypted.
+            ->select([
+                'f.application_id',
+                'a.applicant_name',
+                'a.applicant_gender',
+                'a.applicant_contact',
+                'f.fsm_service_quality',
+                'f.wear_ppe',
+                'f.comments',
+            ])
             ->whereNull('f.deleted_at')
             ->orderBy('f.id', 'asc');
 
@@ -344,16 +361,16 @@ class FeedbackController extends Controller{
         $writer->openToBrowser('Feedbacks.csv')
             ->addRowWithStyle($columns, $style); //Top row of excel
          
-        $query->chunk(5000, function ($applications) use ($writer) {
-            foreach($applications as $application) {
+        $query->chunk(5000, function ($feedbacks) use ($writer) {
+            foreach($feedbacks as $feedback) {
                 $values = [];
-                $values[] = $application->application_id;
-                $values[] = $application->customer_name;
-                $values[] = $application->customer_gender;
-                $values[] = $application->customer_number;
-                $values[] = $application->fsm_service_quality?"Yes":"No";
-                $values[] = $application->wear_ppe?"Yes":"No";
-                $values[] = $application->comments;
+                $values[] = $feedback->application_id;
+                $values[] = $feedback->applicant_name;
+                $values[] = $feedback->applicant_gender;
+                $values[] = $feedback->applicant_contact;
+                $values[] = $feedback->fsm_service_quality?"Yes":"No";
+                $values[] = $feedback->wear_ppe?"Yes":"No";
+                $values[] = $feedback->comments;
                 $writer->addRow($values);
             }
         });
