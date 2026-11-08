@@ -1331,7 +1331,7 @@ class EmptyingService
      */
     public function getAllEmptyings()
     {
-        if (Auth::user()->hasRole('Service Provider - Admin')) {
+        if (OperationalDataAccessService::isServiceProviderUser(Auth::user())) {
             return Emptying::join('fsm.applications', function ($join) {
                 $join->on('fsm.emptyings.application_id', '=', 'fsm.applications.id')
                     ->whereNull('fsm.applications.deleted_at');
@@ -1339,7 +1339,7 @@ class EmptyingService
                 ->whereNull('fsm.emptyings.deleted_at')
                 ->where('fsm.emptyings.service_provider_id', Auth::user()->service_provider_id)
                 ->select('fsm.emptyings.*');
-        } else if (Auth::user()->hasRole('Treatment Plant - Admin')) {
+        } else if (OperationalDataAccessService::isTreatmentPlantUser(Auth::user())) {
             return Emptying::join('fsm.applications', function ($join) {
                 $join->on('fsm.emptyings.application_id', '=', 'fsm.applications.id')
                     ->whereNull('fsm.applications.deleted_at');
@@ -1437,6 +1437,7 @@ class EmptyingService
             // Extract data
             $data = $request->except('no_of_trips', 'start_time', 'end_time');
             $application = Application::findOrFail($request->application_id);
+            OperationalDataAccessService::authorizeApplication($application);
 
             // ✅ Block saving emptying if ANF is not resolved
             if ($application->is_anf) {
@@ -1754,7 +1755,12 @@ foreach ($recipientIds as $userId) {
     public function updateEmptying(Request $request, $id)
     {
         $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
         $application = Application::findOrFail($request->application_id);
+        OperationalDataAccessService::authorizeApplication($application);
         DB::beginTransaction();
         try {
             if ($request->validated()) {
@@ -1842,6 +1848,10 @@ foreach ($recipientIds as $userId) {
     {
         try {
             $emptying = Emptying::findOrFail($id);
+            OperationalDataAccessService::authorizeRecord(
+                $emptying->service_provider_id,
+                $emptying->treatment_plant_id
+            );
             $revisions = Revision::all()
                 ->where('revisionable_type', get_class($emptying))
                 ->where('revisionable_id', $id)
@@ -1930,7 +1940,16 @@ foreach ($recipientIds as $userId) {
             ->orderBy('e.id')
             ->whereNull('e.deleted_at');
 
-        if (!Auth::user()->hasRole('Super Admin') && !Auth::user()->hasRole('Municipality - Super Admin') && !Auth::user()->hasRole('Municipality - IT Admin') && !Auth::user()->hasRole('Municipality - Sanitation Department')) {
+        if (
+            OperationalDataAccessService::isServiceProviderUser(Auth::user())
+            || OperationalDataAccessService::isTreatmentPlantUser(Auth::user())
+        ) {
+            OperationalDataAccessService::scopeQuery(
+                $query,
+                'e.service_provider_id',
+                'e.treatment_plant_id'
+            );
+        } elseif (!Auth::user()->hasRole('Super Admin') && !Auth::user()->hasRole('Municipality - Super Admin') && !Auth::user()->hasRole('Municipality - IT Admin') && !Auth::user()->hasRole('Municipality - Sanitation Department')) {
             $query->where('u.name', '=', Auth::user()->name);
         }
 

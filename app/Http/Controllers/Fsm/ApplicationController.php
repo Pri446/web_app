@@ -14,6 +14,7 @@ use App\Models\Fsm\Emptying;
 use App\Models\Fsm\ServiceProvider;
 use App\Models\Fsm\VacutugType;
 use App\Services\Fsm\ApplicationService;
+use App\Services\Fsm\OperationalDataAccessService;
 use Exception;
 use App\Models\Fsm\Containment;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,15 @@ class ApplicationController extends Controller
 
     public function __construct(ApplicationService $applicationService)
     {
+        $this->middleware('auth');
+        $this->middleware('permission:List Applications', ['only' => ['index', 'getData']]);
+        $this->middleware('permission:View Application', ['only' => ['show']]);
+        $this->middleware('permission:Add Application', ['only' => ['create', 'store']]);
+        $this->middleware('permission:Edit Application', ['only' => ['edit', 'update', 'editScheduling', 'schedulingform', 'checkCapacityByDate', 'resolveAnf']]);
+        $this->middleware('permission:Delete Application', ['only' => ['destroy', 'forceDelete']]);
+        $this->middleware('permission:Export Applications', ['only' => ['export']]);
+        $this->middleware('permission:View Application History', ['only' => ['history']]);
+        $this->middleware('permission:Generate Application Report', ['only' => ['applicationReport']]);
         $this->applicationService = $applicationService;
     }
 
@@ -174,18 +184,15 @@ class ApplicationController extends Controller
      */
     public function show($id)
     {
-        $application = Application::find($id);
+        $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
 
-        if ($application) {
-            $page_title = __('Application Details');
-            $formFields = $this->applicationService->getShowFormFields($application);
-            $indexAction = $this->applicationService->getIndexAction();
+        $page_title = __('Application Details');
+        $formFields = $this->applicationService->getShowFormFields($application);
+        $indexAction = $this->applicationService->getIndexAction();
 
-            return view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'))
-                ->with('cardForm', true);
-        } else {
-            abort(404);
-        }
+        return view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'))
+            ->with('cardForm', true);
     }
 
     /**
@@ -196,16 +203,14 @@ class ApplicationController extends Controller
      */
     public function edit($id)
     {
-        $application = Application::find($id);
-        if ($application) {
-            $page_title = __("Edit Application");
-            $formFields = $this->applicationService->getEditFormFields($application);
-            $formAction = $this->applicationService->getEditFormAction($application);
-            $indexAction = $this->applicationService->getIndexAction();
-            return view('fsm.applications.edit', compact('page_title', 'formFields', 'formAction', 'indexAction', 'application'), ['cardForm' => true]);
-        } else {
-            abort(404);
-        }
+        $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
+
+        $page_title = __("Edit Application");
+        $formFields = $this->applicationService->getEditFormFields($application);
+        $formAction = $this->applicationService->getEditFormAction($application);
+        $indexAction = $this->applicationService->getIndexAction();
+        return view('fsm.applications.edit', compact('page_title', 'formFields', 'formAction', 'indexAction', 'application'), ['cardForm' => true]);
     }
 
     /**
@@ -230,6 +235,7 @@ class ApplicationController extends Controller
     {
         try {
             $application = Application::findOrFail($id);
+            OperationalDataAccessService::authorizeApplication($application);
             if ($application->emptying()->exists()) {
                 return redirect('fsm/application')->with('error', __('Cannot delete Application that has associated Emptying Information.'));
             }
@@ -259,6 +265,7 @@ class ApplicationController extends Controller
 
     public function resolveAnf(Request $request, $id)
     {
+        OperationalDataAccessService::authorizeApplication(Application::findOrFail($id));
         $request->validate([
             'bin'            => 'required|string',
             'containment_id' => 'required|string', // 👈 required
@@ -339,12 +346,14 @@ class ApplicationController extends Controller
      */
     public function applicationReport($id)
     {
+        OperationalDataAccessService::authorizeApplication(Application::findOrFail($id));
         return $this->applicationService->getApplicationReport($id);
     }
 
     public function editScheduling($id)
     {
         $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         $page_title = __("Emptying Scheduling Form");
         return view('fsm.emptying-scheduling.edit', compact('application', 'page_title'));
     }
@@ -352,6 +361,7 @@ class ApplicationController extends Controller
     public function schedulingform(Request $request, $id)
     {
         $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         $request->validate([
             'proposed_emptying_date' => 'required|date|after_or_equal:today'
         ]);
@@ -400,6 +410,7 @@ class ApplicationController extends Controller
 
     public function checkCapacityByDate(Request $request, Application $application)
     {
+        OperationalDataAccessService::authorizeApplication($application);
         $validated = $request->validate([
             'proposed_emptying_date' => ['required', 'date', 'after_or_equal:today'],
         ]);
@@ -436,6 +447,7 @@ class ApplicationController extends Controller
 
         try {
             $application = Application::findOrFail($id);
+            OperationalDataAccessService::authorizeApplication($application);
 
             // Update containment details
             $containment = Containment::findOrFail($application->containment_id);
