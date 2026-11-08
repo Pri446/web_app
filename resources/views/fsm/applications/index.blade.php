@@ -280,17 +280,19 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     { data: 'feedback_status', name: 'feedback_status' },
                     { data: 'action', name: 'action', orderable: false, searchable: false },
                 ],
-                order: [[0, 'desc']]
-            });
+                order: [
+                    [0, 'desc']
+                ]
+            }).on('draw', function() {
+                $('.delete').on('click', function(e) {
+                    var form = $(this).closest("form");
+                    event.preventDefault();
+                    deleteAction(form || this);
 
-            // DataTable action rows are rendered dynamically, so use a
-            // delegated handler that remains active after every redraw.
-            $(document).on('click', '#data-table .delete', function(e) {
-                e.preventDefault();
-                deleteAction($(this).closest('form')[0]);
+                });
             });
-
-            // 4. Form Actions (Filter & Reset)
+            filterDataTable(dataTable);
+            resetDataTable(dataTable);
             $('#filter-form').on('submit', function(e) {
                 e.preventDefault();
                 var date_from = $('#date_from').val();

@@ -5879,6 +5879,16 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 return false;
             };
             @endcan
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                return String(text)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
             // display popup on click
             map.on('click', function (evt) {
                 var feature = map.forEachFeatureAtPixel(evt.pixel,
@@ -5887,18 +5897,18 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     });
                 if (feature && feature.get('application_id')) {
                     var coordinate = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-                    var innerHTML = 'Application ID : ' + feature.get('application_id');
+                    var innerHTML = 'Application ID : ' + escapeHtml(feature.get('application_id'));
                     if (feature.get('bin')) {
-                        innerHTML += '<br>BIN : ' + feature.get('bin');
+                        innerHTML += '<br>BIN : ' + escapeHtml(feature.get('bin'));
                     }
                     if (feature.get('service_provider')) {
-                        innerHTML += '<br>Service Provider : ' + feature.get('service_provider');
+                        innerHTML += '<br>Service Provider : ' + escapeHtml(feature.get('service_provider'));
                     }
                     if (feature.get('application_date')) {
-                        innerHTML += '<br>Application Date : ' + feature.get('application_date');
+                        innerHTML += '<br>Application Date : ' + escapeHtml(feature.get('application_date'));
                     }
                     if (feature.get('emptying_date')) {
-                        innerHTML += '<br>Emptying Date : ' + feature.get('emptying_date');
+                        innerHTML += '<br>Emptying Date : ' + escapeHtml(feature.get('emptying_date'));
                     }
                     popupMarkerContent.innerHTML = innerHTML;
                     popupMarkerOverlay.setPosition(evt.coordinate);

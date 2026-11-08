@@ -11,13 +11,13 @@ var ctx = document.getElementById("proposedEmptiedDateContainmentsByWardChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $proposedEmptiedDateContainmentsByWardChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($proposedEmptiedDateContainmentsByWardChart['labels'] ?? [])))),
     datasets: [
         {
             label: "No. of requests",
             backgroundColor: "rgba(54, 162, 235,0.5)",
             hoverBackgroundColor: "rgba(54, 162, 235,0.7)",
-            data: [<?php echo implode(',', $proposedEmptiedDateContainmentsByWardChart['values']); ?>],
+            data: @json(array_values($proposedEmptiedDateContainmentsByWardChart['values'] ?? [])),
         }
     ]
 },

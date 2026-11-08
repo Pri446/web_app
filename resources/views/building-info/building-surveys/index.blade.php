@@ -38,7 +38,7 @@
         <div class="card-header">
             <a href="#" class="btn btn-info float-right" id="headingOne" type="button" data-toggle="collapse"
                 data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-               {{__("Show Filter")}}
+                Show Filter
             </a>
         </div><!-- /.box-header -->
         <div class="card-body">
@@ -52,17 +52,17 @@
                                     <form class="form-horizontal" id="filter-form">
                                         <div class="form-group row">
 
-                                            <label for="temp_building_code" class="control-label col-md-2">{{ __("Temporary Building Code") }} </label>
+                                            <label for="temp_building_code" class="control-label col-md-2">Temporary Building Code </label>
                                             <div class="col-md-2">
                                                 <input type="text" class="form-control" id="temp_building_code"
-                                                    placeholder="{{ __("House Number") }}" />
+                                                    placeholder="House Number" />
                                             </div>
 
-                                            <label for="date_from" class="control-label col-md-2">{{ __("Date From") }}</label>
+                                            <label for="date_from" class="control-label col-md-2">Date From</label>
                                             <div class="col-md-2">
-                                                <input type="date" class="form-control" placeholder="{{ __("Date From") }}" id="date_from" onclick = 'this.showPicker();'/>
+                                                <input type="date" class="form-control" placeholder="Date From" id="date_from" onclick = 'this.showPicker();'/>
                                             </div>
-                                            <label for="date_to" class="control-label col-md-2">{{ __("Date To") }}</label>
+                                            <label for="date_to" class="control-label col-md-2">Date To</label>
                                             <div class="col-md-2">
                                                 <input type="date" class="form-control" placeholder="Date To"  id="date_to" onclick = 'this.showPicker();'/>
                                             </div>
@@ -70,8 +70,8 @@
 
                                         </div>
                                         <div class="card-footer text-right">
-                                            <button type="submit" class="btn btn-info" style="font-family: 'Open Sans', sans-serif;">{{ __("Filter") }}</button>
-                                            <button type="reset" class="btn btn-info reset" style="font-family: 'Open Sans', sans-serif;">{{ __("Reset") }}</button>
+                                            <button type="submit" class="btn btn-info" style="font-family: 'Open Sans', sans-serif;">Filter</button>
+                                            <button type="reset" class="btn btn-info reset" style="font-family: 'Open Sans', sans-serif;">Reset</button>
                                         </div>
                                     </form>
                                 </div>
@@ -93,10 +93,10 @@
                 <table id="data-table" class="table table-bordered table-striped dtr-inline" width="100%" style="font-family: 'Open Sans', sans-serif;">
                     <thead>
                         <tr>
-                            <th>{{ __('Temporary Building Code') }}</th>
-                            <th>{{ __('Tax Code') }}</th>
-                            <th>{{ __('Survey Date') }}</th>
-                            <th>{{ __('Actions') }}</th>
+                            <th>Temporary Building Code</th>
+                            <th>Tax Code</th>
+                            <th>Survey Date</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                 </table>
@@ -178,20 +178,7 @@
                 $('.delete').on('click', function(e) {
                     var form = $(this).closest("form");
                     event.preventDefault();
-                    Swal.fire({
-                        title: '{{ __('Are you sure?') }}',
-                        text: "{!! __('You won\'t be able to revert this!') !!}",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: '{{ __('Yes, delete it!') }}',
-                        cancelButtonText: '{{ __('Cancel') }}',
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            form.submit();
-                        }
-                    })
+                    deleteAction(form || this);
 
                 });
             });
@@ -209,14 +196,13 @@
                 if ((date_from !== '') && (date_to === '')) {
 
                     Swal.fire({
-                        title: "{{ __('Date To is required') }}",
-                        text: "{{ __('Please Select Date To') }}",
+                        title: 'Date To is required',
+                        text: "Please Select Date To ",
                         icon: 'warning',
                         showCancelButton: false,
                         confirmButtonColor: '#3085d6',
                         cancelButtonColor: '#d33',
-                        confirmButtonText: '{{__('Close')}}',
-                        cancelButtonText: '{{ __('Cancel') }}',
+                        confirmButtonText: 'close'
                     })
 
                     return false;
@@ -224,14 +210,13 @@
                 if ((date_from === '') && (date_to !== '')) {
 
                     Swal.fire({
-                        title: "{{ __('Date From is Required') }}",
-                        text: "{{ __('Please Select Date From') }}",
+                        title: 'Date From is Required',
+                        text: "Please Select Date From ",
                         icon: 'warning',
                         showCancelButton: false,
                         confirmButtonColor: '#3085d6',
                         cancelButtonColor: '#d33',
-                        confirmButtonText: "{{ __('Close') }}",
-                        cancelButtonText: "{{ __('Cancel') }}",
+                        confirmButtonText: 'Close'
                     })
 
                     return false;
@@ -250,12 +235,12 @@
                 $('#date_to').val('');
                 $('#data-table').dataTable().fnDraw();
             });
-
+           
             $('#headingOne').click(function() {
 
-                if ($(this).text() == __('Hide Filter') ) {
+                if ($(this).text() == 'Hide Filter') {
                     $('#mydiv').slideDown("slow");
-                } else if ($(this).text() == __('Show Filter') ) {
+                } else if ($(this).text() == 'Show Filter') {
                     $('#mydiv').slideUp("slow");
                 }
             });

@@ -20,7 +20,7 @@ var ctx = document.getElementById("nextEmptyingContainmentsChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $nextEmptyingContainmentsChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($nextEmptyingContainmentsChart['labels'] ?? [])))),
     datasets: [
         {
             label: "No. of containments",
@@ -29,7 +29,7 @@ var myChart = new Chart(ctx, {
             borderWidth: 1,
             hoverBackgroundColor: "rgba(90, 155, 212,0.4)",
             hoverBorderColor: "rgba(90, 155, 212,1)",
-            data: [<?php echo implode(',', $nextEmptyingContainmentsChart['values']); ?>],
+            data: @json(array_values($nextEmptyingContainmentsChart['values'] ?? [])),
         }
     ]
 },

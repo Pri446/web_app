@@ -647,7 +647,6 @@
 @endif
 <!-- Last Modified Date: 011-04-2024
 Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 {{-- <script>
     $(document).ready(function() {
         $('.road_code').on('change', function() {

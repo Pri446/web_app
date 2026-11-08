@@ -1278,7 +1278,7 @@ class MapsService {
         $tbody = '<tbody>';
         foreach ($buildingResults as $row1) {
             $tbody .= '<tr>';
-            $tbody .= '<td>' . $row1->structype . '</td>';
+            $tbody .= '<td>' . e($row1->structype) . '</td>';
             $tbody .= '<td>' . $row1->count . '</td>';
             if($total_sewer_network > 0) { $tbody .= '<td>' . $row1->sewer_network . '</td>'; }
             if($total_drain_network > 0) { $tbody .= '<td>' . $row1->drain_network . '</td>'; }

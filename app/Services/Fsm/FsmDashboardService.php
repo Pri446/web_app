@@ -48,13 +48,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->total_cost;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -140,35 +140,35 @@ class FsmDashboardService
         $labels = [];
 
         $application_dataset = [];
-        $application_dataset['stack'] = '"stack 3"';
-        $application_dataset['label'] = '"Application"';
-        $application_dataset['color'] = '"rgba(103,233,188, 0.6)"';
+        $application_dataset['stack'] = 'stack 3';
+        $application_dataset['label'] = 'Application';
+        $application_dataset['color'] = 'rgba(103,233,188, 0.6)';
         $application_dataset['data'] = [];
         
         $emptying_dataset = [];
-        $emptying_dataset['stack'] = '"stack 1"';
-        $emptying_dataset['label'] = '"Emptying"';
-        $emptying_dataset['color'] = '"rgba(61,225,115, 0.6)"';
+        $emptying_dataset['stack'] = 'stack 1';
+        $emptying_dataset['label'] = 'Emptying';
+        $emptying_dataset['color'] = 'rgba(61,225,115, 0.6)';
         $emptying_dataset['data'] = [];
 
         $sludgecollecion_dataset = [];
-        $sludgecollecion_dataset['stack'] = '"stack 4"';
-        $sludgecollecion_dataset['label'] = '"Sludge Disposed"';
-        $sludgecollecion_dataset['color'] = '"rgba(34,201,37, 0.6)"';
+        $sludgecollecion_dataset['stack'] = 'stack 4';
+        $sludgecollecion_dataset['label'] = 'Sludge Disposed';
+        $sludgecollecion_dataset['color'] = 'rgba(34,201,37, 0.6)';
         $sludgecollecion_dataset['data'] = [];
 
         
         $feedback_dataset = [];
-        $feedback_dataset['stack'] = '"stack 2"';
-        $feedback_dataset['label'] = '"Feedback"';
-        $feedback_dataset['color'] = '"rgba(66,155,28, 0.6)"';
+        $feedback_dataset['stack'] = 'stack 2';
+        $feedback_dataset['label'] = 'Feedback';
+        $feedback_dataset['color'] = 'rgba(66,155,28, 0.6)';
         $feedback_dataset['data'] = [];
 
        
 
         
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $emptying_dataset['data'][] = $row->emptying_count;
             $feedback_dataset['data'][] = $row->feedback_count;
             $application_dataset['data'][] = $row->application_count;
@@ -184,7 +184,7 @@ class FsmDashboardService
         ];
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
 
@@ -212,18 +212,18 @@ class FsmDashboardService
             . " FROM fsm.feedbacks fb $where $whereRawServiceProvider";
 
         $results = DB::select($query);
-        $labels = array('"Yes"', '"No"');
+        $labels = array('Yes', 'No');
         $values = array($results[0]->yes, $results[0]->no);
 
-        $colors = ['"rgba(153, 202, 60, 0.8)"', '"rgba(251, 176, 64, 0.8)"'];
-        $borderColor = ['"rgba(57, 142, 61, 0.65)"', '"rgba(153, 202, 60, 0.8)"', '"rgba(255, 229, 0, 0.8)"', '"rgba(255, 179, 3, 0.8)"', '"rgba(219, 61, 61, 0.65)"'];
-        $hoverBackgroundColor = ['"rgba(153, 202, 60, 0.9)"', '"rgba(251, 176, 64, 0.9)"'];
-        $hoverBorderColor = ['"rgba(153, 202, 60, 1)"', '"rgba(251, 176, 64, 1)"'];
+        $colors = ['rgba(153, 202, 60, 0.8)', 'rgba(251, 176, 64, 0.8)'];
+        $borderColor = ['rgba(57, 142, 61, 0.65)', 'rgba(153, 202, 60, 0.8)', 'rgba(255, 229, 0, 0.8)', 'rgba(255, 179, 3, 0.8)', 'rgba(219, 61, 61, 0.65)'];
+        $hoverBackgroundColor = ['rgba(153, 202, 60, 0.9)', 'rgba(251, 176, 64, 0.9)'];
+        $hoverBorderColor = ['rgba(153, 202, 60, 1)', 'rgba(251, 176, 64, 1)'];
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors),
             'borderColor' =>  $borderColor,
               'hoverBackgroundColor' => $hoverBackgroundColor,
               'hoverBorderColor' => $hoverBorderColor
@@ -251,17 +251,17 @@ class FsmDashboardService
             . " FROM fsm.feedbacks fb $where $whereRawServiceProvider";
 
         $results = DB::select($query);
-        $labels = array('"Yes"', '"No"');
+        $labels = array('Yes', 'No');
         $values = array($results[0]->yes, $results[0]->no);
-        $colors = ['"rgba(153, 202, 60, 0.8)"', '"rgba(251, 176, 64, 0.8)"'];
-        $borderColor = ['"rgba(57, 142, 61, 0.65)"', '"rgba(153, 202, 60, 0.8)"', '"rgba(255, 229, 0, 0.8)"', '"rgba(255, 179, 3, 0.8)"', '"rgba(219, 61, 61, 0.65)"'];
-        $hoverBackgroundColor = ['"rgba(153, 202, 60, 0.9)"', '"rgba(251, 176, 64, 0.9)"'];
-        $hoverBorderColor = ['"rgba(153, 202, 60, 1)"', '"rgba(251, 176, 64, 1)"'];
+        $colors = ['rgba(153, 202, 60, 0.8)', 'rgba(251, 176, 64, 0.8)'];
+        $borderColor = ['rgba(57, 142, 61, 0.65)', 'rgba(153, 202, 60, 0.8)', 'rgba(255, 229, 0, 0.8)', 'rgba(255, 179, 3, 0.8)', 'rgba(219, 61, 61, 0.65)'];
+        $hoverBackgroundColor = ['rgba(153, 202, 60, 0.9)', 'rgba(251, 176, 64, 0.9)'];
+        $hoverBorderColor = ['rgba(153, 202, 60, 1)', 'rgba(251, 176, 64, 1)'];
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors),
             'borderColor' =>  $borderColor,
             'hoverBackgroundColor' => $hoverBackgroundColor,
             'hoverBorderColor' => $hoverBorderColor
@@ -301,13 +301,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->length;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -339,13 +339,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->num_of_hotspots;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -368,13 +368,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -400,13 +400,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->type . '"';
+            $labels[] = $row->type;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -450,22 +450,22 @@ class FsmDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->functional_use_name . '"';
+            $labels[] = $row->functional_use_name;
             $values[] = $row->building_count;
         }
 
         $colors = [
-            '"#8ECAE6"',
-            '"#219EBC"',
-            '"#023047"',
-            '"#ffb964"',
+            '#8ECAE6',
+            '#219EBC',
+            '#023047',
+            '#ffb964',
         ];
         
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors)
         ];
 
         return $chart;
@@ -531,13 +531,13 @@ class FsmDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->month . '"';
+            $labels[] = $row->month;
             $values[] = $row->count;
         }
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values
+            'labels' => array_values($labels),
+            'values' => array_values($values)
         ];
 
         return $chart;
@@ -576,13 +576,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -610,13 +610,13 @@ class FsmDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->week . '"';
+            $labels[] = $row->week;
             $values[] = $row->count;
         }
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values
+            'labels' => array_values($labels),
+            'values' => array_values($values)
         ];
 
         return $chart;
@@ -661,13 +661,13 @@ class FsmDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -720,27 +720,27 @@ class FsmDashboardService
             {
                 $data[$row->spname][$row->month] = $row->count;
             }
-            $labels = array_map(function($month) { return '"' . $month . '"'; }, $label);
+            $labels = array_map(function($month) { return $month; }, $label);
             $colors = [
-                    '"rgba(51, 102, 153, 0.7)"',
-                    '"rgba(92, 152, 192, 0.7)"',
-                    '"rgba(112, 177, 212, 0.7)"',
-                    '"rgba(132, 202, 231, 0.7)"',
-                    '"rgba(161, 225, 207, 0.7)"',
-                    '"rgba(189, 247, 183, 0.7)"',
-                    '"rgba(142, 227, 167, 0.7)"',
-                    '"rgba(95, 207, 151, 0.7)"',
-                    '"rgba(48, 187, 135, 0.7)"',
-                    '"rgba(0, 166, 118, 0.7)"',
-                    '"rgba(51, 102, 153, 0.7)"',
-                    '"rgba(92, 152, 192, 0.7)"',
-                    '"rgba(112, 177, 212, 0.7)"',
-                    '"rgba(132, 202, 231, 0.7)"',
-                    '"rgba(161, 225, 207, 0.7)"',
-                    '"rgba(189, 247, 183, 0.7)"',
-                    '"rgba(142, 227, 167, 0.7)"',
-                    '"rgba(95, 207, 151, 0.7)"',
-                    '"rgba(48, 187, 135, 0.7)"',
+                    'rgba(51, 102, 153, 0.7)',
+                    'rgba(92, 152, 192, 0.7)',
+                    'rgba(112, 177, 212, 0.7)',
+                    'rgba(132, 202, 231, 0.7)',
+                    'rgba(161, 225, 207, 0.7)',
+                    'rgba(189, 247, 183, 0.7)',
+                    'rgba(142, 227, 167, 0.7)',
+                    'rgba(95, 207, 151, 0.7)',
+                    'rgba(48, 187, 135, 0.7)',
+                    'rgba(0, 166, 118, 0.7)',
+                    'rgba(51, 102, 153, 0.7)',
+                    'rgba(92, 152, 192, 0.7)',
+                    'rgba(112, 177, 212, 0.7)',
+                    'rgba(132, 202, 231, 0.7)',
+                    'rgba(161, 225, 207, 0.7)',
+                    'rgba(189, 247, 183, 0.7)',
+                    'rgba(142, 227, 167, 0.7)',
+                    'rgba(95, 207, 151, 0.7)',
+                    'rgba(48, 187, 135, 0.7)',
                 ];
             $colorsArr = array_slice($colors, 0, count($results), true);
             $datasets = array();
@@ -748,18 +748,18 @@ class FsmDashboardService
             $stack_count = 1;
             foreach($types as $key1=>$value1) {
                 $dataset = array();
-                $dataset['label'] = '"' . $value1 . '"';
+                $dataset['label'] = $value1;
                 $dataset['color'] = $colors[$count++];
                 $dataset['data'] = array();
                 foreach($labels as $key2=>$value2) {
                     $dataset['data'][] = isset($data[$key1][$key2]) ? $data[$key1][$key2] : '0';
                 }
 
-                $dataset['stack'] = '"stack' . $stack_count++ . '"';
+                $dataset['stack'] = 'stack' . $stack_count++ . '';
                 $datasets[] = $dataset;
             }
             $chart = array(
-                'labels' => $labels,
+                'labels' => array_values($labels),
                 'datasets' => $datasets
             );
 
@@ -799,19 +799,19 @@ class FsmDashboardService
         
         $labels = [];
         foreach ($label as $month) {
-            $labels[] = '"' . $month . '"';
+            $labels[] = $month;
         }
 
         $low_income_communities_dataset = [];
-        $low_income_communities_dataset['stack'] = '"stack 1"';
-        $low_income_communities_dataset['label'] = '"Low Income communities"';
-        $low_income_communities_dataset['color'] = '"rgba(54, 162, 235,0.5)"';
+        $low_income_communities_dataset['stack'] = 'stack 1';
+        $low_income_communities_dataset['label'] = 'Low Income communities';
+        $low_income_communities_dataset['color'] = 'rgba(54, 162, 235,0.5)';
         $low_income_communities_dataset['data'] = [];
 
         $other_dataset = [];
-        $other_dataset['stack'] = '"stack 2"';
-        $other_dataset['label'] = '"Other communities"';
-        $other_dataset['color'] = '"rgba(255,183,3, 0.7)"';
+        $other_dataset['stack'] = 'stack 2';
+        $other_dataset['label'] = 'Other communities';
+        $other_dataset['color'] = 'rgba(255,183,3, 0.7)';
         $other_dataset['data'] = [];
 
         foreach ($results as $row) {
@@ -826,7 +826,7 @@ class FsmDashboardService
         ];
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
         return $chart;

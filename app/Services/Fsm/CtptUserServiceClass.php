@@ -38,17 +38,17 @@ class CtptUserServiceClass
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['ctpt-users.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit PT Users Log')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\CtptUserController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\CtptUserController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
 
                 if (Auth::user()->can('View PT Users Log')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\CtptUserController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\CtptUserController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View PT Users Log History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\CtptUserController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\CtptUserController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete PT Users Log')) {
-                    $content .= '<a title="' . __("Delete") . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a title="' . e(__("Delete")) . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
                 $content .= \Form::close();
                 return $content;
@@ -72,7 +72,7 @@ class CtptUserServiceClass
         ->where('deleted_at', null)
         ->exists()) {
             return redirect('fsm/ctpt-users')
-            ->with('error', __('The record of toilet') . $request->toilet_id . __('for the year') . $request->date .__( 'already exists!!'));
+            ->with('error', 'The record of toilet' . $request->toilet_id . ' for the year ' . $request->date . 'already exists!!');
         } else {
             $info = new CtptUsers();
             $info->no_male_user = $request->no_male_user ? $request->no_male_user : null;
@@ -81,7 +81,7 @@ class CtptUserServiceClass
             $info->toilet_id = $request->toilet_id ? $request->toilet_id : null;
             $info->save();
 
-            return redirect('fsm/ctpt-users')->with('success', __('PT Users Log Added Successfully.'));
+            return redirect('fsm/ctpt-users')->with('success', 'PT Users Log Added Successfully');
         }
     }
 
@@ -93,9 +93,9 @@ class CtptUserServiceClass
             $info->no_female_user = $request->no_female_user ? $request->no_female_user : null;
             $info->date = $request->date ? $request->date : null;
             $info->save();
-            return redirect('fsm/ctpt-users')->with('success', __('PT Users Log Updated successfully.'));
+            return redirect('fsm/ctpt-users')->with('success', 'PT Users Log Updated successfully');
         } else {
-            return redirect('fsm/ctpt-users')->with('error', __('Failed to update info.'));
+            return redirect('fsm/ctpt-users')->with('error', 'Failed to update info');
         }
     }
 
@@ -104,7 +104,7 @@ class CtptUserServiceClass
 
         $toilet_name = $_GET['toilet_id'] ?? null;
         $date = $_GET['date'] ?? null;
-        $columns = [__('ID'),__('Toilet Name'),__('Date'),__('No. of Male Users (daily)'), __('No. of Female Users (daily)')];
+        $columns = ['ID','Toilet Name','Date','No. of Male Users (daily)', 'No. of Female Users (daily)'];
         $query = DB::table('fsm.ctpt_users as ctpt')
             ->leftJoin('fsm.toilets as t', 'ctpt.toilet_id', '=', 't.id')
             ->select('ctpt.id as id',

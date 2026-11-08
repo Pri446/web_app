@@ -111,15 +111,15 @@ class SludgeCollectionController extends Controller
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['sludge-collection.destroy', $model->id]]);
 
                 if (Auth::user()->can('View Sludge Collection')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\SludgeCollectionController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\SludgeCollectionController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Sludge Collection History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\SludgeCollectionController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\SludgeCollectionController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Sludge Collection')) {
-                    $content .= '<a title="' . __("Delete") . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a title="' . e(__("Delete")) . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 $content .= \Form::close();

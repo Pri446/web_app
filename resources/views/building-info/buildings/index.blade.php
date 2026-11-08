@@ -609,31 +609,30 @@
         });
 
 
-        document.getElementById('toilet').addEventListener('change', function() {
-            const toiletPresence = this.value;
-            const sanitationSelect = document.getElementById('sanitation_system_id');
+        const toiletEl = document.getElementById('toilet');
+        if (toiletEl) {
+            toiletEl.addEventListener('change', function () {
+                const toiletPresence = this.value;
+                const sanitationSelect = document.getElementById('sanitation_system_id');
+                if (!sanitationSelect) return;
 
-            // Clear existing options
-            sanitationSelect.innerHTML = '<option value="">Sanitation Systems</option>';
+                sanitationSelect.innerHTML = '<option value="">Sanitation Systems</option>';
 
-            if (toiletPresence === "Yes") {
-                // Add options for IDs 1 to 8 and 11
-                @foreach ($sanitation_systems as $key => $value)
-                    @if (($key >= 1 && $key <= 8) || $key == 11)
-                        sanitationSelect.innerHTML +=
-                            `<option value="{{ $key }}">{{ $value }}</option>`;
-                    @endif
-                @endforeach
-            } else if (toiletPresence === "No") {
-                // Add remaining options (IDs not in 1 to 8 and 11)
-                @foreach ($sanitation_systems as $key => $value)
-                    @if (($key < 1 || $key > 8) && $key != 11)
-                        sanitationSelect.innerHTML +=
-                            `<option value="{{ $key }}">{{ $value }}</option>`;
-                    @endif
-                @endforeach
-            }
-        });
+                if (toiletPresence === "Yes") {
+                    @foreach ($sanitation_systems as $key => $value)
+                        @if (($key >= 1 && $key <= 8) || $key == 11)
+                            sanitationSelect.innerHTML += '<option value="{{ $key }}">{{ addslashes($value) }}</option>';
+                        @endif
+                    @endforeach
+                } else if (toiletPresence === "No") {
+                    @foreach ($sanitation_systems as $key => $value)
+                        @if (($key < 1 || $key > 8) && $key != 11)
+                            sanitationSelect.innerHTML += '<option value="{{ $key }}">{{ addslashes($value) }}</option>';
+                        @endif
+                    @endforeach
+                }
+            });
+        }
 
 
 

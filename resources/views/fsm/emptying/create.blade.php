@@ -244,12 +244,12 @@ function showAnfPopup(building, containmentRes) {
             <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
             <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
         </div>
-        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${building.owner_name ?? '-'} (${building.owner_gender ?? '-'})</p>
-        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${building.house_number ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${building.road_code ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${building.structure_type_name ?? '-'} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${building.building_sanitation_system ?? '-'}</p>
-        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${building.bin ?? '-'}</span></p>
+        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${escapeHtml(building.owner_name ?? '-')} (${escapeHtml(building.owner_gender ?? '-')})</p>
+        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
+        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
+        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
         <div class="alert alert-warning py-1 small mb-2">⚠ {{__('No containment linked to this building')}}.</div>
         <a href="/fsm/containments/${building.bin}/create?application_id=${applicationId}" class="btn btn-warning btn-sm btn-block">
             + {{__('Add Containment')}}
@@ -261,12 +261,12 @@ function showAnfPopup(building, containmentRes) {
             <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
             <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
         </div>
-        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${building.owner_name ?? '-'} (${building.owner_gender ?? '-'})</p>
-        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${building.house_number ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${building.road_code ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${building.structure_type_name ?? '-'} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${building.building_sanitation_system ?? '-'}</p>
-        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${building.bin ?? '-'}</span></p>
+        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${escapeHtml(building.owner_name ?? '-')} (${escapeHtml(building.owner_gender ?? '-')})</p>
+        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
+        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
+        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
         <h6 class="font-weight-bold border-bottom pb-1 mb-2">🚽 {{__('Containments')}}</h6>
         <div class="mb-2 small">${containmentRes.popContentsHtml}</div>
         <button class="btn btn-success btn-sm btn-block"
@@ -297,7 +297,7 @@ function selectAnfBuilding(bin, containmentId) {
                 toastr.success('{{ __('Building and containment linked successfully. Resolving ANF') }}...', 'Success', {
                     timeOut: 2000,
                     onHidden: function () {
-                        window.location.reload();s
+                        window.location.reload();
                     }
                 });
             }
@@ -331,6 +331,66 @@ function selectAnfBuilding(bin, containmentId) {
             }
         });
     }
+
+    function emptyAutoFields() {
+        $('#road_code').val('');
+        $('#containment_code').val('');
+        $('#ward').val('');
+        $('#customer_name').val('');
+        $('#customer_gender').val('');
+        $('#contact_no').val('');
+        $("input[name='applicants_name']").val('');
+        $("#applicant_gender").val('');
+        $("input[name='applicants_contact']").val('');
+        $("input[name='applicants_name']").removeAttr('disabled');
+        $("#applicant_gender").removeAttr('disabled');
+        $("input[name='applicants_contact']").removeAttr('disabled');
+        $("input[name='autofill']").prop('checked', false);
+    }
+
+    function onAddressChange() {
+        emptyAutoFields();
+        if($('#address').find(":selected").text() === 'Address Not Found'){
+            $('#building-if-address').hide();
+            $("#building-if-address :input").each(function () { $(this).attr("disabled",true); });
+            $('#building-if-not-address').show();
+            $("#building-if-not-address :input").each(function () { $(this).attr("disabled",false); });
+            $("input[type='submit']").removeAttr('disabled');
+        } else {
+            $('#building-if-not-address').hide();
+            $("#building-if-not-address :input").each(function () { $(this).attr("disabled",true); });
+            $('#building-if-address').show();
+            $("#building-if-address :input").each(function () { $(this).attr("disabled",false); });
+            $.ajax({
+                url: "{{ route('application.get-building-details') }}",
+                data: { "address" : $('#address').val() },
+                success: function (res) {
+                    if (res.status === true){
+                        let containments = '';
+                        res.containments.forEach(function (containment) { containments+=containment.id + ' '; })
+                        $('#customer_name').val(res.customer_name);
+                        $('#customer_gender').val(res.customer_gender);
+                        $('#contact_no').val(res.customer_contact);
+                        $('#road_code').val(res.road);
+                        $('#containment_code').val(containments);
+                        $('#ward').val(res.ward);
+                        $("input[type='submit']").removeAttr('disabled');
+                    } else if (res.status === false) {
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: "There is an ongoing application for this address!" });
+                        emptyAutoFields();
+                        $("input[type='submit']").attr('disabled','disabled');
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: "Error!" });
+                        emptyAutoFields();
+                    }
+                },
+                error: function (err) {
+                    Swal.fire({ icon: 'error', title: 'Oops...', text: err.responseJSON.error });
+                    emptyAutoFields();
+                    $("input[type='submit']").attr('disabled','disabled');
+                }
+            });
+        }
 
     function emptyAutoFields() {
         $('#road_code').val('');
