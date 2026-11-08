@@ -51,10 +51,6 @@ foreach ($spec['pages'] ?? [] as &$page) {
 
 unset($page);
 
-    Log::info('Final GIS print baseURL', [
-        'baseURL' => $spec['layers'][0]['baseURL'] ?? null,
-    ]);
-
     $printUrl = config('services.mapfish.print_url');
 
     try {
@@ -76,7 +72,6 @@ unset($page);
     if (!$response->successful()) {
         Log::error('GIS print service returned an error', [
             'status' => $response->status(),
-            'body' => substr($response->body(), 0, 2000),
         ]);
 
         return response()->json([

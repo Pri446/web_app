@@ -357,7 +357,7 @@ A dynamic form layout
                                                 geom: '{{ $formField->inputValue }}'
                                             }
                                         )
-                                        pointGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl: '{{ url('/gis/') }}', mapID:'map', geom: '{{ $formField->inputValue }}' })
+                                        pointGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl: '{{ url('/gis') }}/', mapID:'map', geom: '{{ $formField->inputValue }}' })
                                     });
                                 </script>
                             @endpush

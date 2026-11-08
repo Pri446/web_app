@@ -390,66 +390,6 @@ function selectAnfBuilding(bin, containmentId) {
                 }
             });
         }
-
-    function emptyAutoFields() {
-        $('#road_code').val('');
-        $('#containment_code').val('');
-        $('#ward').val('');
-        $('#customer_name').val('');
-        $('#customer_gender').val('');
-        $('#contact_no').val('');
-        $("input[name='applicants_name']").val('');
-        $("#applicant_gender").val('');
-        $("input[name='applicants_contact']").val('');
-        $("input[name='applicants_name']").removeAttr('disabled');
-        $("#applicant_gender").removeAttr('disabled');
-        $("input[name='applicants_contact']").removeAttr('disabled');
-        $("input[name='autofill']").prop('checked', false);
-    }
-
-    function onAddressChange() {
-        emptyAutoFields();
-        if($('#address').find(":selected").text() === 'Address Not Found'){
-            $('#building-if-address').hide();
-            $("#building-if-address :input").each(function () { $(this).attr("disabled",true); });
-            $('#building-if-not-address').show();
-            $("#building-if-not-address :input").each(function () { $(this).attr("disabled",false); });
-            $("input[type='submit']").removeAttr('disabled');
-        } else {
-            $('#building-if-not-address').hide();
-            $("#building-if-not-address :input").each(function () { $(this).attr("disabled",true); });
-            $('#building-if-address').show();
-            $("#building-if-address :input").each(function () { $(this).attr("disabled",false); });
-            $.ajax({
-                url: "{{ route('application.get-building-details') }}",
-                data: { "address" : $('#address').val() },
-                success: function (res) {
-                    if (res.status === true){
-                        let containments = '';
-                        res.containments.forEach(function (containment) { containments+=containment.id + ' '; })
-                        $('#customer_name').val(res.customer_name);
-                        $('#customer_gender').val(res.customer_gender);
-                        $('#contact_no').val(res.customer_contact);
-                        $('#road_code').val(res.road);
-                        $('#containment_code').val(containments);
-                        $('#ward').val(res.ward);
-                        $("input[type='submit']").removeAttr('disabled');
-                    } else if (res.status === false) {
-                        Swal.fire({ icon: 'error', title: 'Oops...', text: "There is an ongoing application for this address!" });
-                        emptyAutoFields();
-                        $("input[type='submit']").attr('disabled','disabled');
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'Oops...', text: "Error!" });
-                        emptyAutoFields();
-                    }
-                },
-                error: function (err) {
-                    Swal.fire({ icon: 'error', title: 'Oops...', text: err.responseJSON.error });
-                    emptyAutoFields();
-                    $("input[type='submit']").attr('disabled','disabled');
-                }
-            });
-        }
     }
 
     $(document).ready(function() {

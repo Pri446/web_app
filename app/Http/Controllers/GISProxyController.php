@@ -9,17 +9,24 @@ class GISProxyController extends Controller
 {
     public function wms(Request $request)
     {
-        $params = $request->query();
+        $params = $this->requestParameters($request);
         $service = strtoupper((string) ($params['SERVICE'] ?? $params['service'] ?? ''));
         $operation = strtoupper((string) ($params['REQUEST'] ?? $params['request'] ?? ''));
         abort_unless($service === 'WMS', 400, 'Invalid service.');
         abort_unless(in_array($operation, ['GETMAP', 'GETLEGENDGRAPHIC', 'GETFEATUREINFO'], true), 403, 'WMS operation is not allowed.');
 
-        $raw = $operation === 'GETLEGENDGRAPHIC'
-            ? ($params['LAYER'] ?? $params['layer'] ?? '')
-            : ($params['QUERY_LAYERS'] ?? $params['query_layers'] ?? $params['LAYERS'] ?? $params['layers'] ?? '');
-        foreach (array_filter(array_map('trim', explode(',', (string) $raw))) as $layer) {
-            $this->authorizeLayer($request, $layer);
+        $requiredLayer = $operation === 'GETLEGENDGRAPHIC' ? 'LAYER' : 'LAYERS';
+        abort_unless(isset($params[$requiredLayer]) && is_string($params[$requiredLayer])
+            && trim($params[$requiredLayer]) !== '', 400, 'Layer is required.');
+        $layerLists = [$params[$requiredLayer]];
+        if (isset($params['QUERY_LAYERS'])) {
+            $layerLists[] = $params['QUERY_LAYERS'];
+        }
+        foreach ($layerLists as $raw) {
+            abort_unless(is_string($raw), 400, 'Invalid layers.');
+            foreach (array_filter(array_map('trim', explode(',', $raw))) as $layer) {
+                $this->authorizeLayer($request, $layer);
+            }
         }
 
         return $this->forward($params, '/wms', 60);
@@ -27,7 +34,7 @@ class GISProxyController extends Controller
 
     public function wfs(Request $request)
     {
-        $params = $request->query();
+        $params = $this->requestParameters($request);
         $service = strtoupper((string) ($params['SERVICE'] ?? $params['service'] ?? ''));
         $operation = strtoupper((string) ($params['REQUEST'] ?? $params['request'] ?? ''));
         abort_unless($service === 'WFS' && $operation === 'GETFEATURE', 403, 'WFS operation is not allowed.');
@@ -37,6 +44,19 @@ class GISProxyController extends Controller
             $this->authorizeLayer($request, $layer);
         }
         return $this->forward($params, '/wfs', 60);
+    }
+
+    private function requestParameters(Request $request): array
+    {
+        $params = [];
+        foreach ($request->query() as $key => $value) {
+            $key = strtoupper((string) $key);
+            abort_if(array_key_exists($key, $params), 400, 'Duplicate GIS parameter.');
+            $params[$key] = $value;
+        }
+        // The backend credential always comes from server configuration.
+        unset($params['AUTHKEY']);
+        return $params;
     }
 
     private function forward(array $params, string $endpoint, int $timeout)
