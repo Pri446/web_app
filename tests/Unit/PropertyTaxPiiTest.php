@@ -120,6 +120,14 @@ class PropertyTaxPiiTest extends TestCase
         );
     }
 
+    public function test_export_uses_readable_column_headings(): void
+    {
+        $this->assertSame(
+            ['Tax Code', 'BIN', 'Owner Name', 'Owner Contact', 'Last Payment Date', 'Status'],
+            app(PropertyTaxPiiExportService::class)->headers()
+        );
+    }
+
     public function test_export_parser_requires_bin_header(): void
     {
         $this->expectException(ValidationException::class);
