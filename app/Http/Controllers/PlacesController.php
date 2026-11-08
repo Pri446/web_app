@@ -43,6 +43,7 @@ public function __construct()
     {
         $page_title = 'Places';
         $types = Places::whereNotNull('type')
+            ->where('type', '!=', '')
             ->distinct()
             ->orderBy('type')
             ->pluck('type')
@@ -54,6 +55,7 @@ public function __construct()
     {
         $page_title = 'Add Places';
         $types = Places::whereNotNull('type')
+            ->where('type', '!=', '')
             ->distinct()
             ->orderBy('type')
             ->pluck('type')
@@ -86,8 +88,8 @@ public function __construct()
         $places->id = $maxId + 1;
         $places->name = $validated['name'];
         $places->ward = $validated['ward'];
-        $places->type = $validated['type'] ?? null;
-        $places->unique_reference_id = $validated['unique_reference_id'] ?? null;
+        $places->type = !empty($validated['type']) ? trim($validated['type']) : null;
+        $places->unique_reference_id = !empty($validated['unique_reference_id']) ? trim($validated['unique_reference_id']) : null;
         $places->geom = DB::raw("ST_GeomFromText('{$validated['geom']}')");
         $places->save();
 
@@ -105,6 +107,7 @@ public function __construct()
         );
         $geom = $geometry->geom ?? null;
         $types = Places::whereNotNull('type')
+            ->where('type', '!=', '')
             ->distinct()
             ->orderBy('type')
             ->pluck('type')
@@ -135,8 +138,8 @@ public function __construct()
         $places = Places::findOrFail($id);
         $places->name = $validated['name'];
         $places->ward = $validated['ward'];
-        $places->type = $validated['type'] ?? null;
-        $places->unique_reference_id = $validated['unique_reference_id'] ?? null;
+        $places->type = !empty($validated['type']) ? trim($validated['type']) : null;
+        $places->unique_reference_id = !empty($validated['unique_reference_id']) ? trim($validated['unique_reference_id']) : null;
         $places->geom = DB::raw("ST_GeomFromText('{$validated['geom']}')");
         $places->save();
 
