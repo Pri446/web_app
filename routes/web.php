@@ -73,6 +73,8 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard/content', [App\Http\Controllers\HomeController::class, 'content'])
+        ->name('dashboard.content');
 });
 
 /**
@@ -86,6 +88,7 @@ Route::group([
     // building structure routes
     Route::get('get-use-categories/{functionalUseId}', 'BuildingController@getUseCategories')->name('functionaluse.getusecat');
     Route::get('buildings/buildingdashboard', 'BuildingDashboardController@index')->name('buildingdashboard');
+    Route::get('buildings/buildingdashboard/content', 'BuildingDashboardController@content')->name('buildingdashboard.content');
     Route::get('buildings/check-house', 'BuildingController@checkHouse')->name('buildings.check-house');
     Route::get('buildings/data', 'BuildingController@getData')->name('building.getData');
     Route::get('buildings/get-house-numbers', 'BuildingController@getHouseNumbers')->name('building.get-house-numbers-containments');
@@ -207,6 +210,7 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('utilitydashboard', 'UtilityDashboardController@index')->name('utilitydashboard');
+    Route::get('utilitydashboard/content', 'UtilityDashboardController@content')->name('utilitydashboard.content');
     Route::get('roadlines/export', 'RoadlineController@export');
     Route::get('roadlines/data', 'RoadlineController@getData');
     Route::get('roadlines/{code}/geometry', 'RoadlineController@getGeometry');

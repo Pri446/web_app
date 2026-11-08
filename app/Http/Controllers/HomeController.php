@@ -29,6 +29,8 @@ use App\Models\UtilityInfo\WaterSupplys;
 use App\Models\WaterSupplyInfo\WaterSupply;
 use App\Models\BuildingInfo\FunctionalUse;
 use App\Models\BuildingInfo\SanitationSystem;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
@@ -52,6 +54,62 @@ class HomeController extends Controller
 
 
     public function index()
+    {
+        return view('dashboard.indexAdmin', [
+            'page_title' => __('IMIS Dashboard'),
+        ]);
+    }
+
+    /**
+     * Return the authenticated user's dashboard as a stable JSON contract.
+     * The data cache is scoped by user, role/permissions, provider, plant and filters.
+     */
+    public function content(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $filters = $request->only(['year']);
+        $cacheKey = $this->dashboardService->dashboardCacheKey($user, $filters);
+        $cacheHit = $this->dashboardService->dashboardHtmlCacheHas($cacheKey);
+
+        try {
+            $html = $this->dashboardService->rememberDashboardHtml(
+                $cacheKey,
+                function () use ($cacheKey) {
+                    $data = $this->dashboardService->rememberDashboardData(
+                        $cacheKey,
+                        function () {
+                            return $this->buildDashboardData();
+                        }
+                    );
+
+                    // Rendering occurs only after the current user's permissions have
+                    // been included in the cache key.
+                    return view('dashboard._content', $data)->render();
+                }
+            );
+
+            return response()->json([
+                'status' => 'ok',
+                'html' => $html,
+                'meta' => [
+                    'cache' => $cacheHit ? 'hit' : 'miss',
+                    'ttl_seconds' => $this->dashboardService->dashboardCacheTtl(),
+                ],
+            ])->header('Cache-Control', 'private, no-store');
+        } catch (\Throwable $exception) {
+            Log::error('Dashboard content failed to load.', [
+                'user_id' => $user->id,
+                'exception' => $exception,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => __('The dashboard could not be loaded.'),
+            ], 500)->header('Cache-Control', 'private, no-store');
+        }
+    }
+
+    private function buildDashboardData(): array
     {
         $page_title = __("IMIS Dashboard");
 
@@ -307,7 +365,7 @@ class HomeController extends Controller
         $taxCodePresenceward = $this->dashboardService->taxCodePresencebyWard();
         $pipeCodePresenceWard = $this->dashboardService->waterSupplyPipeCodePresenceByWard();
         $treatmentPlantTest = $this->dashboardService->treatmentPlantTestResultsByYear();
-        return view('dashboard.indexAdmin', compact(
+        return compact(
             'page_title',
             'buildingCount',
             'commercialBuildCount',
@@ -380,7 +438,7 @@ class HomeController extends Controller
             'taxCodePresenceward',
             'pipeCodePresenceWard',
             'treatmentPlantTest',
-        ));
+        );
     }
 
     public function countBuildingsByUse($useName)
