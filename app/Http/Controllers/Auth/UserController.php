@@ -16,6 +16,7 @@ use DB;
 use App\Models\Application;
 use Encore\Admin\Layout\Content;
 use App\Services\Auth\UserService;
+use App\Services\UserRecordAccessService;
 use App\Models\Fsm\HelpDesk;
 use App\Enums\UserStatus;
 
@@ -146,17 +147,8 @@ class UserController extends Controller
         // findOrFail() returns the normal 404 page when that ID does not exist.
         $userDetail = User::findorfail($id);
 
-        /*
-         * Ask UserPolicy::view() whether the logged-in user may view THIS
-         * particular record. The constructor middleware has already checked
-         * the general "View User" permission; this second check prevents IDOR
-         * by validating ownership/organizational scope for the requested ID.
-         *
-         * If the policy returns false, Laravel stops here with HTTP 403.
-         * If it returns true, execution continues normally and the method still
-         * returns the existing users.show Blade view below.
-         */
-        $this->authorize('view', $userDetail);
+        // Keep the per-record scope check after removing the old UserPolicy.
+        UserRecordAccessService::authorizeView($userDetail);
 
         $user = $this->userService->getUserRelatedData($id);
 

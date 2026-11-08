@@ -4,6 +4,12 @@
 **Audit type:** Static/read-only review of the current checkout  
 **Important limitation:** This documents the code currently in this workspace. The deployed test environment must be compared with this commit and its route cache before the vulnerability can be considered fixed.
 
+## Clean release compatibility
+
+The release retains the two original IDOR commits on the current master base. The final implementation does not register `UserPolicy`. `UserController::show()` now calls `UserRecordAccessService::authorizeView()` directly, preserving the original policy's View User permission, self-record, same-provider, same-plant, and Super Admin checks. Null organization IDs do not grant shared access. The newer ANF field-update safeguards from master are preserved alongside the FSM authorization checks.
+
+The audit findings below describe the original source review; references to a proposed policy or the previous private helper are historical. This compatibility fix applies to the user-detail action and does not claim to resolve every residual audit finding.
+
 ## 1. Main Finding
 
 In the current checkout, all three reported endpoints have Laravel authentication middleware:
