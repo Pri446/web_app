@@ -36,6 +36,10 @@ use DB;
 use Redirect;
 use Carbon\Carbon;
 use App\Models\Fsm\BuildToilet;
+use App\Services\OwnerPiiPresenter;
+use App\Services\OwnerPiiAuditService;
+use App\Services\PiiAccessService;
+use Illuminate\Support\Facades\Auth;
 
 class BuildingController extends Controller
 {
@@ -45,29 +49,93 @@ class BuildingController extends Controller
      * @return \Illuminate\Http\Response
      */
     protected BuildingStructureService $buildingStructureService;
+    protected OwnerPiiPresenter $ownerPiiPresenter;
+    protected PiiAccessService $piiAccessService;
+    protected OwnerPiiAuditService $ownerPiiAuditService;
     private $points;
 
-    public function __construct(BuildingStructureService $buildingStructureService)
-    {
+    public function __construct(
+        BuildingStructureService $buildingStructureService,
+        OwnerPiiPresenter $ownerPiiPresenter,
+        PiiAccessService $piiAccessService,
+        OwnerPiiAuditService $ownerPiiAuditService
+    ) {
         $this->middleware('auth');
-        $this->middleware('permission:List Building Structures', ['only' => ['index']]);
-        $this->middleware('permission:View Building Structure', ['only' => ['show']]);
-        $this->middleware('permission:Add Building Structure', ['only' => ['create', 'store']]);
-        $this->middleware('permission:Edit Building Structure', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:Delete Building Structure', ['only' => ['destroy']]);
-        $this->middleware('permission:Export Building Structures', ['only' => ['export']]);
-        /**
-         * creating a service class instance
-         */
+        $this->middleware(
+            'permission:List Building Structures',
+            ['only' => ['index', 'getData']]
+        );
+        $this->middleware(
+            'permission:View Building Structure',
+            ['only' => ['show']]
+        );
+        $this->middleware(
+            'permission:Add Building Structure',
+            ['only' => ['create', 'store']]
+        );
+        $this->middleware(
+            'permission:Edit Building Structure',
+            ['only' => ['edit', 'update']]
+        );
+        $this->middleware(
+            'permission:Delete Building Structure',
+            ['only' => ['destroy']]
+        );
+        $this->middleware(
+            'permission:Export Building Structures',
+            ['only' => ['export']]
+        );
+        $this->middleware(
+            'pii.no-cache',
+            ['only' => ['index', 'getData', 'show', 'edit', 'export', 'listContainments', 'mapLookup']]
+        );
+
         $this->buildingStructureService = $buildingStructureService;
+        $this->ownerPiiPresenter = $ownerPiiPresenter;
+        $this->piiAccessService = $piiAccessService;
+        $this->ownerPiiAuditService = $ownerPiiAuditService;
     }
     public function getData(Request $request)
     {
-        return ($this->buildingStructureService->fetchData($request));
+        $piiUnlocked = $this->ownerPiiListIsUnlocked();
+
+        if ($piiUnlocked) {
+            $this->ownerPiiAuditService->record(
+                'pii_bulk_viewed',
+                true,
+                Auth::user(),
+                null,
+                [
+                    'surface' => 'building_data_table',
+                    'page_start' => (int) $request->input('start', 0),
+                    'page_length' => (int) $request->input('length', 10),
+                    'owner_name_filter_used' => $request->filled('ownername'),
+                ],
+                $this->piiAccessService->authenticationMethod(
+                    Auth::user(),
+                    'list',
+                    PiiAccessService::ALL_OWNERS_RESOURCE_ID
+                )
+            );
+        }
+
+        return $this->buildingStructureService->fetchData(
+            $request,
+            $piiUnlocked
+        );
     }
     public function index()
     {
         $page_title = __("Buildings");
+        $piiListUnlocked = $this->ownerPiiListIsUnlocked();
+        $canUnlockOwnerPiiList = $this->piiAccessService->canUnlock(Auth::user());
+        $piiListUnlockSeconds = $piiListUnlocked
+            ? $this->piiAccessService->secondsRemaining(
+                Auth::user(),
+                'list',
+                PiiAccessService::ALL_OWNERS_RESOURCE_ID
+            )
+            : 0;
 
         $structure_type = StructureType::orderBy('type', 'asc')->pluck('type', 'id')->all();
         $water_sources = WaterSource::orderBy('source', 'asc')->pluck('source', 'id')->all();
@@ -81,11 +149,35 @@ class BuildingController extends Controller
             ->orderBy('floor_count', 'asc')
             ->pluck('floor_count', 'floor_count');
         $ward = Ward::orderBy('ward', 'asc')->pluck('ward', 'ward')->all();
-        $toiletPresence =  Building::pluck('toilet_status')->get('*');
+        $toiletPresence = Building::pluck('toilet_status')->get('*');
         // Capitalize the first letter of each word in the arrays
         $structure_type = array_map('ucwords', $structure_type);
         $water_sources = array_map('ucwords', $water_sources);
-        return view('building-info.buildings.index', compact('page_title', 'structure_type', 'functional_use', 'sanitation_systems', 'water_sources', 'ward', 'toiletPresence', 'floorCount'));
+        return view('building-info.buildings.index', compact(
+            'page_title',
+            'structure_type',
+            'functional_use',
+            'sanitation_systems',
+            'water_sources',
+            'ward',
+            'toiletPresence',
+            'floorCount',
+            'piiListUnlocked',
+            'canUnlockOwnerPiiList',
+            'piiListUnlockSeconds'
+        ));
+    }
+
+    private function ownerPiiListIsUnlocked(): bool
+    {
+        $user = Auth::user();
+
+        return $user
+            && $this->piiAccessService->isUnlocked(
+                $user,
+                'list',
+                PiiAccessService::ALL_OWNERS_RESOURCE_ID
+            );
     }
 
     /**
@@ -102,8 +194,8 @@ class BuildingController extends Controller
         // Capitalize the first letter of each word in the arrays
         $structure_type = array_map('ucwords', $structure_type);
         $water_source = moveOthersToEnd(array_map('ucwords', $water_source));
-        $toiletConnection = SanitationSystem::whereNotIn('id', [9, 10,12])->pluck('sanitation_system', 'id')->all();
-        $defecationPlace = SanitationSystem::whereIn('id', [9, 10,12])->pluck('sanitation_system', 'id')->all();
+        $toiletConnection = SanitationSystem::whereNotIn('id', [9, 10, 12])->pluck('sanitation_system', 'id')->all();
+        $defecationPlace = SanitationSystem::whereIn('id', [9, 10, 12])->pluck('sanitation_system', 'id')->all();
         $containment_type = ContainmentType::pluck('type', 'id')->all();
         $buildingBin = Building::distinct('bin')->pluck('bin', 'bin')->take(10)->whereNull('building_associated_to')->whereNull('deleted_at');
 
@@ -131,7 +223,7 @@ class BuildingController extends Controller
 
         $buildingSurvey = null;
 
-        $drain_code =  Drain::pluck('code', 'code')->all();
+        $drain_code = Drain::pluck('code', 'code')->all();
 
 
         $licNames = Lic::whereNull('deleted_at')->orderBy('community_name')->pluck('community_name', 'id');
@@ -188,32 +280,51 @@ class BuildingController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Building $building)
     {
         $page_title = __("Building Details");
+        $piiUnlocked = $this->ownerPiiIsUnlocked($building, 'view');
+        $ownerPii = $building->Owners
+            ? ($piiUnlocked
+                ? $this->ownerPiiPresenter->presentPlaintext($building->Owners)
+                : $this->ownerPiiPresenter->presentMasked($building->Owners))
+            : [
+                'owner_name' => null,
+                'owner_gender' => null,
+                'owner_contact' => null,
+                'nid' => null,
+            ];
 
-        $building = Building::find($id);
+        if ($piiUnlocked && $building->Owners) {
+            $this->ownerPiiAuditService->record(
+                'pii_viewed',
+                true,
+                Auth::user(),
+                (string) $building->public_id,
+                ['surface' => 'building_details'],
+                $this->piiAccessService->authenticationMethod(
+                    Auth::user(),
+                    'view',
+                    (string) $building->public_id
+                )
+            );
+        }
         $statusLIH = LicStatus::getDescription($building->is_lih);
         $status = LicStatus::getDescription($building->is_lic);
         $containment = $building->containments[0] ?? null;
-        $folderPathJpg = public_path('/storage/emptyings/houses/'. $building->bin . '.jpg');
-        $folderPathJpeg = public_path('/storage/emptyings/houses/'. $building->bin . '.jpgeg');
+        $folderPathJpg = public_path('/storage/emptyings/houses/' . $building->bin . '.jpg');
+        $folderPathJpeg = public_path('/storage/emptyings/houses/' . $building->bin . '.jpgeg');
         $imagePathJpg = 'storage/emptyings/houses/' . $building->bin . '.jpg';
         $imagePathJpeg = 'storage/emptyings/houses/' . $building->bin . '.jpeg';
-        if(file_exists($folderPathJpg) == true)
-        {
+        if (file_exists($folderPathJpg) == true) {
             $imageSrc = asset($imagePathJpg);
-        }
-        elseif(file_exists($folderPathJpeg) == true)
-        {
+        } elseif (file_exists($folderPathJpeg) == true) {
             $imageSrc = asset($imagePathJpeg);
-        }
-        else
-        {
+        } else {
             $imageSrc = false;
         }
         if ($building) {
-            return view('building-info.buildings.show', compact('page_title', 'building', 'containment', 'status', 'statusLIH','imageSrc'));
+            return view('building-info.buildings.show', compact('page_title', 'building', 'containment', 'status', 'statusLIH', 'imageSrc', 'ownerPii', 'piiUnlocked'));
         } else {
             return view('errors.404');
         }
@@ -225,18 +336,52 @@ class BuildingController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Building $building)
     {
 
         $page_title = __("Edit Building");
-        $building = Building::find($id);
-        if (!empty($building->Owners)) {
-            $building->owner_name = $building->Owners->owner_name;
-            $building->owner_gender = $building->Owners->owner_gender;
-            $building->owner_contact = $building->Owners->owner_contact;
-            $building->nid = $building->Owners->nid;
+        $piiUnlocked = $this->ownerPiiIsUnlocked($building, 'edit');
+        $piiUnlockSeconds = $piiUnlocked
+            ? $this->piiAccessService->secondsRemaining(
+                Auth::user(),
+                'edit',
+                (string) $building->public_id
+            )
+            : 0;
+        $ownerPii = [
+            'owner_name' => '********',
+            'owner_gender' => '********',
+            'owner_contact' => '********',
+            'nid' => '********',
+        ];
 
+        if ($piiUnlocked && !empty($building->Owners)) {
+            $ownerPii = $this->ownerPiiPresenter->presentPlaintext(
+                $building->Owners
+            );
         }
+
+        if ($piiUnlocked && !empty($building->Owners)) {
+            $this->ownerPiiAuditService->record(
+                'pii_viewed',
+                true,
+                Auth::user(),
+                (string) $building->public_id,
+                ['surface' => 'building_edit'],
+                $this->piiAccessService->authenticationMethod(
+                    Auth::user(),
+                    'edit',
+                    (string) $building->public_id
+                )
+            );
+        }
+
+        // Plaintext enters editable values only during an authorized unlock.
+        $building->owner_name = $piiUnlocked ? $ownerPii['owner_name'] : null;
+        $building->owner_gender = $piiUnlocked ? $ownerPii['owner_gender'] : null;
+        $building->owner_contact = $piiUnlocked ? $ownerPii['owner_contact'] : null;
+        $building->nid = $piiUnlocked ? $ownerPii['nid'] : null;
+
         $building->main_building = $building->building_associated_to ? false : true;
         $structure_type = StructureType::orderBy('type', 'asc')->pluck('type', 'id')->all();
         $water_source = WaterSource::orderBy('source', 'asc')->pluck('source', 'id')->all();
@@ -246,11 +391,11 @@ class BuildingController extends Controller
         $building->lic_status = $building->lic_id ? "1" : "0";
         // when toilet presence is NO
         // handling defecation place when sanitation system is shared toilet, open defecation and community toilet
-        if ($building->sanitation_system_id == 10 || $building->sanitation_system_id ==  9 || $building->sanitation_system_id ==  12) {
+        if ($building->sanitation_system_id == 10 || $building->sanitation_system_id == 9 || $building->sanitation_system_id == 12) {
             $building->defecation_place = $building->sanitation_system_id;
         }
-        $toiletConnection = SanitationSystem::whereNotIn('id', [9, 10,12])->pluck('sanitation_system', 'id')->all();
-        $defecationPlace = SanitationSystem::whereIn('id', [9, 10,12])->pluck('sanitation_system', 'id')->all();
+        $toiletConnection = SanitationSystem::whereNotIn('id', [9, 10, 12])->pluck('sanitation_system', 'id')->all();
+        $defecationPlace = SanitationSystem::whereIn('id', [9, 10, 12])->pluck('sanitation_system', 'id')->all();
         $building->ctpt_name = $building->sharedToilets->pluck('id') ?? null;
         $buildingBin = Building::distinct('bin')->pluck('bin', 'bin')->whereNull('building_associated_to')->whereNull('deleted_at');
         $bin = BuildContain::distinct('bin')->pluck('bin', 'bin')->whereNull('deleted_at');
@@ -274,7 +419,7 @@ class BuildingController extends Controller
         }, $ctpt);
         $containment = [];
         $buildingSurvey = null;
-        $drain_code =  Drain::pluck('code', 'code')->all();
+        $drain_code = Drain::pluck('code', 'code')->all();
         $licNames = Lic::whereNull('deleted_at')->orderBy('community_name')->pluck('community_name', 'id');
         $models = UseCategory::select('id', 'name', 'functional_use_id')->orderBy('name')->get();
         $functional_use = FunctionalUse::orderBy('name')->pluck('name', 'id')->all();
@@ -288,16 +433,12 @@ class BuildingController extends Controller
         $drain_status = 0;
         $sewer_status = 0;
         // flag for sewer and drain code to display them if containment type has sewer or drain
-        if($building->containments()->exists())
-        {
-            foreach($building->containments as $containment)
-            {
-                if(KeywordMatcher::matchKeywords($containment->containmentType->type,["drain"]))
-                {
+        if ($building->containments()->exists()) {
+            foreach ($building->containments as $containment) {
+                if (KeywordMatcher::matchKeywords($containment->containmentType->type, ["drain"])) {
                     $drain_status = true;
                 }
-                if(KeywordMatcher::matchKeywords($containment->containmentType->type,["sewer"]))
-                {
+                if (KeywordMatcher::matchKeywords($containment->containmentType->type, ["sewer"])) {
                     $sewer_status = true;
                 }
             }
@@ -328,7 +469,10 @@ class BuildingController extends Controller
             'waterSupply',
             'drain_status',
             'sewer_status',
-            'use_category_id'
+            'use_category_id',
+            'ownerPii',
+            'piiUnlocked',
+            'piiUnlockSeconds'
         ));
     }
     /**
@@ -338,15 +482,80 @@ class BuildingController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(BuildingRequest $request, $id)
+    public function update(BuildingRequest $request, Building $building)
     {
-        return ($this->buildingStructureService->updateBuildingData($request, $id));
+        $containsOwnerPii = $this->containsOwnerPiiUpdate($request);
+
+        if ($containsOwnerPii && !$this->ownerPiiIsUnlocked($building, 'edit')) {
+            $this->ownerPiiAuditService->record(
+                'pii_update_denied',
+                false,
+                Auth::user(),
+                (string) $building->public_id,
+                ['reason' => 'privileged_session_required'],
+                'session'
+            );
+
+            abort(403, __('Owner PII must be unlocked before it can be changed.'));
+        }
+
+        if ($containsOwnerPii) {
+            $this->ownerPiiAuditService->record(
+                'pii_update_authorized',
+                true,
+                Auth::user(),
+                (string) $building->public_id,
+                ['surface' => 'building_edit'],
+                $this->piiAccessService->authenticationMethod(
+                    Auth::user(),
+                    'edit',
+                    (string) $building->public_id
+                )
+            );
+        }
+
+        return $this->buildingStructureService->updateBuildingData(
+            $request,
+            $building->bin
+        );
     }
-    public function history($id)
+
+    private function containsOwnerPiiUpdate(Request $request): bool
     {
-        $building = Building::find($id);
+        foreach (['owner_name', 'owner_gender', 'owner_contact', 'nid'] as $field) {
+            if ($request->filled($field)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function canUnlockOwnerPii(): bool
+    {
+        $user = Auth::user();
+
+        return $this->piiAccessService->canUnlock($user);
+    }
+
+    private function ownerPiiIsUnlocked(
+        Building $building,
+        string $scope
+    ): bool
+    {
+        $user = Auth::user();
+
+        return $this->canUnlockOwnerPii()
+            && $this->piiAccessService->isUnlocked(
+                $user,
+                $scope,
+                (string) $building->public_id
+            );
+    }
+    public function history(Building $building)
+    {
         if ($building) {
-            $page_title =  __("Building History");
+            $page_title = __("Building History");
             return view('building-info.buildings.history', compact('page_title', 'building'));
         } else {
             abort(404);
@@ -358,9 +567,8 @@ class BuildingController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Building $building)
     {
-        $building = Building::find($id);
         if ($building) {
             if ($building->containments()->exists()) {
                 return redirect('building-info/buildings')->with('error', __("Failed to delete Building, it is associated with Containment Information"));
@@ -374,7 +582,34 @@ class BuildingController extends Controller
     }
     public function export()
     {
-        return ($this->buildingStructureService->fetchExport());
+        $user = Auth::user();
+        $includeOwnerPii = $this->ownerPiiListIsUnlocked()
+            && $user
+            && $user->can('Export Owner PII');
+
+        if ($includeOwnerPii) {
+            // The ordinary Building export may contain plaintext owner values
+            // only while this same user's list-wide reveal grant is active.
+            // Record the disclosure separately from the dedicated PII export.
+            $this->ownerPiiAuditService->record(
+                'pii_exported',
+                true,
+                $user,
+                null,
+                [
+                    'surface' => 'building_standard_csv_export',
+                    'includes_owner_pii' => true,
+                    'owner_field_count' => 3,
+                ],
+                $this->piiAccessService->authenticationMethod(
+                    $user,
+                    'list',
+                    PiiAccessService::ALL_OWNERS_RESOURCE_ID
+                ) ?? 'password_reentry'
+            );
+        }
+
+        return $this->buildingStructureService->fetchExport($includeOwnerPii);
     }
     public function getHouseNumbers()
     {
@@ -398,10 +633,8 @@ class BuildingController extends Controller
     {
         return ($this->buildingStructureService->fetchHouseNumberAll());
     }
-    public function listContainments($id)
+    public function listContainments(Building $building)
     {
-        $building = Building::find($id);
-
         if ($building) {
             $title = __('Containments Connected to Building') . ': ' . $building->bin;
             $containments = $building->containments->toArray();
@@ -425,8 +658,8 @@ class BuildingController extends Controller
             $tbody .= '<td>' . $row1['id'] . '</td>';
             $tbody .= '<td>' . $row1['containment_type']['type'] . '</td>';
             $tbody .= '<td class="text-center">
-                        <a title="' . e(__('Containment Detail')) . '"
-                           href="' . action("Fsm\ContainmentController@show", ['containment' => $row1['id']]) . '"
+                        <a title="' . __('Containment Detail') . '"
+                           href="' . action("Fsm\ContainmentController@show", ['containment' => $row1['public_id']]) . '"
                            class="btn btn-info btn-sm mb-1">
                            <i class="fa fa-info-circle" aria-hidden="true"></i>
                         </a>
@@ -459,7 +692,7 @@ class BuildingController extends Controller
         return response()->json($containmentTypes);
     }
 
-    public function getCTPTHouseNumbers ()
+    public function getCTPTHouseNumbers()
     {
         return ($this->buildingStructureService->fetchCTPTHouseNumber());
     }
@@ -469,7 +702,7 @@ class BuildingController extends Controller
     {
         $useCategories = UseCategory::where('functional_use_id', $functionalUseId)
             ->orderBy('id')
-            ->pluck('name','id');
+            ->pluck('name', 'id');
 
         return response()->json($useCategories);
     }
@@ -480,19 +713,18 @@ class BuildingController extends Controller
 
         $sewer_code = $building->sewer_code ?? "No Sewer Code";
         $drain_code = $building->drain_code ?? "No Drain Code";
-        $containment_ids = implode(',',$building->containments()->get()->pluck('id')->toArray()) ?? "No Containment Connected";
+        $containment_ids = implode(',', $building->containments()->get()->pluck('id')->toArray()) ?? "No Containment Connected";
         $containment_infos = [];
-        foreach($building->containments()->get() as $containment)
-        {
-            array_push($containment_infos, $containment->containmentType->type . " (" . $containment->id .") <br>");
+        foreach ($building->containments()->get() as $containment) {
+            array_push($containment_infos, $containment->containmentType->type . " (" . $containment->id . ") <br>");
         }
-        $containments = $containment_infos ? implode('',$containment_infos) : "No Containment Connected<br>";
-        $data = "Building Toilet Connection:" . $building->SanitationSystem->sanitation_system . "<br> Containment Info:<br>".  $containments . "Drain Code: " . $drain_code ."<br>Sewer Code:" . $sewer_code;
+        $containments = $containment_infos ? implode('', $containment_infos) : "No Containment Connected<br>";
+        $data = "Building Toilet Connection:" . $building->SanitationSystem->sanitation_system . "<br> Containment Info:<br>" . $containments . "Drain Code: " . $drain_code . "<br>Sewer Code:" . $sewer_code;
         if ($building) {
             return response()->json([
                 'success' => true,
                 'data' => $data,
-                ]);
+            ]);
         }
-}
+    }
 }

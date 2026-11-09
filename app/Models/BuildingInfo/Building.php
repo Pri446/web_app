@@ -13,9 +13,11 @@ use Venturecraft\Revisionable\RevisionableTrait;
 use App\Models\BuildingInfo\SanitationSystem;
 
 use App\Models\LayerInfo\Lic;
+use App\Models\Concerns\HasPublicId;
 class Building extends Model
 {
     use SoftDeletes;
+    use HasPublicId;
 
     use RevisionableTrait;
 

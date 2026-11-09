@@ -15,7 +15,7 @@
 
                 {!! Form::label('owner_name', __('Owner Name'), ['class' => 'col-sm-2 control-label ']) !!}
                 <div class="col-sm-3">
-                    {!! Form::text('owner_name', $building->Owners->owner_name ?? '', [
+                    {!! Form::text('owner_name', $ownerPii['owner_name'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -25,7 +25,7 @@
             <div class="form-group row ">
                 {!! Form::label('nid',__('Owner NID') , ['class' => 'col-sm-2 control-label ']) !!}
                 <div class="col-sm-3">
-                    {!! Form::text('nid', $building->Owners->nid ?? '', [
+                    {!! Form::text('nid', $ownerPii['nid'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -34,7 +34,7 @@
             <div class="form-group row">
                 {!! Form::label('gender', __('Owner Gender'), ['class' => 'col-sm-2 control-label']) !!}
                 <div class="col-sm-3">
-                    {!! Form::text('gender', $building->Owners->owner_gender ?? '', [
+                    {!! Form::text('gender', $ownerPii['owner_gender'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -44,7 +44,7 @@
             <div class="form-group row">
                 {!! Form::label('contact_no', __('Owner Contact Number'), ['class' => 'col-sm-2 control-label']) !!}
                 <div class="col-sm-3">
-                    {!! Form::number('contact_no', $building->Owners->owner_contact ?? '', [
+                    {!! Form::text('contact_no', $ownerPii['owner_contact'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -153,7 +153,7 @@
             </div>
             <div class="form-group row">
                 {!! Form::label('estimated_area',  __('Estimated Area of the Building (m²)'), [
-                                                      
+
                     'class' => 'col-sm-2 control-label',
                 ]) !!}
                 <div class="col-sm-3">

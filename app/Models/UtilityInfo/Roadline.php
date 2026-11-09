@@ -22,6 +22,7 @@ class Roadline extends Model
     protected $revisionCreationsEnabled = true;
     protected $table = 'utility_info.roads';
     protected $primaryKey = 'code';
+    protected $keyType = 'string';
     public $incrementing = false;
 
     /**

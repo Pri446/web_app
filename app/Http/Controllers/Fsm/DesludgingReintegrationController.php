@@ -45,18 +45,9 @@ class DesludgingReintegrationController extends Controller
         $user = $request->user();
         $showServiceProvider = $this->canViewAllProviders($user);
 
-        $ownerQuery = DB::table('building_info.owners')
-            ->distinct('bin')
-            ->select([
-                'bin',
-                'owner_name',
-                'owner_gender',
-                'owner_contact',
-            ])
-            ->whereNull('deleted_at')
-            ->orderBy('bin')
-            ->orderBy('id');
-
+        // Reintegration needs routing and scheduling identifiers only. Owner
+        // PII is deliberately excluded: the Application create workflow will
+        // perform its own permission- and session-scoped owner lookup.
         $query = DB::table('fsm.containments as containment')
             ->join('building_info.build_contains as building_containment', function ($join) {
                 $join->on(
@@ -68,9 +59,6 @@ class DesludgingReintegrationController extends Controller
             ->join('building_info.buildings as building', function ($join) {
                 $join->on('building.bin', '=', 'building_containment.bin')
                     ->whereNull('building.deleted_at');
-            })
-            ->leftJoinSub($ownerQuery, 'owner', function ($join) {
-                $join->on('owner.bin', '=', 'building.bin');
             })
             ->whereNull('containment.deleted_at')
             ->where('containment.status', 4)
@@ -89,9 +77,6 @@ class DesludgingReintegrationController extends Controller
                 'building.road_code',
                 'containment.id as containment_id',
                 'containment.status',
-                'owner.owner_name',
-                'owner.owner_gender',
-                'owner.owner_contact',
                 DB::raw($this->providerIdExpression() . ' AS service_provider_id'),
                 DB::raw($this->providerNameExpression() . ' AS service_provider_name'),
             ])
@@ -126,11 +111,6 @@ class DesludgingReintegrationController extends Controller
             }
         }
 
-        if ($request->filled('owner_name')) {
-            $ownerName = '%' . trim((string) $request->owner_name) . '%';
-            $query->where('owner.owner_name', 'ILIKE', $ownerName);
-        }
-
         if ($request->filled('containment_id')) {
             $query->where(
                 'containment.id',
@@ -156,12 +136,6 @@ class DesludgingReintegrationController extends Controller
         }
 
         return DataTables::of($query)
-            ->addColumn('display_name', function ($row) {
-                return $row->owner_name ?: '-';
-            })
-            ->addColumn('display_contact', function ($row) {
-                return $row->owner_contact ?: '-';
-            })
             ->addColumn('action', function ($row) {
                 if (!auth()->user()->can('Confirm Schedule Reintegration')) {
                     return '';
@@ -172,10 +146,7 @@ class DesludgingReintegrationController extends Controller
                     ' class="btn btn-info btn-sm mb-1 reintegrate-schedule"' .
                     ' data-bin="' . e($row->bin) . '"' .
                     ' data-containment-id="' . e($row->containment_id) . '"' .
-                    ' data-road-code="' . e($row->road_code) . '"' .
-                    ' data-owner-name="' . e($row->owner_name) . '"' .
-                    ' data-owner-contact="' . e($row->owner_contact) . '"' .
-                    ' data-owner-gender="' . e($row->owner_gender) . '">' .
+                    ' data-road-code="' . e($row->road_code) . '">' .
                     '<i class="fa fa-check"></i></button>';
             })
             ->rawColumns(['action'])

@@ -11,6 +11,20 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     @include('layouts.components.error-list')
     @include('layouts.components.success-alert')
     @include('layouts.components.error-alert')
+
+    @if ($ownerPiiLookupUnlocked)
+        <div class="alert alert-success" role="status">
+            {{ __('Owner PII mode is active. Selecting a BIN will automatically load the owner information while the temporary access remains valid.') }}
+        </div>
+    @else
+        <div class="alert alert-warning" role="status">
+            {{ __('Owner information is locked and will remain masked. Return to Applications and activate View Owner PII Information before adding an Application when owner verification is required.') }}
+            <a href="{{ route('application.index') }}" class="alert-link">
+                {{ __('Back to Applications') }}
+            </a>
+        </div>
+    @endif
+
     {!! Form::open(['url' => route('application.store'), 'class' => 'form-horizontal', 'id' => 'create_application_form']) !!}
     <input
         type="hidden"
@@ -105,8 +119,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             localStorage.removeItem("applicant_contact");
         }
 
-        if ($('#customer_name').val() != '' && $('#customer_gender').val() != '' ) {
-            $('#autofill-wrapper').show();
+        if (typeof updateSameAsOwnerVisibility === 'function') {
+            updateSameAsOwnerVisibility();
         }
  
     } else {
@@ -140,8 +154,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             localStorage.removeItem("applicant_contact");
         }
 
-        // Hide "Same as Owner" checkbox in Applicant Details
-        $('#autofill-wrapper').hide();
+        // ANF applications do not have a verified building owner to copy.
+        if (typeof updateSameAsOwnerVisibility === 'function') {
+            updateSameAsOwnerVisibility();
+        }
     }
 
     // Scheduled application address fields are always view-only, even if the
@@ -163,9 +179,32 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     );
     const scheduleRoadText = @json($scheduleRoadText ?? null);
     const scheduleBinText = @json($scheduleBinText ?? null);
+    const ownerPiiMask = '********';
+    let ownerPiiRevealed = false;
+
+    function updateSameAsOwnerVisibility() {
+        const hasOwnerName = $.trim(String($('#customer_name').val() || '')) !== '';
+        const hasOwnerGender = $.trim(String($('#customer_gender').val() || '')) !== '';
+        const canCopyOwner = ownerPiiRevealed &&
+            hasOwnerName &&
+            hasOwnerGender &&
+            $('#is_anf').val() !== '1';
+
+        $('#autofill-wrapper').toggle(canCopyOwner);
+        $('#autofill').prop('disabled', !canCopyOwner);
+
+        if (!canCopyOwner) {
+            $('#autofill').prop('checked', false);
+        }
+    }
 
     function autoFillDetails() {
         $(document).ready(function() {
+            if (!ownerPiiRevealed) {
+                $("input[name='autofill']").prop('checked', false);
+                return;
+            }
+
             if ($("input[name='autofill']:checked").val() === 'on') {
                 $("input[name='applicant_name']").val($("input[name=customer_name]").val());
                 $("#applicant_gender").val($("#customer_gender").val());
@@ -185,6 +224,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
         $(`input[type="hidden"][name="${hiddenName}"]`).remove();
         const $field = $(selector);
+        if (selector === '#customer_gender') {
+            $('#customer_gender option[data-pii-mask="true"]').remove();
+        }
         $field.val(fieldValue).prop('disabled', hasValue);
 
         if (hasValue) {
@@ -200,6 +242,61 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 value: fieldValue
             }).insertAfter(selector);
         }
+    }
+
+    function showLockedOwnerFields() {
+        ownerPiiRevealed = false;
+        $('input[type="hidden"][name="customer_name"], ' +
+            'input[type="hidden"][name="customer_gender"], ' +
+            'input[type="hidden"][name="customer_contact"]').remove();
+
+        $('#customer_name').val(ownerPiiMask).prop('disabled', true);
+        $('#customer_contact').val(ownerPiiMask).prop('disabled', true);
+        $('#customer_gender option[data-pii-mask="true"]').remove();
+        $('#customer_gender')
+            .append($('<option>', {
+                value: ownerPiiMask,
+                text: ownerPiiMask,
+                selected: true,
+                'data-pii-mask': 'true'
+            }))
+            .prop('disabled', true);
+
+        updateSameAsOwnerVisibility();
+    }
+
+    function applyOwnerPiiFromBuildingLookup(response) {
+        // SECURITY NOTE: `owner_pii_locked` is returned by the server after
+        // it re-checks the password-confirmed owner_lookup session scope. The
+        // browser never promotes itself to an unlocked state; it only renders
+        // the fields that the authorized endpoint returned for this BIN.
+        if (response.owner_pii_locked) {
+            showLockedOwnerFields();
+            return;
+        }
+
+        setOwnerFieldFromLookup(
+            '#customer_name',
+            'customer_name',
+            response.customer_name
+        );
+        setOwnerFieldFromLookup(
+            '#customer_gender',
+            'customer_gender',
+            response.customer_gender
+        );
+        setOwnerFieldFromLookup(
+            '#customer_contact',
+            'customer_contact',
+            response.customer_contact
+        );
+
+        // This flag controls only the Same as Owner convenience checkbox. It
+        // is not an authorization decision and is reset whenever the BIN is
+        // changed or the server reports that the grant expired.
+        ownerPiiRevealed = $.trim(String(response.customer_name || '')) !== '' &&
+            $.trim(String(response.customer_gender || '')) !== '';
+        updateSameAsOwnerVisibility();
     }
 
     function lockConfirmAddressFields() {
@@ -272,13 +369,18 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         $('#containment_id').val('');
         $('#ward').val('');
         $('#customer_name').val('');
+        $('#customer_gender option[data-pii-mask="true"]').remove();
         $('#customer_gender').val('');
         $('#customer_contact').val('');
         $('[data-view-only="lookup"]')
             .removeAttr('data-view-only')
             .prop('disabled', false);
-        $("input[name='autofill']").prop('checked', false);
-        $('#autofill-wrapper').hide();
+        $('#customer_name, #customer_gender, #customer_contact').prop('disabled', false);
+        $("input[name='applicant_name']").val('').removeAttr('disabled');
+        $("#applicant_gender").val('').removeAttr('disabled');
+        $("input[name='applicant_contact']").val('').removeAttr('disabled');
+        ownerPiiRevealed = false;
+        updateSameAsOwnerVisibility();
         $('#containment_info, #accessibility_info').remove();
     }
 
@@ -316,6 +418,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             });
 
             if ($('#bin').val() != '') {
+                showLockedOwnerFields();
                 displayAjaxLoader();
                 $.ajax({
                     url: "{{ route('application.get-building-details') }}",
@@ -329,37 +432,21 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                 containmentOptions += `<option value="${containment}">${containment}</option>`;
                             });
 
-                            setOwnerFieldFromLookup(
-                                '#customer_name',
-                                'customer_name',
-                                res.customer_name
-                            );
-                            setOwnerFieldFromLookup(
-                                '#customer_gender',
-                                'customer_gender',
-                                res.customer_gender
-                            );
-                            setOwnerFieldFromLookup(
-                                '#customer_contact',
-                                'customer_contact',
-                                res.customer_contact
-                            );
+                            // The same address request carries owner PII only
+                            // when the server confirms the temporary scope is
+                            // still active. Otherwise this helper leaves all
+                            // owner fields fully masked.
+                            applyOwnerPiiFromBuildingLookup(res);
                             $('#household_served').val(res.household_served)
                                 .prop('disabled', true).attr('data-view-only', 'lookup');
                             $('#population_served').val(res.population_served)
                                 .prop('disabled', true).attr('data-view-only', 'lookup');
                             $('#toilet_count').val(res.toilet_count)
                                 .prop('disabled', true).attr('data-view-only', 'lookup');
-                           
-                            if ($('#customer_name').val() != '' && $('#customer_gender').val() != '' ) {
-                                $('#autofill-wrapper').show();
-                            } else {
-                                $('#autofill-wrapper').hide();
-                            }
+                            $('#ward').val(res.ward);
 
-                            localStorage.setItem("selectedOwnerName", res.customer_name);
-                            localStorage.setItem("selectedOwnerGender", res.customer_gender);
-                            localStorage.setItem("selectedOwnerContact", res.customer_contact);
+                            // Customer PII must remain only in the current form;
+                            // persistent browser storage is intentionally forbidden.
                             localStorage.setItem("selectedHouseholdServed", res.household_served);
                             localStorage.setItem("selectedPopulationServed", res.population_served);
                             localStorage.setItem("selectedToiletCount", res.toilet_count);
@@ -507,6 +594,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             }
         }
 
+        $('#autofill').prop('disabled', true);
+
         $('#bin').prepend('<option selected=""></option>').select2({
             ajax: {
                 url: "{{ route('building.get-house-numbers-containments') }}",
@@ -568,16 +657,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
         $('#bin').on('change', onAddressChange);
         $('#customer_name, #customer_gender, #customer_contact').on('change keyup input', function() {
-            if ($('#customer_name').val() != '' && $('#customer_gender').val() != '' ) {
-                if ($('#is_anf').val() !== '1') {
-                    $('#autofill-wrapper').show();
-                }
-            } else {
-                $('#autofill-wrapper').hide();
-                if ($('#autofill').is(':checked')) {
-                    $('#autofill').prop('checked', false);
-                }
-            }
+            updateSameAsOwnerVisibility();
         });
 
        $('#create_application_form').on('submit', function (e) {
@@ -633,9 +713,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             const selectedWard = localStorage.getItem("selectedWard");
             const selectedBINValue = localStorage.getItem("selectedBINValue");
             const selectedBINText = localStorage.getItem("selectedBINText");
-            const selectedOwnerName = localStorage.getItem("selectedOwnerName");
-            const selectedOwnerGender = localStorage.getItem("selectedOwnerGender");
-            const selectedOwnerContact = localStorage.getItem("selectedOwnerContact");
             const selectedHouseholdServed = localStorage.getItem("selectedHouseholdServed");
             const selectedPopulationServed = localStorage.getItem("selectedPopulationServed");
             const selectedToiletCount = localStorage.getItem("selectedToiletCount");
@@ -660,15 +737,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             // Populate form fields with localStorage data
             if (selectedRoadValue) $('#road_code').val(selectedRoadValue);
             if (selectedBINValue) $('#bin').val(selectedBINValue);
-            if (selectedOwnerName && selectedOwnerName !== 'null')
-                $('#customer_name').val(selectedOwnerName).prop('disabled', true)
-                    .attr('data-view-only', 'lookup');
-            if (selectedOwnerGender && selectedOwnerGender !== 'null')
-                $('#customer_gender').val(selectedOwnerGender).prop('disabled', true)
-                    .attr('data-view-only', 'lookup');
-            if (selectedOwnerContact && selectedOwnerContact !== 'null')
-                $('#customer_contact').val(selectedOwnerContact).prop('disabled', true)
-                    .attr('data-view-only', 'lookup');
+            // Customer PII is deliberately not restored from localStorage.
+            // The user must repeat the authorized BIN lookup when needed.
             if (selectedHouseholdServed) {
                 $('#household_served').val(selectedHouseholdServed).prop('disabled', true)
                     .attr('data-view-only', 'lookup');
@@ -684,13 +754,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             if (applicantName && applicantName !== 'null' && $('#applicant_name').val() == '') $('#applicant_name').val(applicantName);
             if (applicantGender && applicantGender !== 'null' && $('#applicant_gender').val() == '') $('#applicant_gender').val(applicantGender);
             if (applicantContact && applicantContact !== 'null' && $('#applicant_contact').val() == '') $('#applicant_contact').val(applicantContact);
-            if (selectedOwnerName && selectedOwnerName !== 'null' &&
-                selectedOwnerGender && selectedOwnerGender !== 'null' &&
-                selectedOwnerContact && selectedOwnerContact !== 'null') {
-                $('#autofill-wrapper').show();
-            } else {
-                $('#autofill-wrapper').hide();
-            }
+            $('#autofill-wrapper').hide();
 
             // Update road code select2 with stored value
             optionHtmlRoadCode = selectedRoadCode

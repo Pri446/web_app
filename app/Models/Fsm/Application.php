@@ -3,6 +3,7 @@
 // Developed By: Innovative Solution Pvt. Ltd. (ISPL)
 namespace App\Models\Fsm;
 
+use App\Services\PiiEncryptionService;
 use App\Models\BuildingInfo\Building;
 use App\Models\UtilityInfo\Roadline;
 use App\Models\Fsm\TreatmentPlant;
@@ -52,7 +53,15 @@ class Application extends Model
      *
      * @var bool
      */
-    protected $dontKeepRevisionOf = ['containment_id','application_date','user_id'];
+    protected $dontKeepRevisionOf = [
+        'containment_id',
+        'application_date',
+        'user_id',
+        // Customer PII must not be copied into the revision table.
+        'customer_name',
+        'customer_gender',
+        'customer_contact',
+    ];
 
     /**
      * The table name along with the schema.
@@ -99,6 +108,36 @@ class Application extends Model
      */
 
     protected $with = ['service_provider','feedback'];
+
+    /**
+     * Encrypt only customer/owner PII. Applicant fields intentionally remain
+     * outside this phase because downstream FSM workflows use them directly.
+     */
+    public function setCustomerNameAttribute($value): void
+    {
+        $this->setEncryptedCustomerPiiAttribute('customer_name', $value);
+    }
+
+    public function setCustomerGenderAttribute($value): void
+    {
+        $this->setEncryptedCustomerPiiAttribute('customer_gender', $value);
+    }
+
+    public function setCustomerContactAttribute($value): void
+    {
+        $this->setEncryptedCustomerPiiAttribute('customer_contact', $value);
+    }
+
+    private function setEncryptedCustomerPiiAttribute(
+        string $attribute,
+        $value
+    ): void {
+        $normalized = $value === null ? null : (string) $value;
+
+        $this->attributes[$attribute] = app(
+            PiiEncryptionService::class
+        )->encrypt($normalized);
+    }
 
 
     /**

@@ -256,9 +256,10 @@ class BuildingRequest extends FormRequest
         return [
             //  compulsory fields
             // Owner Information
-            'owner_name' => 'required',
-            'owner_contact' => 'integer|min:0|required',
-            'owner_gender' => 'required',
+            'owner_name' => 'nullable|string',
+            'owner_contact' => 'nullable|integer|min:0',
+            'owner_gender' => 'nullable|in:Male,Female,Others',
+            'nid' => 'nullable|string',
             //Building Information
             'main_building' => 'required',
             // associated bin required only if not main building

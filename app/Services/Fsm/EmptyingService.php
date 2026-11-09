@@ -313,31 +313,9 @@ class EmptyingService
 
             ];
 
-            if ($application->trip_count == $emptying->trip_no + 1) {
-                $folderPathBuildJpg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpg');
-                $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpgeg');
-                $imagePathBuildJpg = 'storage/emptyings/houses/' . $application->bin . '.jpg';
-                $imagePathBuildJpeg = 'storage/emptyings/houses/' . $application->bin . '.jpeg';
-                if (file_exists($folderPathBuildJpg) == true) {
-                    $imageBuildSrc = asset($imagePathBuildJpg);
-                    $labelNameBuild = $application->bin . '.jpg';
-                } elseif (file_exists($folderPathBuildJpeg) == true) {
-                    $imageBuildSrc = asset($imagePathBuildJpeg);
-                    $labelNameBuild = $application->bin . '.jpeg';
-                } else {
-                    $imageBuildSrc = false;
-                    $labelNameBuild = "No House Image";
-                }
-                // receipt
-                $folderPathReceipt = public_path('/storage/emptyings/receipts/' . $emptying->receipt_image);
-                $imagePathReceipt = 'storage/emptyings/receipts/' . $emptying->receipt_image;
-                if (file_exists($folderPathReceipt) == true) {
-                    $imageReceiptSrc = asset($imagePathReceipt);
-                } else {
-                    $imageReceiptSrc = false;
-                }
-
-
+            // Always render the final-trip fields. The create page controls
+            // their visibility from the current form values, allowing the
+            // operator to change No. of Trips without reloading the page.
                 $this->createFormFields[] = new FormField(
                     label: __('Receipt Number'),
                     labelFor: 'receipt_number',
@@ -375,7 +353,6 @@ class EmptyingService
                     required: true,
                     placeholder: __('Receipt Image'),
                 );
-            }
         } else {
 
             $this->createFormFields = [

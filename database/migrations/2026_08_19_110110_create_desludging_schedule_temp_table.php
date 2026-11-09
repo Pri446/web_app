@@ -35,13 +35,6 @@ class CreateDesludgingScheduleTempTable extends Migration
             $table->unsignedInteger('sequence')->nullable();
             $table->smallInteger('status')->nullable()->default(0);
 
-            // Owner/respondent snapshot
-            $table->string('owner_name')->nullable();
-            $table->string('owner_gender', 50)->nullable();
-            $table->string('owner_contact')->nullable();
-            $table->string('respondent_name')->nullable();
-            $table->string('respondent_contact')->nullable();
-
             // Queue-generation audit
             $table->unsignedBigInteger('generated_by')->nullable();
             $table->timestamp('generated_at')->nullable();

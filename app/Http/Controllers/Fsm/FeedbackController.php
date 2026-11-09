@@ -215,7 +215,7 @@ class FeedbackController extends Controller{
     public function update(FeedbackRequest $request, $id)
     {
 
-        $feedback = Feedback::findOrFail($id);
+          $feedback = Feedback::findOrFail($id);
         $this->authorizeFeedbackRecord($feedback);
         $application = Application::findOrFail($feedback->application_id);
 
@@ -253,9 +253,11 @@ class FeedbackController extends Controller{
         }
         $feedback = new Feedback;
         $feedback->application_id = $request->application_id? $request->application_id : null;
-        $feedback->customer_name = $request->customer_name ? $request->customer_name : null;
-        $feedback->customer_gender = $request->customer_gender ? $request->customer_gender : null;
-        $feedback->customer_number = $request->customer_number ? $request->customer_number : null;
+        // Applicant information is the approved downstream identity. Resolve
+        // it server-side so a modified form cannot inject owner/customer PII.
+        $feedback->customer_name = $application->applicant_name;
+        $feedback->customer_gender = $application->applicant_gender;
+        $feedback->customer_number = $application->applicant_contact;
         $feedback->fsm_service_quality = (bool)$request->fsm_service_quality ;
         $feedback->wear_ppe = (bool)$request->wear_ppe;
         $feedback->comments = $request->comments ? $request->comments : null;
@@ -365,16 +367,16 @@ class FeedbackController extends Controller{
         $writer->openToBrowser('Feedbacks.csv')
             ->addRowWithStyle($columns, $style); //Top row of excel
          
-        $query->chunk(5000, function ($applications) use ($writer) {
-            foreach($applications as $application) {
+        $query->chunk(5000, function ($feedbacks) use ($writer) {
+            foreach($feedbacks as $feedback) {
                 $values = [];
-                $values[] = $application->application_id;
-                $values[] = $application->customer_name;
-                $values[] = $application->customer_gender;
-                $values[] = $application->customer_number;
-                $values[] = $application->fsm_service_quality?"Yes":"No";
-                $values[] = $application->wear_ppe?"Yes":"No";
-                $values[] = $application->comments;
+                $values[] = $feedback->application_id;
+                $values[] = $feedback->applicant_name;
+                $values[] = $feedback->applicant_gender;
+                $values[] = $feedback->applicant_contact;
+                $values[] = $feedback->fsm_service_quality?"Yes":"No";
+                $values[] = $feedback->wear_ppe?"Yes":"No";
+                $values[] = $feedback->comments;
                 $writer->addRow($values);
             }
         });

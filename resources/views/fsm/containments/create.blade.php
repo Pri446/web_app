@@ -8,7 +8,7 @@
 	<!-- /.card-header -->
 
     {{-- @include('errors.list') --}}
-    {!! Form::open([ 'action' => ['Fsm\ContainmentController@storeContainment', $id],'files' => true, 'class' => 'form-horizontal']) !!}
+	{!! Form::open([ 'action' => ['Fsm\ContainmentController@storeContainment', $building->public_id],'files' => true, 'class' => 'form-horizontal']) !!}
 		@if(request()->has('application_id'))
 			<input type="hidden" name="application_id" value="{{ request()->get('application_id') }}">
 		@endif

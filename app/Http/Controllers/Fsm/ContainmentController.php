@@ -85,8 +85,9 @@ class ContainmentController extends Controller
     }
 
     // Data table for containments of particular building Only
-    public function getContainment(Request $request)
+    public function getContainment(Request $request, Building $building)
     {
+        $request->merge(['id' => $building->bin, 'building_public_id' => $building->public_id]);
         return ($this->containmentService->fetchBuildingContainmentData($request));
     }
     /**
@@ -94,10 +95,10 @@ class ContainmentController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function createContainment(Request $request, $id)
+    public function createContainment(Request $request, Building $building)
     {
         $page_title = __("Add Containment");
-        $building = Building::find($id);
+        $id = $building->bin;
         $containment_building = $building;
 
 
@@ -114,10 +115,10 @@ class ContainmentController extends Controller
      * @return \Illuminate\Http\Response
      */
     // stores containment data added from buildings ->edit page -> add new containment to building button
-    public function storeContainment(ContainmentRequest $request, $id)
+    public function storeContainment(ContainmentRequest $request, Building $building)
     {
         try {
-            $request->bin = $id;
+            $request->bin = $building->bin;
             // storing new containment
             $this->buildingStructureService->storeContainmentInfo($flag = 'containment', $type = 'createContainOnly', $request);
             // updating building fields
@@ -134,7 +135,7 @@ class ContainmentController extends Controller
             }
 
             DB::commit();
-            return redirect('building-info/buildings/'.$id.'/edit')->with('success', __("Containment created successfully"));
+            return redirect()->action('BuildingInfo\BuildingController@edit', [$building])->with('success', __("Containment created successfully"));
         } catch (Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', __("Containment could not be created") . $e);
@@ -147,10 +148,9 @@ class ContainmentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Containment $containment)
     {
         $page_title = __("Containment Details");
-        $containment = Containment::find($id);
 
         if ($containment->septic_criteria === true) {
             $septic_criteria = "Yes";
@@ -173,10 +173,10 @@ class ContainmentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Containment $containment)
     {
         $page_title = __("Edit Containment");
-        $containment = Containment::find($id);
+        $id = $containment->id;
 
         $containment->pit_shape = $containment->tank_length ? "Rectangular" : "Cylindrical";
         $containment->pit_depth = $containment->depth;
@@ -195,12 +195,12 @@ class ContainmentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(ContainmentRequest $request, $id)
+    public function update(ContainmentRequest $request, Containment $containment)
     {
         try {
             DB::beginTransaction();
             // assigning containment id to request->$id
-            $request->id = $id;
+            $request->id = $containment->id;
             // updating containment fields
             $this->buildingStructureService->storeContainmentInfo($flag = 'containment', $type = 'update', $request);
             // updating building fields
@@ -213,9 +213,8 @@ class ContainmentController extends Controller
         }
     }
 
-    public function history($id)
+    public function history(Containment $containment)
     {
-        $containment = Containment::find($id);
         if ($containment) {
             $page_title = __("Containment History");
             return view('fsm.containments.history', compact('page_title', 'containment'));
@@ -228,12 +227,11 @@ class ContainmentController extends Controller
     {
         return ($this->containmentService->fetchContainmentID());
     }
-    public function typeChangeHistory($id)
+    public function typeChangeHistory(Containment $containment)
     {
-        $containment = Containment::findOrFail($id);
         $revisions = Revision::all()
             ->where('revisionable_type', get_class($containment))
-            ->where('revisionable_id', $id)
+            ->where('revisionable_id', $containment->id)
             ->groupBy(function ($item) {
                 return $item->created_at->format("D M j Y");
             })
@@ -252,12 +250,11 @@ class ContainmentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Containment $containment)
     {
         try
         {
             DB::beginTransaction();
-            $containment = Containment::find($id);
             if ($containment)
             {
                 if ($containment->buildings()->exists())
@@ -292,9 +289,8 @@ class ContainmentController extends Controller
         $data = $request->all();
         return ($this->containmentService->getExportBuildingContainment($data));
     }
-    public function listBuildings($id)
+    public function listBuildings(Containment $containment)
     {
-        $containment = Containment::find($id);
 
         if ($containment) {
             $page_title = __("Building Connected to Containment") . ": " . $containment->id;
@@ -316,13 +312,13 @@ class ContainmentController extends Controller
         return response()->json($containmentTypes);
     }
     // function to delete / remove containment connection from building->edit page & containment->listbuildings page
-    public function deleteBuilding($id, $bin)
+    public function deleteBuilding(Containment $containment, Building $building)
     {
     try
     {
         DB::beginTransaction();
-        $containment = Containment::find($id);
-        $building = Building::find($bin);
+        $id = $containment->id;
+        $bin = $building->bin;
         $containment_connection = 1;
         if ($containment)
         {

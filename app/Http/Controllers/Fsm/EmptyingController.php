@@ -51,7 +51,15 @@ class EmptyingController extends Controller
     public function index(Request $request)
     {
         $filterFormFields = $this->emptyingService->getFilterFormFields();
-        $containment_code = $request->containment_code ? $request->containment_code : '';
+        $containment_code = '';
+        if ($request->filled('containment_public_id')) {
+            $containment_code = Containment::where('public_id', $request->containment_public_id)
+                ->firstOrFail()
+                ->id;
+        } elseif ($request->filled('containment_code')) {
+            // Temporary compatibility for existing bookmarks.
+            $containment_code = $request->containment_code;
+        }
         $exportBtnLink = Auth::user()->can('Export Emptyings')?$this->emptyingService->getExportRoute():null;
         return view('fsm.emptying.index',compact('filterFormFields','exportBtnLink','containment_code'));
     }

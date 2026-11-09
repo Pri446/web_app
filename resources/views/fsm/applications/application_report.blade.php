@@ -92,44 +92,16 @@
             <td style=" font-size : 18px;">{{ __('Number of Floors') }}</td>
             <td style=" font-size : 18px;">{{$application->buildings->floor_count?? '-'}}</td>
         </tr>
-        @if(($application->applicant_name == $application->customer_name))
+        {{-- Option 2: operational reports use applicant fields only. Encrypted
+             customer/owner PII is not implicitly decrypted for this PDF. --}}
         <tr>
-            <td style=" font-size : 18px;">{{ __('Owner/Applicant Name') }}</td>
+            <td style=" font-size : 18px;">{{ __('Applicant Name') }}</td>
             <td style=" font-size : 18px;">{{$application->applicant_name?? '-'}}</td>
         </tr>
-        @else
-            @if(isset($application->customer_name))
-            <tr>
-                <td style=" font-size : 18px;">{{ __('Owner Name') }}</td>
-                <td style=" font-size : 18px;">{{$application->customer_name?? '-'}}</td>
-            </tr>
-            @endif
-            @if(isset($application->applicant_name))
-             <tr>
-                <td style=" font-size : 18px;">{{ __('Applicant Name') }}</td>
-                <td style=" font-size : 18px;">{{$application->applicant_name?? '-'}}</td>
-            </tr>
-            @endif
-        @endif
-         @if(($application->applicant_contact == $application->customer_contact))
         <tr>
-            <td style=" font-size : 18px;">{{ __('Owner/Applicant Contact') }}</td>
-            <td style=" font-size : 18px;">{{$application->customer_contact?? '-'}}</td>
+            <td style=" font-size : 18px;">{{ __('Applicant Contact') }}</td>
+            <td style=" font-size : 18px;">{{$application->applicant_contact?? '-'}}</td>
         </tr>
-        @else
-            @if(isset($application->customer_contact))
-            <tr>
-                <td style=" font-size : 18px;">{{ __('Owner Contact') }}</td>
-                <td style=" font-size : 18px;">{{$application->customer_contact?? '-'}}</td>
-            </tr>
-            @endif
-            @if(isset($application->applicant_contact))
-             <tr>
-                <td style=" font-size : 18px;">{{ __('Applicant Contact') }}</td>
-                <td style=" font-size : 18px;">{{$application->applicant_contact?? '-'}}</td>
-            </tr>
-            @endif
-        @endif
      
     </tbody>
 </table>

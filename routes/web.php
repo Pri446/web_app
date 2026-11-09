@@ -12,6 +12,7 @@ use App\Http\Controllers\MapsController;
 use App\Http\Controllers\Proxy\WMSProxyController;
 use App\Http\Controllers\PlacesController;
 use App\Models\Places;
+use App\Http\Controllers\Security\PiiKeyBackupController;
 use App\Http\Controllers\GISProxyController;
 use App\Http\Controllers\GISExportController;
 use App\Http\Controllers\GISPrintController;
@@ -115,10 +116,17 @@ Route::group([
     //replace this later when passed
     Route::get('buildings/get-containment-septic', 'BuildingController@getContainmentTypes')->name('building.get-containment-septic');
     Route::get('buildings/get-test', 'BuildingController@testFunc');
-    Route::get('buildings/{id}/history', 'BuildingController@history');
+    Route::get('buildings/{building:public_id}/history', 'BuildingController@history');
     Route::get('buildings/export', 'BuildingController@export');
-    Route::get('buildings/{id}/listContainments', 'BuildingController@listContainments')->name('buildings.listContainments');
-    Route::resource('buildings', 'BuildingController');
+    Route::post('owner-pii/unlock-list', 'OwnerPiiAccessController@unlockList')
+        ->middleware('throttle:5,1')
+        ->name('owner-pii.unlock-list');
+    Route::post('owner-pii/export', 'OwnerPiiExportController@export')
+        ->middleware('throttle:5,1')
+        ->name('owner-pii.export');
+    Route::post('owner-pii/lock', 'OwnerPiiAccessController@lock')->name('owner-pii.lock');
+    Route::get('buildings/{building:public_id}/listContainments', 'BuildingController@listContainments')->name('buildings.listContainments');
+    Route::resource('buildings', 'BuildingController')->parameters(['buildings' => 'building']);
 
     // building survey routes
     Route::get('building-surveys/data', 'BuildingSurveyController@getData')->name('building.getData');
@@ -171,6 +179,14 @@ Route::group([
     'namespace' => 'TaxPaymentInfo',
     'middleware' => 'auth'
 ], function () {
+    Route::post('tax-payment/owner-pii/unlock', 'PropertyTaxPiiAccessController@unlock')
+        ->middleware('throttle:5,1')
+        ->name('tax-payment-pii.unlock');
+    Route::post('tax-payment/owner-pii/lock', 'PropertyTaxPiiAccessController@lock')
+        ->name('tax-payment-pii.lock');
+    Route::post('tax-payment/owner-pii/export', 'PropertyTaxPiiExportController@export')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
+        ->name('tax-payment-pii.export');
     Route::get('tax-payment/data', 'TaxPaymentController@getData')->name('tax-payment.getData');
     Route::get('tax-payment/export', 'TaxPaymentController@export')->name('tax-payment.export');
     Route::get('tax-payment/exportunmatched', 'TaxPaymentController@exportunmatched')->name('tax-payment.exportunmatched');
@@ -384,19 +400,19 @@ Route::group([
     Route::get('containments/data', 'ContainmentController@getData');
     Route::get('containments/get-id', 'ContainmentController@getContainmentID')->name('containment.get-id');
 
-    Route::get('containments/{id}/containmentData', 'ContainmentController@getContainment');
-    Route::get('containments/{id}/listBuildings', 'ContainmentController@listBuildings');
-    Route::delete('containments/{id}/buildings/{buidlingId}', 'ContainmentController@deleteBuilding');
+    Route::get('containments/building/{building:public_id}/containmentData', 'ContainmentController@getContainment');
+    Route::get('containments/{containment:public_id}/listBuildings', 'ContainmentController@listBuildings');
+    Route::delete('containments/{containment:public_id}/buildings/{building:public_id}', 'ContainmentController@deleteBuilding');
 
-    Route::get('containments/{id}/create', 'ContainmentController@createContainment');
-    Route::post('containments/{id}/store', 'ContainmentController@storeContainment');
+    Route::get('containments/building/{building:public_id}/create', 'ContainmentController@createContainment');
+    Route::post('containments/building/{building:public_id}/store', 'ContainmentController@storeContainment');
 
     Route::get('containments/export', 'ContainmentController@export');
     Route::get('containments/export-building-containment','ContainmentController@exportBuildingContainment');
 
-    Route::get('containments/{id}/history', 'ContainmentController@history');
-    Route::get('containments/{id}/type-change-history', 'ContainmentController@typeChangeHistory');
-    Route::resource('containments', 'ContainmentController');
+    Route::get('containments/{containment:public_id}/history', 'ContainmentController@history');
+    Route::get('containments/{containment:public_id}/type-change-history', 'ContainmentController@typeChangeHistory');
+    Route::resource('containments', 'ContainmentController')->parameters(['containments' => 'containment']);
 
 
     /**
@@ -471,7 +487,15 @@ Route::group([
      * Application Routes
      *
      */
-        Route::get('application/getData', 'ApplicationController@getData')->name('application.get-data');
+    Route::get('application/getData', 'ApplicationController@getData')->name('application.get-data');
+    Route::post('application/customer-pii/unlock-list', 'ApplicationPiiAccessController@unlockList')
+        ->middleware('throttle:5,1')
+        ->name('application-pii.unlock-list');
+    Route::post('application/customer-pii/lock', 'ApplicationPiiAccessController@lock')
+        ->name('application-pii.lock');
+    Route::post('application/customer-pii/export', 'ApplicationCustomerPiiExportController@export')
+        ->middleware('throttle:5,1')
+        ->name('application-pii.export');
     Route::get('application/export', 'ApplicationController@export')->name('application.export');
     Route::get('application/{id}/history', 'ApplicationController@history')->name('application.history');
     Route::get('application/getBuildingDetails', 'ApplicationController@buildingDetails')->name('application.get-building-details');
@@ -677,6 +701,10 @@ Route::group([
     Route::resource('setup', 'LanguageController');
 });
 Route::group(['middleware' => ['auth']], function () {
+    Route::post('/security/pii-key-backup', [PiiKeyBackupController::class, 'download'])
+        ->middleware(['throttle:3,60', 'pii.no-cache'])
+        ->name('pii-key-backup.download');
+
     /**
      * Logout Routes
      */
