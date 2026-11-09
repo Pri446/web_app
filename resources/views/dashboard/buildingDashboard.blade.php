@@ -1,7 +1,3 @@
-@extends('layouts.dashboard')
-@section('title', $page_title)
-@section('content')
-
 @can('Building CountBox')
 
 <h1 style="padding-bottom: 15px;font-size: 24px;">{{  __("Buildings")}}</h1>
@@ -96,27 +92,15 @@
     @endcan
 </div>
 
-@stop
-
 @push('scripts')
 <script>
-$('[id="year_select"]').change(function(e) {
-        // e.preventDefault();
-      var year_select = $(this).val();
-      localStorage.setItem('year_select', year_select);
-    })
-  </script>
-  <script>
-	$(document).ready(function() {
-		year_sel = localStorage.getItem('year_select');
-      if(year_sel){
-      $("#year_select").val(year_sel);
-      }
-	})
-        $(function () {
-$('[data-toggle="tooltip"]').tooltip({
-            html: true
-        });
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip({
+        html: true
+    });
 });
 </script>
 @endpush
+
+{{-- Chart partials push their initialisers here for asynchronous execution. --}}
+@stack('scripts')

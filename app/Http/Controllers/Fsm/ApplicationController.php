@@ -16,6 +16,7 @@ use App\Models\Fsm\VacutugType;
 use App\Services\Fsm\ApplicationService;
 use App\Services\ApplicationPiiAccessService;
 use App\Services\OwnerPiiAuditService;
+use App\Services\Fsm\OperationalDataAccessService;
 use Exception;
 use App\Models\Fsm\Containment;
 use Illuminate\Http\JsonResponse;
@@ -287,7 +288,8 @@ class ApplicationController extends Controller
      */
     public function show($id)
     {
-        $application = Application::find($id);
+        $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
 
         if ($application) {
             $page_title = __('Application Details');
@@ -308,11 +310,8 @@ class ApplicationController extends Controller
             }
             $indexAction = $this->applicationService->getIndexAction();
 
-            return view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'))
-                ->with('cardForm', true);
-        } else {
-            abort(404);
-        }
+        return view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'))
+            ->with('cardForm', true);
     }
 
     /**
@@ -431,6 +430,7 @@ class ApplicationController extends Controller
     {
         try {
             $application = Application::findOrFail($id);
+            OperationalDataAccessService::authorizeApplication($application);
             if ($application->emptying()->exists()) {
                 return redirect('fsm/application')->with('error', __('Cannot delete Application that has associated Emptying Information.'));
             }
@@ -460,6 +460,7 @@ class ApplicationController extends Controller
 
     public function resolveAnf(Request $request, $id)
     {
+        OperationalDataAccessService::authorizeApplication(Application::findOrFail($id));
         $request->validate([
             'bin'            => 'required|string',
             'containment_id' => 'required|string', // 👈 required
@@ -569,12 +570,14 @@ class ApplicationController extends Controller
      */
     public function applicationReport($id)
     {
+        OperationalDataAccessService::authorizeApplication(Application::findOrFail($id));
         return $this->applicationService->getApplicationReport($id);
     }
 
     public function editScheduling($id)
     {
         $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         $page_title = __("Emptying Scheduling Form");
         return view('fsm.emptying-scheduling.edit', compact('application', 'page_title'));
     }
@@ -582,6 +585,7 @@ class ApplicationController extends Controller
     public function schedulingform(Request $request, $id)
     {
         $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         $request->validate([
             'proposed_emptying_date' => 'required|date|after_or_equal:today'
         ]);
@@ -630,6 +634,7 @@ class ApplicationController extends Controller
 
     public function checkCapacityByDate(Request $request, Application $application)
     {
+        OperationalDataAccessService::authorizeApplication($application);
         $validated = $request->validate([
             'proposed_emptying_date' => ['required', 'date', 'after_or_equal:today'],
         ]);
@@ -666,6 +671,7 @@ class ApplicationController extends Controller
 
         try {
             $application = Application::findOrFail($id);
+            OperationalDataAccessService::authorizeApplication($application);
 
             // Update containment details
             $containment = Containment::findOrFail($application->containment_id);

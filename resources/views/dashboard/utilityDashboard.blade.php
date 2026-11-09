@@ -1,8 +1,3 @@
-<!-- Last Modified Date: 19-04-2024
-Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
-@extends('layouts.dashboard')
-@section('title', $page_title)
-@section('content')
 @can('Road Count Box')
     
     <h1 style="padding: 15px 0 15px 0;font-size: 24px;">{{ __('Road')}}</h1>
@@ -254,4 +249,5 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
    
 </div>
 
-@stop
+{{-- Chart partials push their initialisers here for asynchronous execution. --}}
+@stack('scripts')

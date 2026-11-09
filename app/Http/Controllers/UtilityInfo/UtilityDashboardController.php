@@ -9,8 +9,10 @@ use App\Models\UtilityInfo\Drain;
 use App\Models\UtilityInfo\Roadline;
 use App\Models\UtilityInfo\SewerLine;
 use App\Models\UtilityInfo\WaterSupplys;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\UtilityInfo\UtilityDashboardService;
+use Illuminate\Support\Facades\Log;
 
 class UtilityDashboardController extends Controller
 {
@@ -21,6 +23,35 @@ class UtilityDashboardController extends Controller
     $this->utilitydashboardService = $utilitydashboardService;
   }
   public function index()
+  {
+    return view('dashboard.utilityDashboardShell', [
+      'page_title' => __('Utility Dashboard'),
+    ]);
+  }
+
+  public function content(Request $request): JsonResponse
+  {
+    try {
+      $html = view('dashboard.utilityDashboard', $this->buildDashboardData())->render();
+
+      return response()->json([
+        'status' => 'ok',
+        'html' => $html,
+      ])->header('Cache-Control', 'private, no-store');
+    } catch (\Throwable $exception) {
+      Log::error('Utility Dashboard content failed to load.', [
+        'user_id' => $request->user()->id,
+        'exception' => $exception,
+      ]);
+
+      return response()->json([
+        'status' => 'error',
+        'message' => __('The dashboard could not be loaded.'),
+      ], 500)->header('Cache-Control', 'private, no-store');
+    }
+  }
+
+  private function buildDashboardData(): array
   {
     $page_title = __('Utility Dashboard');
 
@@ -108,7 +139,7 @@ class UtilityDashboardController extends Controller
     $watersupplyTypePerWardChart = $this->utilitydashboardService->getWaterSupplyDiameterPerWardChart();
 
 
-    return view('dashboard.utilityDashboard', compact(
+    return compact(
       'page_title',
       'roadsSurfaceTypePerWardChart',
       'roadsHierarchyPerWardChart',
@@ -155,6 +186,6 @@ class UtilityDashboardController extends Controller
       'sumDrainsSurfaceType',
       'sumDrainsSurfaceType1'
 
-    ));
+    );
   }
 }

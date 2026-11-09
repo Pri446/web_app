@@ -13,7 +13,7 @@ The breakdown of file structure in Laravel:
     -   Console/: Holds artisan console commands.
     -   Enums/: Houses enumeration classes if you're using enums in your application.
     -   Exceptions/: Contains exception handler classes.
-    -   Exports/: For classes related to exporting data (e.g., to CSV, Excel).
+    -   Exports/: For classes related to exporting data to CSV, Excel, KML, and Shape formats.
     -   Helpers/: Houses helper functions or classes used throughout your application.
     -   Http/: Contains controllers, middleware, form requests, etc., related to HTTP requests.
     -   Imports/: For classes related to importing data (e.g., from CSV, Excel).
@@ -22,7 +22,7 @@ The breakdown of file structure in Laravel:
     -   Rules/: For custom validation rule classes if you're using Laravel's validation system.
     -   Services/: Contains classes responsible for specific application services.
 2.  bootstrap/: Contains files for bootstrapping the Laravel application.
-3.  config/: Contains configuration files for various components of your application. Note: app.php contains class aliases used. 
+3.  config/: Contains configuration files for various components of your application. This includes `gis.php` for approved GIS layers, permissions, export settings, filenames, and mobile WMS layer mappings. Note: app.php contains class aliases used.
 4.  database/: Contains database-related files.
     -   factories/: Contains the factories files. 
     -   migrations/: Houses all database migration files.
@@ -37,6 +37,7 @@ The breakdown of file structure in Laravel:
     - pdf: Contains the template PDF's used. 
     - templates: Contains the CSV templates for the different modules
 7.  resources/: Contains your application's assets like views, language files, and raw asset files.
+    -   views/exports/: Contains shared export views, including KML export views.
     -   css/, js/, sass/: Asset directories for CSS, JavaScript, and SASS files.
     -   lang/: Language files.
     -   views/: Blade template files.
@@ -94,6 +95,14 @@ Here, ‘storagedisk’ is the storage name. And ‘root’ has a path where the
 When a user login normally, session expires in two hours for now. It can be changed via .env file with SESSION_LIFETIME variable.
 
 When a user login with remember me, session will be stored in cookie and it will expire when cookie expires. For now, cookie expiry time is 3 days. It can also be changed via .env file with REMEMBER_ME variable.
+
+## Authentication and Web Security Reference
+
+The release requirements for clickjacking protection (BASEIMIS-41), login rate limiting (BASEIMIS-44), and password-reset account privacy (BASEIMIS-47) are documented in [24 - Authentication and Web Security](24%20-%20Authentication%20and%20Web%20Security.md). That document identifies the application files, expected responses, test coverage, and deployment checks.
+
+Deployment configuration includes the six `LOGIN_RATE_LIMIT_*` settings, explicit `TRUSTED_PROXIES`, a shared cache such as Redis when multiple application servers are used, and working reset-email delivery. Laravel owns the anti-framing headers; Nginx and other forwarding services must preserve them without duplication or conflicting values. Rebuild the application configuration cache after environment changes, following the secure deployment sequence documented below.
+
+These requirements apply when the release contains the corresponding application fixes. Documentation alone does not enable them. The three fixes introduce no database schema or relationship changes.
 
 ## NPM Package Manager
 
@@ -489,6 +498,46 @@ The models contain the connection between the model and the table defined by
 
 primaryKey= ‘id’
 
+## Shared GIS Architecture
+
+The shared GIS controllers provide the authenticated application boundary between the web/mobile clients and GeoServer. GIS layers, permissions, export availability, filenames, and mobile WMS mappings are maintained in `config/gis.php`.
+
+### GISProxyController
+
+Location: `app\\Http\\Controllers\\GISProxyController.php`
+
+The proxy forwards approved map requests to GeoServer while keeping the GeoServer authentication key server-side.
+
+-   `GET /gis/wms`: Allows only the WMS operations `GetMap`, `GetLegendGraphic`, and `GetFeatureInfo`.
+-   `GET /gis/wfs`: Allows only WFS `GetFeature` requests.
+-   `GET /api/gis/wms`: Protected mobile WMS route using `auth:sanctum`.
+-   Validates the requested layer against `config/gis.php`, validates the configured workspace, and checks the user's layer permission.
+-   Rejects unapproved layers, workspaces, services, and operations.
+
+### GISExportController
+
+Location: `app\\Http\\Controllers\\GISExportController.php`
+
+The controller exports configured GeoServer layers through WFS. The route is `GET /gis/export/{format}`, where the supported formats are `csv`, `kml`, and `shp`. Shape exports are returned as a ZIP archive. The controller checks that the layer is configured for export, verifies the user's permission, applies an optional validated `CQL_FILTER`, and returns the download with the configured filename.
+
+### GISPrintController
+
+Location: `app\\Http\\Controllers\\GISPrintController.php`
+
+The `POST /gis/print` route validates the print specification and requested layers, checks layer permissions, adds the configured workspace and authenticated WMS URL, and sends the request to the MapFish print service. A generated map is returned as a PDF. Connection and upstream print-service failures are returned as controlled error responses.
+
+### GIS Routes and Configuration
+
+| Route | Controller | Purpose |
+|---|---|---|
+| `GET /gis/wms` | `GISProxyController@wms` | Authenticated web WMS proxy |
+| `GET /gis/wfs` | `GISProxyController@wfs` | Authenticated web WFS feature proxy |
+| `GET /gis/export/{format}` | `GISExportController@export` | CSV, KML, or Shape export |
+| `POST /gis/print` | `GISPrintController@print` | PDF map printing |
+| `GET /api/gis/wms` | `GISProxyController@wms` | Sanctum-protected mobile WMS proxy |
+
+The GeoServer and MapFish settings are defined in `config/services.php` and read from the environment. `GEOSERVER_INTERNAL_URL` is preferred for server-side GeoServer requests, with `GEOSERVER_URL` as the fallback. The required deployment settings are `GEOSERVER_WORKSPACE`, `GEOSERVER_INTERNAL_URL`, `GEOSERVER_AUTH_KEY`, and `MAPFISH_PRINT_URL`.
+
 ## Data Dictionary
 
 The data dictionary for IMIS is attached in provided in the documentations/data_dictionary/.
@@ -506,8 +555,184 @@ The .env file for the project is present in the .env.example file. Ensure necess
 | DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=[database_name] DB_USERNAME=[database_username] DB_PASSWORD=[database_password] |
 |------------------------------------------------------------------------------------------------------------------------------------------------|
 
-**Set up the Geoserver configuration in the .env file:**
+**Set up the GeoServer and MapFish configuration in the .env file:**
 
-| \#GEOSERVER GEOSERVER_WORKSPACE = [workspace_name] GEOSERVER = http://[server_url]/geoserver/ GEOSERVER_URL = http://[server_url]/geoserver/[workspace_name] AUTH_KEY = [auth_key] |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Variable | Description |
+|---|---|
+| `GEOSERVER_WORKSPACE` | GeoServer workspace used to qualify approved layers. |
+| `GEOSERVER_INTERNAL_URL` | Server-side GeoServer base URL used by the GIS proxy, export, and print controllers. |
+| `GEOSERVER_AUTH_KEY` | Server-side authentication key added to GeoServer requests. |
+| `MAPFISH_PRINT_URL` | MapFish print-service endpoint used to generate PDF maps. |
+
+`GEOSERVER_URL` remains the fallback for the GeoServer URL when `GEOSERVER_INTERNAL_URL` is not configured. Do not expose authentication keys in client-side requests or documentation examples.
+
+## Secure Deployment User Seeding
+
+### Overview
+
+Deployment user accounts must not use fixed usernames, email addresses, or plaintext passwords stored in Laravel seeders, source code, comments, documentation, pipeline definitions, or Ansible inventory.
+
+Seed-user values are supplied at deployment time through protected environment variables. Laravel reads those variables through `config/seed_users.php`. Application code and seeders use `config('seed_users.accounts')` and must not call `env()` directly for seed-user values.
+
+This implementation addresses Jira issue `BASEIMIS-40` and keeps the standard deployment command fully automated and non-interactive.
+
+### Relevant Application Files
+
+| File | Responsibility |
+|------|----------------|
+| `.env.example` | Lists the required `SEED_*` variable names with empty values only. |
+| `config/seed_users.php` | Maps deployment environment variables into Laravel configuration and declares the required account roles. |
+| `app/Services/Deployment/SeedUserConfigurationValidator.php` | Validates required values, formats, password policy, and duplicate usernames or email addresses. |
+| `app/Exceptions/SeedUserConfigurationException.php` | Provides a generic exception containing safe variable names or configuration keys only. |
+| `app/Console/Commands/ValidateSeedUserConfiguration.php` | Implements the non-interactive deployment pre-check. |
+| `app/Console/Kernel.php` | Registers the validation command. |
+| `database/seeders/UsersTableSeeder.php` | Validates configuration, creates missing accounts, hashes initial passwords, and assigns roles. |
+| `database/factories/UserFactory.php` | Generates a random password for each factory-created user instead of using a shared default. |
+| `scripts/deployment/migrate-with-seed-user-check.sh` | Runs validation before migration and seeding using fail-fast execution. |
+
+### Environment Variable Pattern
+
+Each approved deployment account requires the following variables:
+
+```text
+SEED_<ACCOUNT>_NAME=
+SEED_<ACCOUNT>_USERNAME=
+SEED_<ACCOUNT>_EMAIL=
+SEED_<ACCOUNT>_PASSWORD=
+```
+
+The exact inventory is maintained in `.env.example`. Values in `.env.example` must remain empty.
+
+Actual values must come from one of the following approved sources:
+
+- Protected and masked CI/CD variables.
+- Ansible Vault.
+- An approved external secret manager.
+
+Secret values must not be passed as command-line arguments or printed through `echo`, `env`, `printenv`, `dump()`, `dd()`, `var_dump()`, application logging, or Ansible debug tasks.
+
+### Configuration Validation
+
+Before migrations or seeders are executed, run:
+
+```sh
+php artisan seed-users:validate-config
+```
+
+The command is non-interactive and has the following behavior:
+
+| Configuration state | Exit behavior |
+|---------------------|---------------|
+| Complete and valid | Exit code `0`; deployment may continue. |
+| Missing or invalid | Non-zero exit code; deployment must stop before migration. |
+
+The validator checks:
+
+- Required name, username, email, password, role, and user-type configuration.
+- Username format and length.
+- Email format and length.
+- Password compliance with the application's minimum structural password policy.
+- Case-insensitive duplicate usernames.
+- Case-insensitive duplicate email addresses.
+
+Validation errors may identify a safe environment-variable name or account key. They must never contain the supplied username, email address, password, or complete configuration array.
+
+### Seeder Behavior
+
+`UsersTableSeeder` independently invokes the shared validator before starting database writes. The CI/CD check is therefore not the only security control.
+
+After successful validation, the seeder:
+
+1. Processes provisioning inside a database transaction.
+2. Locates an existing account by its configured stable username.
+3. Creates the user only when the username does not already exist.
+4. Hashes the supplied password only during initial account creation.
+5. Assigns the required role idempotently.
+6. Does not reset or overwrite an existing user's password during repeated deployment.
+
+Existing passwords must be changed through an approved credential-rotation or administrative workflow, not through normal deployment seeding.
+
+### Deployment Sequence
+
+The required deployment order is:
+
+```text
+Load protected SEED_* variables
+            ↓
+Clear stale Laravel configuration cache
+            ↓
+Validate seed-user configuration
+            ↓
+Stop on validation failure
+            ↓
+Run migrations and seeders
+            ↓
+Remove seed-user variables from the command environment
+            ↓
+Rebuild the normal Laravel configuration cache without seed passwords
+```
+
+Commands:
+
+```sh
+php artisan config:clear
+php artisan seed-users:validate-config
+php artisan migrate --seed --force
+php artisan config:cache
+```
+
+The protected `SEED_*` environment must be available to `config:clear`, validation, migration, and seeding. The final `config:cache` command must execute in a clean process that does not receive seed-password variables. This prevents seed passwords from remaining in `bootstrap/cache/config.php` during normal application runtime.
+
+### CI/CD Requirements
+
+The CI/CD pipeline must:
+
+- Mark supported secret variables as protected and masked.
+- Disable shell tracing for secret-bearing steps.
+- Run validation before migration.
+- Preserve the validator's non-zero failure status.
+- Never use `allow_failure`, `continue-on-error`, `ignore_errors`, `|| true`, or an equivalent bypass for validation.
+- Run `php artisan migrate --seed --force` only after validation succeeds.
+- Prevent secrets from entering logs, artifacts, retry files, notifications, or support bundles.
+- Run an approved secret scanner against current source and reachable Git history.
+
+### Ansible Requirements
+
+Ansible must load the complete variable inventory from Vault or an approved secret manager and pass it through the task environment.
+
+```yaml
+- name: Validate deployment seed-user configuration
+  ansible.builtin.command: php artisan seed-users:validate-config
+  args:
+    chdir: "{{ application_path }}"
+  environment: "{{ seed_user_environment }}"
+  no_log: true
+
+- name: Run migrations and seeders after validation
+  ansible.builtin.command: php artisan migrate --seed --force
+  args:
+    chdir: "{{ application_path }}"
+  environment: "{{ seed_user_environment }}"
+  no_log: true
+```
+
+Every Ansible task that receives `seed_user_environment` must use `no_log: true`. The mapping must not be printed, registered and debugged, serialized into artifacts, or included in command strings. Validation failure must stop the play before database changes.
+
+### Credential Containment and Security Verification
+
+Source-code remediation does not make previously exposed credentials safe. Before release:
+
+1. Rotate or disable every exposed credential in every environment.
+2. Check other systems for password reuse.
+3. Invalidate active sessions, remember-me sessions, and API tokens.
+4. Review authentication and administrative logs for suspicious activity.
+5. Run an approved secret scanner against current source and reachable Git history.
+6. Coordinate Git-history cleanup only after credential rotation.
+7. Confirm that previously exposed credentials no longer authenticate.
+8. Confirm that repeated deployment does not reset an existing password.
+9. Complete VAPT security retesting before closing the finding.
+
+### Database and Data Dictionary Impact
+
+This remediation introduces no database table, column, relationship, constraint, or data-type change. It does not require a database migration or a data-dictionary update. Existing user, role, and role-assignment tables remain unchanged.
 

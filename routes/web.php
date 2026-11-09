@@ -13,6 +13,9 @@ use App\Http\Controllers\Proxy\WMSProxyController;
 use App\Http\Controllers\PlacesController;
 use App\Models\Places;
 use App\Http\Controllers\Security\PiiKeyBackupController;
+use App\Http\Controllers\GISProxyController;
+use App\Http\Controllers\GISExportController;
+use App\Http\Controllers\GISPrintController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,7 +50,9 @@ Route::post('/files/upload', 'FileController@upload')->name('files.upload');
 
 
 
-Route::post('/contact/send', [ContactController::class, 'send'])->name('contact.send');
+Route::post('/contact/send', [ContactController::class, 'send'])
+    ->middleware('throttle:contact')
+    ->name('contact.send');
 
 
 Route::group(['middleware' => ['guest']], function () {
@@ -61,11 +66,15 @@ Route::group(['middleware' => ['guest']], function () {
      * Login Routes
      */
     Route::get('/login', 'Auth\LoginController@show')->name('login.show');
-    Route::post('/login', 'Auth\LoginController@login')->name('login.perform');
+    Route::post('/login', 'Auth\LoginController@login')
+        ->middleware('throttle:web-login')
+        ->name('login.perform');
 
     // Password Reset Routes...
     Route::get('password/reset', 'Auth\ForgotPasswordController@showLinkRequestForm')->name('password.request');
-    Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')->name('password.email');
+    Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')
+        ->middleware('throttle:password-reset')
+        ->name('password.email');
     Route::get('password/reset/{token}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
     Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('password.update');
 });
@@ -74,6 +83,16 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard/content', [App\Http\Controllers\HomeController::class, 'content'])
+        ->name('dashboard.content');
+});
+
+Route::middleware('auth')->prefix('gis')->group(function () {
+    Route::get('/wms', [GISProxyController::class, 'wms'])->name('gis.wms');
+    Route::get('/wfs', [GISProxyController::class, 'wfs'])->name('gis.wfs');
+    Route::get('/export/{format}', [GISExportController::class, 'export'])
+        ->where('format', 'csv|kml|shp')->name('gis.export');
+    Route::post('/print', [GISPrintController::class, 'print'])->name('gis.print');
 });
 
 /**
@@ -87,6 +106,7 @@ Route::group([
     // building structure routes
     Route::get('get-use-categories/{functionalUseId}', 'BuildingController@getUseCategories')->name('functionaluse.getusecat');
     Route::get('buildings/buildingdashboard', 'BuildingDashboardController@index')->name('buildingdashboard');
+    Route::get('buildings/buildingdashboard/content', 'BuildingDashboardController@content')->name('buildingdashboard.content');
     Route::get('buildings/check-house', 'BuildingController@checkHouse')->name('buildings.check-house');
     Route::get('buildings/data', 'BuildingController@getData')->name('building.getData');
     Route::get('buildings/get-house-numbers', 'BuildingController@getHouseNumbers')->name('building.get-house-numbers-containments');
@@ -223,6 +243,7 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('utilitydashboard', 'UtilityDashboardController@index')->name('utilitydashboard');
+    Route::get('utilitydashboard/content', 'UtilityDashboardController@content')->name('utilitydashboard.content');
     Route::get('roadlines/export', 'RoadlineController@export');
     Route::get('roadlines/data', 'RoadlineController@getData');
     Route::get('roadlines/{code}/geometry', 'RoadlineController@getGeometry');

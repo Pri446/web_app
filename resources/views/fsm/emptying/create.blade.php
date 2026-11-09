@@ -73,10 +73,8 @@ $('#locateBuildingModal').on('shown.bs.modal', function () {
     }
 
     var workspace = '{{ Config::get("constants.GEOSERVER_WORKSPACE") }}';
-    var gurl      = '{{ Config::get("constants.GEOSERVER_URL") }}/';
-    var gurl_wms  = gurl + 'wms';
-    var gurl_wfs  = gurl + 'wfs';
-    var authkey   = '{{ Config::get("constants.AUTH_KEY") }}';
+    var gurl_wms = "{{ route('gis.wms') }}";
+    var gurl_wfs = "{{ route('gis.wfs') }}";
 
     var centerLng    = 85.32;
 var centerLat    = 27.68;
@@ -158,11 +156,12 @@ var extentMaxLat = 27.78;
     var lat = coordinate[1];
 
     var wfsUrl = gurl_wfs
-        + '?service=WFS&version=1.0.0&request=GetFeature'
-        + '&typeName=' + workspace + ':buildings_layer'
-        + '&outputFormat=application/json'
-        + '&CQL_FILTER=INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
-        + '&authkey=' + authkey;
+    + '?service=WFS&version=1.0.0&request=GetFeature'
+    + '&typeName=' + encodeURIComponent(workspace + ':buildings_layer')
+    + '&outputFormat=application/json'
+    + '&CQL_FILTER=' + encodeURIComponent(
+        'INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
+    );
 
     $.getJSON(wfsUrl, function (data) {
         if (data.features && data.features.length > 0) {
@@ -244,12 +243,12 @@ function showAnfPopup(building, containmentRes) {
             <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
             <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
         </div>
-        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${building.owner_name ?? '-'} (${building.owner_gender ?? '-'})</p>
-        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${building.house_number ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${building.road_code ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${building.structure_type_name ?? '-'} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${building.building_sanitation_system ?? '-'}</p>
-        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${building.bin ?? '-'}</span></p>
+        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${escapeHtml(building.owner_name ?? '-')} (${escapeHtml(building.owner_gender ?? '-')})</p>
+        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
+        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
+        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
         <div class="alert alert-warning py-1 small mb-2">⚠ {{__('No containment linked to this building')}}.</div>
         <a href="/fsm/containments/${building.bin}/create?application_id=${applicationId}" class="btn btn-warning btn-sm btn-block">
             + {{__('Add Containment')}}
@@ -261,12 +260,12 @@ function showAnfPopup(building, containmentRes) {
             <h6 class="font-weight-bold mb-0">🏠 {{__('Building Info')}}</h6>
             <button type="button" class="close ml-2" onclick="$('#anf-popup').hide()"><span>&times;</span></button>
         </div>
-        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${building.owner_name ?? '-'} (${building.owner_gender ?? '-'})</p>
-        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${building.house_number ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${building.road_code ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${building.structure_type_name ?? '-'} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
-        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${building.building_sanitation_system ?? '-'}</p>
-        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${building.bin ?? '-'}</span></p>
+        <p class="mb-1 small"><strong>{{__('Owner')}}:</strong> ${escapeHtml(building.owner_name ?? '-')} (${escapeHtml(building.owner_gender ?? '-')})</p>
+        <p class="mb-1 small"><strong>{{__('Ward')}}:</strong> ${building.ward ?? '-'} &nbsp;|&nbsp; <strong>{{__('House No')}}:</strong> ${escapeHtml(building.house_number ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Road Code')}}:</strong> ${escapeHtml(building.road_code ?? '-')}</p>
+        <p class="mb-1 small"><strong>{{__('Structure')}}:</strong> ${escapeHtml(building.structure_type_name ?? '-')} &nbsp;|&nbsp; <strong>{{__('Floors')}}:</strong> ${building.floor_count ?? '-'}</p>
+        <p class="mb-1 small"><strong>{{__('Sanitation')}}:</strong> ${escapeHtml(building.building_sanitation_system ?? '-')}</p>
+        <p class="mb-2 small"><strong>{{__('BIN')}}:</strong> <span class="badge badge-secondary">${escapeHtml(building.bin ?? '-')}</span></p>
         <h6 class="font-weight-bold border-bottom pb-1 mb-2">🚽 {{__('Containments')}}</h6>
         <div class="mb-2 small">${containmentRes.popContentsHtml}</div>
         <button class="btn btn-success btn-sm btn-block"
@@ -297,7 +296,7 @@ function selectAnfBuilding(bin, containmentId) {
                 toastr.success('{{ __('Building and containment linked successfully. Resolving ANF') }}...', 'Success', {
                     timeOut: 2000,
                     onHidden: function () {
-                        window.location.reload();s
+                        window.location.reload();
                     }
                 });
             }

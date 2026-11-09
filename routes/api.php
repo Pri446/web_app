@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\WaterSupplyPaymentApiController;
 use App\Http\Controllers\Fsm\ApplicationController;
 use App\Http\Controllers\Api\SludgeCollectionController;
 use App\Http\Controllers\Api\ContainmentsApiController;
+use App\Http\Controllers\GISProxyController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -46,7 +47,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::get('get-Building-sewercode/{sewercode}',[BuildingSearchController::class,'getSewerCode']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:api-login');
 
 /*
 |
@@ -58,7 +60,12 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::group([
     'name' => 'protected-api-routes',
     'middleware' => 'auth:sanctum'
-],function (){
+], function (){
+    Route::prefix('gis')->group(function () {
+        Route::get('/wms', [GISProxyController::class, 'wms'])
+            ->name('mobile.gis.wms');
+    });
+
     /*
     |
     | Logout---------------------------------------------------------------

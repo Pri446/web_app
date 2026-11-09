@@ -130,8 +130,7 @@ $(document).ready(function(){
 
     $('#export_form').on('submit', function() {
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        var gurl = '<?php echo Config::get("constants.GEOSERVER_URL"); ?>';
-        var gurl_wfs = gurl + 'wfs';
+        var gurl_wfs = "{{ route('gis.wfs') }}";
 
         var selectedWards = $('#ward').val();
         // var selectedTaxzone = $('#taxzone').val();
@@ -152,15 +151,19 @@ $(document).ready(function(){
             });
 
             var outputFormat = selectedFormat == 'kml' ? 'KML' : 'SHAPE-ZIP';
+            var selectedLayerNames = $('#ward_overlay option:selected').map(function() {
+                return $(this).text().trim();
+            }).get().join('_').replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+            var fileExtension = selectedFormat == 'kml' ? 'kml' : 'zip';
+            var exportFilename = (selectedLayerNames || 'export_imis') + '_' +
+                moment().format('YYYYMMDD_HHmmss') + '.' + fileExtension;
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName=" + layers.join(',') + "&CQL_FILTER=INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL" +
-    "&outputFormat=" + outputFormat;
+            var cqlFilter = "INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL";
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" +
+                encodeURIComponent(layers.join(',')) + "&CQL_FILTER=" + encodeURIComponent(cqlFilter) +
+                "&outputFormat=" + outputFormat;
 
-            if(outputFormat == 'SHAPE-ZIP') {
-                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.zip';
-            } else {
-                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.kml';
-            }
+            exportLink += '&format_options=filename:' + exportFilename;
             window.open(exportLink);
 
         }

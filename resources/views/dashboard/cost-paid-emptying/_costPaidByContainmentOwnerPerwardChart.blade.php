@@ -20,7 +20,7 @@ var ctx = document.getElementById("costPaidByContainmentOwnerPerwardChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $costPaidByContainmentOwnerPerwardChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($costPaidByContainmentOwnerPerwardChart['labels'] ?? [])))),
     datasets: [
         {
             label: "Ward-Wise Revenue Collected from Emptying Services",
@@ -29,7 +29,7 @@ var myChart = new Chart(ctx, {
             //borderWidth: 1,
             hoverBackgroundColor: "rgba(54, 162, 235,0.7)",
             //hoverBorderColor: "rgba(90, 155, 212,1)",
-            data: [<?php echo implode(',', $costPaidByContainmentOwnerPerwardChart['values']); ?>],
+            data: @json(array_values($costPaidByContainmentOwnerPerwardChart['values'] ?? [])),
         }
     ]
 },

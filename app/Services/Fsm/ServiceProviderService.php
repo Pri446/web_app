@@ -92,19 +92,19 @@ class ServiceProviderService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['service-providers.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit Service Provider')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ServiceProviderController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\ServiceProviderController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Service Provider')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ServiceProviderController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\ServiceProviderController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Service Provider History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ServiceProviderController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\ServiceProviderController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Service Provider')) {
-                    $content .= '<a href="#" title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 $content .= \Form::close();

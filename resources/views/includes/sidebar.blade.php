@@ -22,7 +22,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 @if(Auth::user()->hasanyPermissionInGroup(['Dashboard','Building Dashboard','Utility Dashboard','FSM Dashboard']) || Auth::user()->hasRole('Super Admin'))
                 <li class="nav-item">
-                    <a href="{{ url('/') }}" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">
+                    <a href="{{ url('/') }}" data-dashboard-navigation class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">
                         <i class="nav-icon fa-solid fa-house"></i>
                         <p>{{__('Dashboard')}}</p>
                     </a>
@@ -40,7 +40,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     <ul class="nav nav-treeview">
                         @if(Auth::user()->hasanyPermissionInGroup(['Building Dashboard']) || Auth::user()->hasRole('Super Admin'))
                         <li class="nav-item treeview menu-open">
-                            <a href="{{ action('BuildingInfo\BuildingDashboardController@index') }}" class="nav-link {{ request()->is('building-info/buildings/buildingdashboard') ? 'active' : '' }}">
+                            <a href="{{ action('BuildingInfo\BuildingDashboardController@index') }}" data-dashboard-navigation class="nav-link {{ request()->is('building-info/buildings/buildingdashboard') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>{{__('Building Dashboard')}}</p>
                             </a>
@@ -140,7 +140,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     <ul class="nav nav-treeview">
                         @if(Auth::user()->hasanyPermissionInGroup(['FSM Dashboard']) || Auth::user()->hasRole('Super Admin'))
                         <li class="nav-item ">
-                            <a href="{{ action('Fsm\FsmDashboardController@index') }}" class="nav-link {{ request()->is('fsm/fsmdashboard') ? 'active' : '' }}">
+                            <a href="{{ action('Fsm\FsmDashboardController@index') }}" data-dashboard-navigation class="nav-link {{ request()->is('fsm/fsmdashboard') ? 'active' : '' }}">
                                 <i class="nav-icon fa-solid fa-gauge"></i>
                                 <p>{{__('FSM Dashboard')}}</p>
                             </a>
@@ -388,14 +388,14 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             @if(Auth::user()->hasanyPermissionInGroup(['CWIS','KPI Dashboard','KPI Target','NSD Setting']) || Auth::user()->hasRole('Super Admin'))
             <li class="nav-item {{ request()->is('cwis/*', 'fsm/kpi-dashboard', 'fsm/kpi-targets/*','fsm/kpi-targets','fsm/cwis-setting/*','fsm/cwis-setting', 
                 'fsm/nsd-setting','fsm/nsd-setting/*') ? 'menu-is-opening menu-open' : '' }}">
-                <a href="" class="nav-link {{ request()->is('cwis/*', 'fsm/kpi-dashboard', 'fsm/kpi-targets/*','fsm/kpi-targets','fsm/cwis-setting/*','fsm/cwis-setting', 'fsm/nsd-setting', 'fsm/nsd-setting/*') ? 'active' : '' }}">
+                <a href="#" class="nav-link {{ request()->is('cwis/*', 'fsm/kpi-dashboard', 'fsm/kpi-targets/*','fsm/kpi-targets','fsm/cwis-setting/*','fsm/cwis-setting', 'fsm/nsd-setting', 'fsm/nsd-setting/*') ? 'active' : '' }}">
                 <img src="{{ asset('img/svg/imis-icons/cwis.svg')}}" class="nav-icon" alt="CWIS  Icon">
                     <p> {{__('CWIS IMS')}}<i class="right fas fa-angle-left"></i> </p>
                 </a>
                 <ul class="nav nav-treeview">
                     @can('List CWIS')
                     <li class="nav-item">
-                        <a href="{{ url('cwis/cwis/getall') }}" id="cwis-link" class="nav-link {{ request()->is('cwis/cwis/getall') ? 'active' : '' }}">
+                        <a href="{{ url('cwis/cwis/getall') }}" id="cwis-link" data-dashboard-navigation class="nav-link {{ request()->is('cwis/cwis/getall') ? 'active' : '' }}">
                             <i class="nav-icon far fa-circle nav-icon"></i>
                             <p>{{__('CWIS Dashboard')}}</p>
                         </a>
@@ -415,7 +415,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     </li>
                     @endcan
 
-                    @if(Auth::user()->hasanyPermissionInGroup(['KPI Dashboard']) || Auth::user()->hasRole('Super Admin'))
                     @can('LisT NSD Setting')
                     <li class="nav-item">
                         <a href="{{ action('Fsm\NsdSettingController@index') }}" class="nav-link {{ request()->is('fsm/nsd-setting','fsm/nsd-setting/*') ? 'active' : '' }}">
@@ -427,7 +426,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     
                     @if(Auth::user()->hasanyPermissionInGroup(['KPI Dashboard']) || Auth::user()->hasRole('Super Admin'))
                     <li class="nav-item">
-                            <a href="{{ action('Fsm\KpiDashboardController@index') }}" class="nav-link {{ request()->is('fsm/kpi-dashboard') ? 'active' : '' }}">
+                            <a href="{{ action('Fsm\KpiDashboardController@index') }}" data-dashboard-navigation class="nav-link {{ request()->is('fsm/kpi-dashboard') ? 'active' : '' }}">
                                 <i class="nav-icon far fa-circle nav-icon"></i>
                                 <p>{{__('KPI Dashboard')}} </p>
                             </a>
@@ -458,7 +457,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 <ul class="nav nav-treeview">
                     @if(Auth::user()->hasanyPermissionInGroup(['Utility Dashboard']) || Auth::user()->hasRole('Super Admin'))
                     <li class="nav-item">
-                        <a href="{{ action('UtilityInfo\UtilityDashboardController@index') }}" class="nav-link {{ request()->is('utilityinfo/utilitydashboard') ? 'active' : '' }}">
+                        <a href="{{ action('UtilityInfo\UtilityDashboardController@index') }}" data-dashboard-navigation class="nav-link {{ request()->is('utilityinfo/utilitydashboard') ? 'active' : '' }}">
                             <i class="far fa-circle nav-icon"></i>
                             <p>{{__('Utility Dashboard')}}</p>
                         </a>
@@ -667,12 +666,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             @endif
 
             </ul>
-             @endif
         </nav>
 
     </div>
 
 </aside>
+
 <script>
     function toggleElements() {
 
@@ -688,3 +687,117 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         }
     }
 </script>
+
+@push('scripts')
+<script>
+(function () {
+    'use strict';
+
+    var navigationLinks = Array.prototype.slice.call(
+        document.querySelectorAll('[data-dashboard-navigation]')
+    );
+    function resetDashboardNavigation() {
+        navigationLinks.forEach(function (link) {
+            var icon = link.querySelector('.nav-icon');
+            var label = link.querySelector('p');
+
+            link.removeAttribute('aria-busy');
+            link.removeAttribute('aria-disabled');
+            link.classList.remove('dashboard-navigation-loading');
+            link.style.cursor = link.dataset.dashboardOriginalCursor || '';
+            link.style.opacity = link.dataset.dashboardOriginalOpacity || '';
+
+            if (link.dataset.dashboardOriginalTabindex === '__missing__') {
+                link.removeAttribute('tabindex');
+            } else if (link.dataset.dashboardOriginalTabindex !== undefined) {
+                link.setAttribute('tabindex', link.dataset.dashboardOriginalTabindex);
+            }
+
+            delete link.dataset.dashboardOriginalCursor;
+            delete link.dataset.dashboardOriginalOpacity;
+            delete link.dataset.dashboardOriginalTabindex;
+
+            if (icon && icon.dataset.dashboardOriginalClass) {
+                icon.className = icon.dataset.dashboardOriginalClass;
+                delete icon.dataset.dashboardOriginalClass;
+            }
+
+            if (label && label.dataset.dashboardOriginalHtml) {
+                label.innerHTML = label.dataset.dashboardOriginalHtml;
+                delete label.dataset.dashboardOriginalHtml;
+            }
+        });
+    }
+
+    function lockedDashboardLink(target) {
+        if (!target || typeof target.closest !== 'function') {
+            return null;
+        }
+
+        var link = target.closest('[data-dashboard-navigation]');
+
+        return link && link.getAttribute('aria-busy') === 'true' ? link : null;
+    }
+
+    function preventRepeatedDashboardNavigation(event) {
+        if (!lockedDashboardLink(event.target)) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+
+    document.addEventListener('click', preventRepeatedDashboardNavigation, true);
+    document.addEventListener('dblclick', preventRepeatedDashboardNavigation, true);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+            preventRepeatedDashboardNavigation(event);
+        }
+    }, true);
+
+    navigationLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            if (link.getAttribute('aria-busy') === 'true') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+
+            var icon = link.querySelector('.nav-icon');
+            var label = link.querySelector('p');
+
+            link.dataset.dashboardOriginalCursor = link.style.cursor || '';
+            link.dataset.dashboardOriginalOpacity = link.style.opacity || '';
+            link.dataset.dashboardOriginalTabindex = link.hasAttribute('tabindex')
+                ? link.getAttribute('tabindex')
+                : '__missing__';
+
+            link.setAttribute('aria-disabled', 'true');
+            link.classList.add('dashboard-navigation-loading');
+            link.style.cursor = 'wait';
+            link.style.opacity = '0.65';
+            link.setAttribute('tabindex', '-1');
+            link.setAttribute('aria-busy', 'true');
+
+            if (icon) {
+                icon.dataset.dashboardOriginalClass = icon.className;
+                icon.className = 'nav-icon fas fa-spinner fa-spin';
+            }
+
+            if (label) {
+                label.dataset.dashboardOriginalHtml = label.innerHTML;
+                label.textContent = @json(__('Loading...'));
+            }
+        });
+    });
+
+    window.addEventListener('pageshow', resetDashboardNavigation);
+}());
+</script>
+@endpush

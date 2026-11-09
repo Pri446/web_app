@@ -203,7 +203,7 @@
         /*
           script to dynamically display child dropdown values according to value selected in parent dropdown
           */
-        var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
+        var usecatgs = {{ Illuminate\Support\Js::from(json_decode($usecatgsJson)) }};
         $(document).on('ready', function() {
             @if ($errors->any())
                 @if (old('functional_use'))
@@ -438,7 +438,7 @@
     });
 
 
-    var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
+    var usecatgs = {{ Illuminate\Support\Js::from(json_decode($usecatgsJson)) }};
     // use category handled on initial load
     var html = '<option value="">' + _('Use Category of Building') + '</option>';
         var functional_use = $('#functional_use_id').val();

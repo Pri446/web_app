@@ -16,6 +16,7 @@ use DB;
 use App\Models\Application;
 use Encore\Admin\Layout\Content;
 use App\Services\Auth\UserService;
+use App\Services\UserRecordAccessService;
 use App\Models\Fsm\HelpDesk;
 use App\Enums\UserStatus;
 
@@ -29,17 +30,39 @@ class UserController extends Controller
     * @return void
     */
     public function __construct(UserService $userService)
-    {
-        $this->middleware('auth');
-        $this->middleware('permission:List Users', ['only' => ['index','getData']]);
-        $this->middleware('permission:View User', ['only' => ['show']]);
-        $this->middleware('permission:Add User', ['only' => ['create','store']]);
-        $this->middleware('permission:Edit User', ['only' => ['edit','update']]);
-        $this->middleware('permission:Delete User', ['only' => ['destroy']]);
-        $this->middleware('permission:Export Users to CSV', ['only' => ['export']]);
-        $this->middleware('permission:View User Login Activity', ['only' => ['getLoginActivity']]);
-        $this->userService = $userService;
-    }
+{
+    $this->middleware('auth');
+
+    $this->middleware('permission:List Users', [
+        'only' => ['index', 'getData'],
+    ]);
+
+    $this->middleware('permission:View User', [
+        'only' => ['show'],
+    ]);
+
+    $this->middleware('permission:Add User', [
+        'only' => ['create', 'store'],
+    ]);
+
+    $this->middleware('permission:Edit User', [
+        'only' => ['edit', 'update'],
+    ]);
+
+    $this->middleware('permission:Delete User', [
+        'only' => ['destroy'],
+    ]);
+
+    $this->middleware('permission:Export Users to CSV', [
+        'only' => ['export'],
+    ]);
+
+    $this->middleware('permission:View User Login Activity', [
+        'only' => ['getLoginActivity'],
+    ]);
+
+    $this->userService = $userService;
+}
     /**
      * Display a listing of the resource.
      *
@@ -87,7 +110,7 @@ class UserController extends Controller
         $status = UserStatus::asSelectArray();
         return view('users.create', compact('page_title', 'roles', 'treatmentPlants', 'helpDesks', 'serviceProviders', 'status', 'munhelpDesks'))
         ->with(['isEdit' => false]);
- 
+
     }
 
     /**
@@ -124,7 +147,7 @@ class UserController extends Controller
         $this->authorizeUserRecord($userDetail);
 
         $user = $this->userService->getUserRelatedData($id);
-       
+
         $status = UserStatus::getDescription($userDetail->status);
         $userRoles = array();
         $munhelpDesks = HelpDesk::orderBy('name')->whereNull('service_provider_id')->pluck('name', 'id');
@@ -182,7 +205,7 @@ class UserController extends Controller
     public function edit(Request $request,$id)
     {
         $user = User::findorfail($id);
-      
+
         if (!$user->hasRole('Super Admin')) {
             $page_title = __("Edit User");
             if (!$request->user()->hasRole("Super Admin") && !$request->user()->hasRole("Municipality - Super Admin") && !$request->user()->hasRole("Municipality - IT Admin")){
@@ -194,9 +217,9 @@ class UserController extends Controller
                 $helpDesks = HelpDesk::where('service_provider_id','=',$request->user()->service_provider_id)->orderBy('name')->pluck('name', 'id');
             }
             else if ($request->user()->hasRole("Service Provider - Admin")) {
-              
+
                 $helpDesks = HelpDesk::where('service_provider_id', '=', $request->user()->service_provider_id)->orderBy('name')->pluck('name', 'id');
-              
+
             }
             else{
                 $roles = Role::where('name', '!=', 'Super Admin')->pluck('name','name')->all();
@@ -214,7 +237,7 @@ class UserController extends Controller
             $status = UserStatus::asSelectArray();
             return view('users.edit', compact('page_title', 'user', 'roles', 'treatmentPlants', 'helpDesks', 'serviceProviders', 'status', 'munhelpDesks'))
             ->with(['isEdit' => true]);
-     
+
         } else {
             abort(404);
         }
@@ -235,7 +258,7 @@ class UserController extends Controller
             if (!$user->hasRole('Super Admin')) {
             $data = $request->all();
             $this->userService->storeOrUpdate($user->id,$request);
-            DB::commit(); 
+            DB::commit();
             return redirect('auth/users')->with('success', __('User updated successfully.'));
             } else {
                 abort(404);
@@ -315,11 +338,11 @@ class UserController extends Controller
         ->orderBy('name')
         ->distinct('name')// Fetch only the id and name
         ->pluck('name', 'id'); // Fetch only the id and name
-       
+
         return $data;
 
     }
-   
+
 
     public function export(Request $request)
     {

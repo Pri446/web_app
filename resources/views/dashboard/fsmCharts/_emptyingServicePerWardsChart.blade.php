@@ -11,14 +11,14 @@ var ctx = document.getElementById("emptyingServicePerWardsChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $emptyingServicePerWardsChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($emptyingServicePerWardsChart['labels'] ?? [])))),
     datasets: [
         @foreach($emptyingServicePerWardsChart['datasets'] as $dataset)
         {
-            stack: <?php echo $dataset['stack']; ?>,
-            label: <?php echo $dataset['label']; ?>,
-            backgroundColor: <?php echo $dataset['color']; ?>,
-            data: [<?php echo implode(',', $dataset['data']); ?>],
+            stack: @json($dataset['stack'] ?? null),
+            label: @json($dataset['label'] ?? null),
+            backgroundColor: @json($dataset['color'] ?? null),
+            data: @json(array_values($dataset['data'] ?? [])),
         },
         @endforeach
     ]

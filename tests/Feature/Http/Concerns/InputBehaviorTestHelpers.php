@@ -63,4 +63,30 @@ trait InputBehaviorTestHelpers
             $this->assertDatabaseMissing($table, $fixture['expected']);
         }
     }
+
+    /**
+     * Load fixture cases without altering submitted whitespace or special values.
+     */
+    protected function loadJsonFixture(string $relativePath): array
+    {
+        $path = base_path('tests/Fixtures/'.$relativePath);
+        if (!is_file($path)) {
+            throw new \RuntimeException('Fixture file not found: '.$path);
+        }
+        $fixture = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($fixture)) {
+            throw new \RuntimeException('Fixture must decode to an array: '.$path);
+        }
+        return $fixture;
+    }
+
+    protected function fixtureCase(string $relativePath, string $description): array
+    {
+        foreach ($this->loadJsonFixture($relativePath) as $case) {
+            if (($case['test-data-description'] ?? null) === $description) {
+                return $case;
+            }
+        }
+        throw new \RuntimeException('Fixture case not found: '.$description);
+    }
 }
