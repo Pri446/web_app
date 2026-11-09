@@ -214,13 +214,13 @@
         $("#export-shp").on("click", function(e) {
             e.preventDefault();
             var cql_param = getCQLParams();
-            window.location.href = "{{ Config::get("constants.GEOSERVER_URL") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName={{ Config::get("constants.GEOSERVER_WORKSPACE") }}:roadlines_layer+&CQL_FILTER=" + cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Road Network.zip";
+            window.location.href = "{{ route('gis.export', ['format' => 'shp']) }}?layer=roadlines_layer&filter=" + encodeURIComponent(cql_param);
         })
         $("#export-kml").on("click", function(e) {
             e.preventDefault();
             var cql_param = getCQLParams();
 
-            window.location.href = "{{ Config::get("constants.GEOSERVER_URL") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName={{ Config::get("constants.GEOSERVER_WORKSPACE") }}:roadlines_layer+&CQL_FILTER=" + cql_param +" &outputFormat=KML&format_options=filename:Road Network.kml";
+            window.location.href = "{{ route('gis.export', ['format' => 'kml']) }}?layer=roadlines_layer&filter=" + encodeURIComponent(cql_param);
         });
         function getCQLParams() {
             code = $('#code').val();
@@ -243,7 +243,7 @@
              if (carrying_width) {
                 cql_param += " AND carrying_width ='" + carrying_width + "'";
             }
-            return encodeURI(cql_param);
+            return (cql_param);
         }
     });
 </script>
