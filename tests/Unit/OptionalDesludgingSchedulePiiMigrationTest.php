@@ -3,7 +3,9 @@
 namespace Tests\Unit;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Connection;
+use Illuminate\Database\Schema\Builder;
+use Mockery;
 use Tests\TestCase;
 
 class OptionalDesludgingSchedulePiiMigrationTest extends TestCase
@@ -14,7 +16,12 @@ class OptionalDesludgingSchedulePiiMigrationTest extends TestCase
             'migrations/2026_10_12_000001_remove_pii_from_desludging_schedule_temp.php'
         );
 
-        Schema::shouldReceive('hasTable')
+        $schema = Mockery::mock(Builder::class);
+        $connection = Mockery::mock(Connection::class);
+        $connection->shouldReceive('getSchemaBuilder')->twice()->andReturn($schema);
+        DB::shouldReceive('connection')->twice()->andReturn($connection);
+
+        $schema->shouldReceive('hasTable')
             ->twice()
             ->with('fsm.desludging_schedule_temp')
             ->andReturn(false);
