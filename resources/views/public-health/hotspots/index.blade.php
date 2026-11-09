@@ -186,8 +186,8 @@
     //     var cql_param = getCQLParams();
     //     window.location.href = "{{ Config::get("
     //     constants
-    //         .GEOSERVER_URL ") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("
-    //     constants.AUTH_KEY ") }}&typeName={{ Config::get("
+    //         legacy export URL removed; use the authenticated GIS export route.
+    //     legacy credential removed
     //     constants.GEOSERVER_WORKSPACE ") }}:waterborne_hotspots_layer+&CQL_FILTER=" + cql_param +
     //         " &outputFormat=SHAPE-ZIP";
 
@@ -198,8 +198,8 @@
     //     var cql_param = getCQLParams();
     //     window.location.href = "{{ Config::get("
     //     constants
-    //         .GEOSERVER_URL ") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("
-    //     constants.AUTH_KEY ") }}&typeName={{ Config::get("
+    //         legacy export URL removed; use the authenticated GIS export route.
+    //     legacy credential removed
     //     constants.GEOSERVER_WORKSPACE ") }}:waterborne_hotspots_layer+&CQL_FILTER=" + cql_param +
     //         " &outputFormat=KML";
     // });

@@ -456,8 +456,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 e.preventDefault();
                 var cql_param = getCQLParams();
                 window.location.href =
-                    "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:containments_layer+&CQL_FILTER=" +
-                    cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Containments.zip";
+                    "{{ route('gis.export', ['format' => 'shp']) }}?layer=containments_layer&filter=" + encodeURIComponent(cql_param);
 
             });
 
@@ -465,8 +464,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 e.preventDefault();
                 var cql_param = getCQLParams();
                 window.location.href =
-                    "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:containments_layer+&CQL_FILTER=" +
-                    cql_param + " &outputFormat=KML&format_options=filename:Containments.kml";
+                    "{{ route('gis.export', ['format' => 'kml']) }}?layer=containments_layer&filter=" + encodeURIComponent(cql_param);
 
             });
 
@@ -535,7 +533,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 }
 
 
-                return encodeURI(cql_param);
+                // Return raw CQL; the export URL encodes the complete filter once.
+                return cql_param;
             }
 
             $('#const_date').daterangepicker({

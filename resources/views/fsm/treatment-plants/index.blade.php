@@ -287,24 +287,27 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         $("#export-shp").on("click", function(e) {
                             e.preventDefault();
                             var cql_param = getCQLParams();
-                            window.globalLoader.download(
-                                "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
-                                    cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Treatment Plants.zip",
+
+                          window.globalLoader.download(
+                                "{{ route('gis.export', ['format' => 'shp']) }}?layer=treatmentplants_layer&filter=" +
+                                encodeURIComponent(cql_param),
                                 'Treatment Plants.zip',
                                 this
                             ).catch(function () {});
+
 
                         })
 
                         $("#export-kml").on("click", function(e) {
                             e.preventDefault();
                             var cql_param = getCQLParams();
+
                             window.globalLoader.download(
-                                "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:treatmentplants_layer+&CQL_FILTER=" +
-                                    cql_param + " &outputFormat=KML&format_options=filename:Treatment Plants.kml",
-                                'Treatment Plants.kml',
-                                this
-                            ).catch(function () {});
+                                    "{{ route('gis.export', ['format' => 'kml']) }}?layer=treatmentplants_layer&filter=" +
+                                    encodeURIComponent(cql_param),
+                                    'Treatment Plants.kml',
+                                    this
+                                ).catch(function () {});
                         });
 
                         function getCQLParams() {
@@ -336,7 +339,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             if (type) {
                                 cql_param += " AND type ='" + type + "'";
                             }
-                            return encodeURI(cql_param);
+                            return (cql_param);
                         }
 
                         $('.date, #date_from, #date_to').datepicker({

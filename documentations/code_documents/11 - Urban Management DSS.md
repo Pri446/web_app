@@ -12,7 +12,17 @@ In IMIS, the querylayer filter functions are used in Map Export Tools. The expor
 
 ### Backend
 
-Controller: The ExportShpKmlController (located at app\\Http\\Controllers\\ExportShpKmlController.php) handles the backend logic for processing export requests.
+The current shared export endpoint is handled by `GISExportController` located at `app\\Http\\Controllers\\GISExportController.php`. The authenticated route is `GET /gis/export/{format}`, where `format` can be `csv`, `kml`, or `shp`. Shape exports are returned as a ZIP archive.
+
+The controller receives the configured GIS layer and an optional CQL filter, verifies that the layer is enabled for export in `config/gis.php`, checks the user's layer permission, and requests the export from GeoServer through WFS. Download filenames are also configured per layer in `config/gis.php`.
+
+The shared GIS infrastructure also includes:
+
+-   `GISProxyController`: Provides authenticated `/gis/wms` and `/gis/wfs` routes for approved GeoServer map and feature requests. It validates services, operations, workspace, layers, and permissions.
+-   `GISPrintController`: Provides `POST /gis/print`, validates the print specification and layer permissions, sends the request to MapFish, and returns a PDF map.
+-   `GET /api/gis/wms`: Provides the Sanctum-protected mobile WMS route.
+
+The former `ExportShpKmlController` and `/export-shp-kml` page describe the legacy layer/ward selection workflow. They should be retained in this section only as legacy documentation if that page remains available; new module export buttons use the shared `GISExportController` route.
 
 ### Views
 
@@ -24,7 +34,7 @@ Controller: The ExportShpKmlController (located at app\\Http\\Controllers\\Expor
 
 -   Wards: Users have the option to select specific wards for filtering the exported data. The "wards" parameter is passed from the ExportShpKmlController to the index function, where data is fetched from the ward model.
 
--   Format: Users can choose between exporting as a shapefile or KML file.
+-   Format: Users can choose between exporting as a shapefile or KML file in the legacy export page. The shared map export controls additionally support CSV.
 
 -   Multi-Select: The ward selection dropdown utilizes a multi-select functionality.
 

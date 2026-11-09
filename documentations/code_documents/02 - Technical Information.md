@@ -13,7 +13,7 @@ The breakdown of file structure in Laravel:
     -   Console/: Holds artisan console commands.
     -   Enums/: Houses enumeration classes if you're using enums in your application.
     -   Exceptions/: Contains exception handler classes.
-    -   Exports/: For classes related to exporting data (e.g., to CSV, Excel).
+    -   Exports/: For classes related to exporting data to CSV, Excel, KML, and Shape formats.
     -   Helpers/: Houses helper functions or classes used throughout your application.
     -   Http/: Contains controllers, middleware, form requests, etc., related to HTTP requests.
     -   Imports/: For classes related to importing data (e.g., from CSV, Excel).
@@ -22,7 +22,7 @@ The breakdown of file structure in Laravel:
     -   Rules/: For custom validation rule classes if you're using Laravel's validation system.
     -   Services/: Contains classes responsible for specific application services.
 2.  bootstrap/: Contains files for bootstrapping the Laravel application.
-3.  config/: Contains configuration files for various components of your application. Note: app.php contains class aliases used. 
+3.  config/: Contains configuration files for various components of your application. This includes `gis.php` for approved GIS layers, permissions, export settings, filenames, and mobile WMS layer mappings. Note: app.php contains class aliases used.
 4.  database/: Contains database-related files.
     -   factories/: Contains the factories files. 
     -   migrations/: Houses all database migration files.
@@ -37,6 +37,7 @@ The breakdown of file structure in Laravel:
     - pdf: Contains the template PDF's used. 
     - templates: Contains the CSV templates for the different modules
 7.  resources/: Contains your application's assets like views, language files, and raw asset files.
+    -   views/exports/: Contains shared export views, including KML export views.
     -   css/, js/, sass/: Asset directories for CSS, JavaScript, and SASS files.
     -   lang/: Language files.
     -   views/: Blade template files.
@@ -497,6 +498,46 @@ The models contain the connection between the model and the table defined by
 
 primaryKey= ‘id’
 
+## Shared GIS Architecture
+
+The shared GIS controllers provide the authenticated application boundary between the web/mobile clients and GeoServer. GIS layers, permissions, export availability, filenames, and mobile WMS mappings are maintained in `config/gis.php`.
+
+### GISProxyController
+
+Location: `app\\Http\\Controllers\\GISProxyController.php`
+
+The proxy forwards approved map requests to GeoServer while keeping the GeoServer authentication key server-side.
+
+-   `GET /gis/wms`: Allows only the WMS operations `GetMap`, `GetLegendGraphic`, and `GetFeatureInfo`.
+-   `GET /gis/wfs`: Allows only WFS `GetFeature` requests.
+-   `GET /api/gis/wms`: Protected mobile WMS route using `auth:sanctum`.
+-   Validates the requested layer against `config/gis.php`, validates the configured workspace, and checks the user's layer permission.
+-   Rejects unapproved layers, workspaces, services, and operations.
+
+### GISExportController
+
+Location: `app\\Http\\Controllers\\GISExportController.php`
+
+The controller exports configured GeoServer layers through WFS. The route is `GET /gis/export/{format}`, where the supported formats are `csv`, `kml`, and `shp`. Shape exports are returned as a ZIP archive. The controller checks that the layer is configured for export, verifies the user's permission, applies an optional validated `CQL_FILTER`, and returns the download with the configured filename.
+
+### GISPrintController
+
+Location: `app\\Http\\Controllers\\GISPrintController.php`
+
+The `POST /gis/print` route validates the print specification and requested layers, checks layer permissions, adds the configured workspace and authenticated WMS URL, and sends the request to the MapFish print service. A generated map is returned as a PDF. Connection and upstream print-service failures are returned as controlled error responses.
+
+### GIS Routes and Configuration
+
+| Route | Controller | Purpose |
+|---|---|---|
+| `GET /gis/wms` | `GISProxyController@wms` | Authenticated web WMS proxy |
+| `GET /gis/wfs` | `GISProxyController@wfs` | Authenticated web WFS feature proxy |
+| `GET /gis/export/{format}` | `GISExportController@export` | CSV, KML, or Shape export |
+| `POST /gis/print` | `GISPrintController@print` | PDF map printing |
+| `GET /api/gis/wms` | `GISProxyController@wms` | Sanctum-protected mobile WMS proxy |
+
+The GeoServer and MapFish settings are defined in `config/services.php` and read from the environment. `GEOSERVER_INTERNAL_URL` is preferred for server-side GeoServer requests, with `GEOSERVER_URL` as the fallback. The required deployment settings are `GEOSERVER_WORKSPACE`, `GEOSERVER_INTERNAL_URL`, `GEOSERVER_AUTH_KEY`, and `MAPFISH_PRINT_URL`.
+
 ## Data Dictionary
 
 The data dictionary for IMIS is attached in provided in the documentations/data_dictionary/.
@@ -514,10 +555,16 @@ The .env file for the project is present in the .env.example file. Ensure necess
 | DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=[database_name] DB_USERNAME=[database_username] DB_PASSWORD=[database_password] |
 |------------------------------------------------------------------------------------------------------------------------------------------------|
 
-**Set up the Geoserver configuration in the .env file:**
+**Set up the GeoServer and MapFish configuration in the .env file:**
 
-| \#GEOSERVER GEOSERVER_WORKSPACE = [workspace_name] GEOSERVER = http://[server_url]/geoserver/ GEOSERVER_URL = http://[server_url]/geoserver/[workspace_name] AUTH_KEY = [auth_key] |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Variable | Description |
+|---|---|
+| `GEOSERVER_WORKSPACE` | GeoServer workspace used to qualify approved layers. |
+| `GEOSERVER_INTERNAL_URL` | Server-side GeoServer base URL used by the GIS proxy, export, and print controllers. |
+| `GEOSERVER_AUTH_KEY` | Server-side authentication key added to GeoServer requests. |
+| `MAPFISH_PRINT_URL` | MapFish print-service endpoint used to generate PDF maps. |
+
+`GEOSERVER_URL` remains the fallback for the GeoServer URL when `GEOSERVER_INTERNAL_URL` is not configured. Do not expose authentication keys in client-side requests or documentation examples.
 
 ## Secure Deployment User Seeding
 

@@ -78,10 +78,8 @@ $('#locateBuildingModal').on('shown.bs.modal', function () {
     }
 
     var workspace = '{{ Config::get("constants.GEOSERVER_WORKSPACE") }}';
-    var gurl      = '{{ Config::get("constants.GEOSERVER_URL") }}/';
-    var gurl_wms  = gurl + 'wms';
-    var gurl_wfs  = gurl + 'wfs';
-    var authkey   = '{{ Config::get("constants.AUTH_KEY") }}';
+    var gurl_wms = "{{ route('gis.wms') }}";
+    var gurl_wfs = "{{ route('gis.wfs') }}";
 
     var centerLng    = {{ Config::get("constants.MAP_CENTER_LNG", 81.6314) }};
     var centerLat    = {{ Config::get("constants.MAP_CENTER_LAT", 28.5971) }};
@@ -163,11 +161,12 @@ $('#locateBuildingModal').on('shown.bs.modal', function () {
     var lat = coordinate[1];
 
     var wfsUrl = gurl_wfs
-        + '?service=WFS&version=1.0.0&request=GetFeature'
-        + '&typeName=' + workspace + ':buildings_layer'
-        + '&outputFormat=application/json'
-        + '&CQL_FILTER=INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
-        + '&authkey=' + authkey;
+    + '?service=WFS&version=1.0.0&request=GetFeature'
+    + '&typeName=' + encodeURIComponent(workspace + ':buildings_layer')
+    + '&outputFormat=application/json'
+    + '&CQL_FILTER=' + encodeURIComponent(
+        'INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
+    );
 
     $.getJSON(wfsUrl, function (data) {
         if (data.features && data.features.length > 0) {
