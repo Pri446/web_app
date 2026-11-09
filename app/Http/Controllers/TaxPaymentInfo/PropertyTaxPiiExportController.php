@@ -154,6 +154,8 @@ class PropertyTaxPiiExportController extends Controller
 
         $headers = $this->exporter->headers();
         $rows = $result['rows'];
+        $scopeLabel = $exportMode === 'all' ? 'ALL' : 'BIN List';
+        $filename = 'Property Tax Owner PII Export ' . $scopeLabel . '.csv';
 
         return response()->streamDownload(function () use ($headers, $rows) {
             $output = fopen('php://output', 'wb');
@@ -163,7 +165,7 @@ class PropertyTaxPiiExportController extends Controller
                 fputcsv($output, $row);
             }
             fclose($output);
-        }, 'property-tax-owner-pii-' . $exportMode . '-' . now()->format('Ymd-His') . '.csv', [
+        }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Cache-Control' => 'no-store, private, max-age=0',
             'Pragma' => 'no-cache',

@@ -195,8 +195,8 @@ class OwnerPiiExportController extends Controller
 
         $headers = $this->exporter->headers();
         $rows = $result['rows'];
-        $filename = 'owner-pii-export-' . $exportMode . '-'
-            . now()->format('Ymd-His') . '.csv';
+        $scopeLabel = $exportMode === 'all' ? 'ALL' : 'BIN List';
+        $filename = 'Owner PII Export ' . $scopeLabel . '.csv';
 
         return response()->streamDownload(
             function () use ($headers, $rows) {

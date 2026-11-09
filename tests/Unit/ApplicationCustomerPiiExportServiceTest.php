@@ -8,6 +8,14 @@ use Tests\TestCase;
 
 class ApplicationCustomerPiiExportServiceTest extends TestCase
 {
+    public function test_it_uses_readable_export_column_headings(): void
+    {
+        $this->assertSame(
+            ['Application ID', 'BIN', 'Customer Name', 'Customer Gender', 'Customer Contact', 'Status'],
+            app(ApplicationCustomerPiiExportService::class)->headers()
+        );
+    }
+
     public function test_it_parses_and_deduplicates_application_ids(): void
     {
         $service = app(ApplicationCustomerPiiExportService::class);

@@ -47,7 +47,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                 <label for="application_pii_password">{{ __('Current Password') }}</label>
                                 <input id="application_pii_password" name="current_password" type="password"
                                     class="form-control @error('application_pii_password') is-invalid @enderror"
-                                    required maxlength="255" autocomplete="current-password">
+                                    maxlength="255" autocomplete="current-password">
                                 @error('application_pii_password')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
@@ -125,6 +125,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                 <input id="application_bin_csv" name="application_bin_csv" type="hidden" value="">
                                 <small class="form-text text-muted">
                                     {{ __('Upload a CSV containing a bin header and one BIN per row. All authorized Applications matching each BIN will be exported.') }}
+                                    <a href="{{ asset('templates/application-customer-pii-bin-sample.csv') }}"
+                                        download="Application Customer PII BIN List Sample.csv">
+                                        {{ __('Download sample CSV') }}
+                                    </a>
                                 </small>
                                 <div id="application-bin-file-validation" class="small mt-1" role="status"
                                     aria-live="polite"></div>
@@ -587,7 +591,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         var filenameMatch = disposition.match(/filename\*?=(?:UTF-8''|["'])?([^"';]+)/i);
                         var filename = filenameMatch
                             ? decodeURIComponent(filenameMatch[1].replace(/["']/g, ''))
-                            : 'application-customer-pii-export.csv';
+                            : 'Application Customer PII Export.csv';
 
                         return response.blob().then(function(blob) {
                             return { blob: blob, filename: filename };

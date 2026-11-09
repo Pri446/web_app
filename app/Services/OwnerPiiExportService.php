@@ -9,12 +9,12 @@ use Illuminate\Validation\ValidationException;
 class OwnerPiiExportService
 {
     private const HEADERS = [
-        'bin',
-        'owner_name',
-        'owner_contact',
-        'owner_gender',
-        'nid',
-        'status',
+        'BIN',
+        'Owner Name',
+        'Owner Contact',
+        'Owner Gender',
+        'NID',
+        'Status',
     ];
 
     private PiiEncryptionService $encryption;

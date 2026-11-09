@@ -9,12 +9,12 @@ use Illuminate\Validation\ValidationException;
 class ApplicationCustomerPiiExportService
 {
     private const HEADERS = [
-        'application_id',
-        'bin',
-        'customer_name',
-        'customer_gender',
-        'customer_contact',
-        'status',
+        'Application ID',
+        'BIN',
+        'Customer Name',
+        'Customer Gender',
+        'Customer Contact',
+        'Status',
     ];
 
     private PiiEncryptionService $encryption;

@@ -29,14 +29,12 @@ class ApplicationPiiAccessController extends Controller
             && $user->can('List Applications');
 
         abort_unless($allowed, 403);
-        $request->validate([
-            'current_password' => ['required', 'string', 'max:255'],
-        ]);
+        $password = (string) $request->input('current_password', '');
+        $passwordHash = (string) ($user->password ?? '');
 
-        if (!Hash::check(
-            (string) $request->input('current_password'),
-            (string) $user->password
-        )) {
+        if ($password === ''
+            || $passwordHash === ''
+            || !Hash::check($password, $passwordHash)) {
             $this->access->lock();
             $this->audit->record(
                 'application_pii_password_failed',

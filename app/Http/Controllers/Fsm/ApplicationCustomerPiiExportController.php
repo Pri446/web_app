@@ -169,6 +169,8 @@ class ApplicationCustomerPiiExportController extends Controller
 
         $headers = $this->exporter->headers();
         $rows = $result['rows'];
+        $scopeLabel = $exportMode === 'all' ? 'ALL' : 'BIN List';
+        $filename = 'Application Customer PII Export ' . $scopeLabel . '.csv';
 
         return response()->streamDownload(
             function () use ($headers, $rows) {
@@ -182,8 +184,7 @@ class ApplicationCustomerPiiExportController extends Controller
 
                 fclose($output);
             },
-            'application-customer-pii-export-' . $exportMode . '-'
-                . now()->format('Ymd-His') . '.csv',
+            $filename,
             [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Cache-Control' => 'no-store, private, max-age=0',
