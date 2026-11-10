@@ -120,6 +120,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 @push('scripts')
 <script>
 $(function() {
+    @if(session('activation_review'))
+    Swal.fire({
+        icon: 'info',
+        title: @json(__('Service Provider activated')),
+        text: @json(__('Administrator credentials were activated. Please manually review and activate the appropriate staff, staff credentials, and vehicles.')),
+        confirmButtonText: @json(__('OK'))
+    });
+    @endif
+
     var dataTable = $('#data-table').DataTable({
         bFilter: false,
         processing: true,

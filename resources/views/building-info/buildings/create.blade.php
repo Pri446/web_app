@@ -427,6 +427,7 @@
 
             }
         });
+    var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
        // code that checks house image greater than 5MB from frontend
     $('#house_image').on('change', function() {
         validateFileSize(document.querySelector('#house_image'),'fileSizeHintImg','5');

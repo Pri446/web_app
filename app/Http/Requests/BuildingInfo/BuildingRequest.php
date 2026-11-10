@@ -109,6 +109,8 @@ class BuildingRequest extends FormRequest
             // 'construction_date.required_if'=>'Containment Construction date  required.',
             'pit_shape.required_if' => __('Pit shape is required.'),
             'house_image.image' => __('The house image must be an image.'),
+            'house_image.uploaded' => __('The house image could not be uploaded. The server accepts images up to 5 MB.'),
+            'house_image.max' => __('The house image may not be greater than 5 MB.'),
             'drain_code.exists' => __('Invalid Drain Code. Please select a valid Drain Code.'),
 
         ];

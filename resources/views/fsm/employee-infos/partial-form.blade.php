@@ -3,10 +3,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 <div class="card-body">
     @if(!$employeeInfos)
         @if(!Auth::user()->service_provider_id)
-            <div class="form-group row">
+            <div class="form-group row required">
                 {!! Form::label('service_provider_id', __('Service Provider Name'), ['class' => 'col-sm-3 control-label']) !!}
                 <div class="col-sm-3">
-                    {!! Form::select('service_provider_id', $service_provider_id, null, ['class' => 'form-control', 'placeholder' => __('Service Provider Name')]) !!}
+                    {!! Form::select('service_provider_id', $service_provider_id, null, ['class' => 'form-control', 'required' => true, 'placeholder' => __('Service Provider Name')]) !!}
                 </div>
             </div>
         @else
@@ -14,15 +14,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 {!! Form::label('service_provider_id', __('Service Provider Name'), ['class' => 'col-sm-3 control-label']) !!}
                 <div class="col-sm-3">
                     {!! Form::select('service_providers', $service_providers, $service_provider_id, ['class' => 'form-control', 'disabled' => 'true', 'placeholder' => __('Service Provider Name')]) !!}
-                    {!! Form::text('service_provider_id', $service_provider_id, ['class' => 'form-control', 'hidden' => 'hidden', 'placeholder' => __('Employee Type')]) !!}
+                    {!! Form::hidden('service_provider_id', $service_provider_id) !!}
                 </div>
             </div>
         @endif
     @else
-        <div class="form-group row">
+        <div class="form-group row required">
             {!! Form::label('service_provider_id', __('Service Provider Name'), ['class' => 'col-sm-3 control-label']) !!}
             <div class="col-sm-3">
-                {!! Form::select('service_provider_id', $service_provider_id, null, ['class' => 'form-control', 'placeholder' => __('Service Provider Name')]) !!}
+                {!! Form::select('service_provider_id', $service_provider_id, null, ['class' => 'form-control', 'required' => true, 'placeholder' => __('Service Provider Name')]) !!}
             </div>
         </div>
     @endif

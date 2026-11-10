@@ -38,5 +38,10 @@ class EmployeeInfo extends Model
     {
         return $this->hasMany('App\Models\Fsm\Emptying', 'emptier2', 'id');
     }
+
+    public function driverEmptyings()
+    {
+        return $this->hasMany(Emptying::class, 'driver', 'id');
+    }
     
 }

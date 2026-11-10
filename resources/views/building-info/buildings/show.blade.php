@@ -55,6 +55,25 @@
 
             <h3 class="mt-3"> {{ __('Building Information') }}</h3>
 
+            <div class="form-group row">
+                {!! Form::label(
+                    'house_image',
+                    $imageSrc ? __('House Image') : __('No Building Image'),
+                    ['class' => 'col-sm-2 control-label']
+                ) !!}
+
+                <div class="col-sm-3">
+                    <a href="{{ $imageSrc ?: '#' }}" target="_blank">
+                        <button
+                            type="button"
+                            class="btn btn-info"
+                            {{ $imageSrc ? '' : 'disabled' }}>
+                            <i class="fa-solid fa-eye"></i> {{ __('View Image') }}
+                        </button>
+                    </a>
+                </div>
+            </div>
+
             <div class="form-group row" id="building_associated">
                 {!! Form::label('is_main_building', __('Main Building'), ['class' => 'col-sm-2 control-label']) !!}
                 <div class="col-sm-3">
@@ -521,25 +540,6 @@
                     ) !!}
                 </div>
             </div>
-            <div class="form-group row">
-                {!! Form::label(
-                    'house_image',
-                    $imageSrc ? __('House Image') : __('No Building Image'),
-                    ['class' => 'col-sm-2 control-label']
-                ) !!}
-
-                <div class="col-sm-3">
-                    <a href="{{ $imageSrc ?: '#' }}" target="_blank">
-                        <button
-                            type="button"
-                            class="btn btn-info"
-                            {{ $imageSrc ? '' : 'disabled' }}>
-                            <i class="fa-solid fa-eye"></i> {{ __('View Image') }}
-                        </button>
-                    </a>
-                </div>
-            </div>
-
 
         </div><!-- /.card-body -->
     </div>

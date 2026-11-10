@@ -267,7 +267,8 @@ class BuildingSurveyController extends Controller
                     $xml->load($kml);
                     $polygons = $xml->getElementsByTagName('Polygon');
                     if($polygons->length > 0) {
-                        $isValidKml = DB::select("SELECT ST_IsValid(ST_GeomFromKML('".$this->innerHTML($polygons[0])."')) AS status");
+                        $polygonXml = $this->innerHTML($polygons[0]);
+                        $isValidKml = DB::select("SELECT ST_IsValid(ST_GeomFromKML(?)) AS status", [$polygonXml]);
                         if ($isValidKml[0]->status){
                             $filename = $buildingSurvey->temp_building_code . '_' . $buildingSurvey->collected_date . '.kml';
                             $storeKml = $kml->storeAs('/public/building-survey-kml', $filename, 'local');
@@ -345,7 +346,7 @@ class BuildingSurveyController extends Controller
             $wms = WmsLink::all()->where('name', '=', $layer)->pluck('link', 'name');
             return response()->json([
                 'success' => true,
-                'baseUrl' => url('api/gis') . '/',
+                'baseUrl' => rtrim(config('constants.GEOSERVER_URL'), '/') . '/',
                 'data' => $wms,
                 'bbox'    => config('constants.GEOSERVER_BBOX'),
                 'width'   => config('constants.GEOSERVER_WIDTH'),

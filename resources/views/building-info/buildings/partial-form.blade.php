@@ -100,6 +100,60 @@
 
     <h3 class="mt-3">{{ __('Building Information') }}  </h3>
 
+    @if (empty($building))
+        <div class="form-group row required">
+    @else
+        <div class="form-group row">
+    @endif
+        {!! Form::label('geom', __('Building Footprint (KML File)'), ['class' => 'col-sm-3 control-label']) !!}
+        <div class="col-sm-5">
+            @if (!empty($buildingSurvey))
+                {!! Form::text('kml_display', $buildingSurvey->kml, [
+                    'class' => 'form-control col-sm-10',
+                    'readonly' => true,
+                ]) !!}
+                {!! Form::hidden('kml', $buildingSurvey->kml) !!}
+                {!! Form::hidden('survey_id', $buildingSurvey->id) !!}
+                <small class="form-text text-success">
+                    {{ __('The approved survey KML will be used.') }}
+                </small>
+            @else
+                {!! Form::hidden('kml', null) !!}
+                {!! Form::file('geom', [
+                    'class' => 'form-control col-sm-10',
+                    'accept' => '.kml,application/vnd.google-earth.kml+xml,application/xml,text/xml',
+                    'aria-describedby' => 'fileSizeHintKML kmlFileFeedback',
+                    'required' => empty($building),
+                ]) !!}
+                <small class="form-text text-muted" id="fileSizeHintKML">
+                    {{ __('Select a valid polygon KML file. Maximum size: 1 MB.') }}
+                </small>
+                <div id="kmlFileFeedback" class="file-feedback mt-1" role="status" aria-live="polite"></div>
+            @endif
+        </div>
+    </div>
+
+    <div class="form-group row">
+        {!! Form::label('house_image', __('House Image'), ['class' => 'col-sm-3 control-label']) !!}
+        <div class="col-sm-5">
+            {!! Form::file('house_image', [
+                'class' => 'form-control col-sm-10',
+                'accept' => '.jpg,.jpeg,image/jpeg',
+                'aria-describedby' => 'fileSizeHintImg imageFileFeedback',
+            ]) !!}
+            <small class="form-text text-muted" id="fileSizeHintImg">
+                {{ __('Image (JPG, JPEG) size should not be more than 5MB.') }}
+            </small>
+            <div id="imageFileFeedback" class="file-feedback mt-1" role="status" aria-live="polite"></div>
+            <img
+                id="houseImagePreview"
+                class="img-thumbnail mt-2 d-none"
+                style="max-width: 320px; max-height: 240px; object-fit: contain;"
+                alt="{{ __('Selected house image preview') }}"
+            >
+        </div>
+    </div>
+
     <!-- Main Building Identifier -->
     <div class="form-group row required" id="main-building">
         {!! Form::label('main_building', __('Main Building'), ['class' => 'col-sm-3 control-label']) !!}
@@ -623,41 +677,6 @@
             ]) !!}
         </div>
     </div>
-
-
-    @if (empty($building))
-        <div class="form-group row required">
-        @else
-            <div class="form-group row ">
-    @endif
-    {!! Form::label('geom', __('Building Footprint (KML File)'), ['class' => 'col-sm-3 control-label']) !!}
-    <div class="col-sm-5">
-        <!-- if building approved, kml file is preloaded -->
-        @if ($buildingSurvey)
-            {!! Form::text('kml', $buildingSurvey->kml, [
-                'class' => 'col-sm-10 control-label',
-                'style' => 'overflow:hidden;color:grey !important',
-                'readonly' => 'readonly',
-            ]) !!}
-            {!! Form::text('kml', $buildingSurvey->kml, ['hidden' => 'true']) !!}
-            {!! Form::text('survey_id', $buildingSurvey->id, ['hidden' => 'true']) !!}
-        @else
-            {!! Form::text('kml', null, ['hidden' => 'true']) !!}
-
-            {!! Form::file('geom', null, ['class' => 'form-control col-sm-10', 'placeholder' => 'KML File']) !!}
-            <small class="form-text" id="fileSizeHintKML">(KML File size should not be more than 1MB)</small>
-
-        @endif
-
-    </div>
-</div>
-<div class="form-group row">
-    {!! Form::label('house_image', __('House Image'), ['class' => 'col-sm-3 control-label']) !!}
-    <div class="col-sm-5">
-        {!! Form::file('house_image', null, [ 'class' => 'form-control col-sm-10']) !!}
-        <small class="form-text" id="fileSizeHintImg">(Image (JPG,JPEG) size should not be more than 5MB)</small>
-    </div>
-</div>
 </div><!-- /.card-body -->
 
 <div class="card-footer">
@@ -679,6 +698,10 @@
         </div>
     </div>
 @endif
+
+@push('scripts')
+    <script src="{{ asset('js/building-file-upload.js') }}?v={{ filemtime(public_path('js/building-file-upload.js')) }}"></script>
+@endpush
 <!-- Last Modified Date: 011-04-2024
 Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 {{-- <script>

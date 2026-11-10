@@ -35,9 +35,4 @@ return [
         'workspace' => env('GEOSERVER_WORKSPACE'),
         'auth_key' => env('GEOSERVER_AUTH_KEY', env('AUTH_KEY')),
     ],
-
-    'mapfish' => [
-        'print_url' => env('MAPFISH_PRINT_URL'),
-    ],
-
 ];

@@ -61,9 +61,9 @@ class ApplicationRequest extends FormRequest
             'ward'                        => 'nullable|integer|min:1',
 
             // ANF fields
-            'anf_ward'                    => $isAnf ? 'required' : 'nullable',
-            'anf_locality'                => $isAnf ? 'required|string|max:255' : 'nullable',
-            'anf_nearest_locality'        => $isAnf ? 'required|string|max:255' : 'nullable',
+            'anf_ward'                    => 'nullable|integer|min:1',
+            'anf_locality'                => 'nullable|string|max:255',
+            'anf_nearest_locality'        => 'nullable|string|max:255',
             'is_anf'                      => 'nullable',
 
             // Owner fields
@@ -111,9 +111,6 @@ class ApplicationRequest extends FormRequest
             'proposed_emptying_date.required' => __('The Proposed Emptying Date is required.'),
             'proposed_emptying_date.after_or_equal' => __('The Proposed Emptying Date must be today or a future date.'),
             'service_provider_id.required' => __('The Service Provider Name is required.'),
-            'anf_ward.required' => __('The ANF Ward is required.'),
-            'anf_locality.required' => __('The ANF Locality is required.'),
-            'anf_nearest_locality.required' => __('The ANF Nearest Locality is required.'),
             'household_served.integer' => __('The Household Served must be an integer.'),
             'household_served.min' => __('The Household Served must be at least 1.'),
             'population_served.integer' => __('The Population Served must be an integer.'),

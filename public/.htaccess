@@ -19,3 +19,28 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+<IfModule mod_php.c>
+    php_value upload_max_filesize 6M
+    php_value post_max_size 12M
+</IfModule>
+
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 6M
+    php_value post_max_size 12M
+</IfModule>
+
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 6M
+    php_value post_max_size 12M
+</IfModule>
+
+<IfModule mod_setenvif.c>
+    SetEnvIf Request_URI "^/storage/emptyings/houses/.*\.(jpe?g|webp)$" house_image
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Cache uploaded house images briefly, then revalidate because BIN-based
+    # filenames may be overwritten when a building image is updated.
+    Header set Cache-Control "public, max-age=3600, must-revalidate" env=house_image
+</IfModule>

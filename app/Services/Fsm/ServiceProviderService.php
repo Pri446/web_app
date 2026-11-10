@@ -3,9 +3,17 @@
 // Developed By: Innovative Solution Pvt. Ltd. (ISPL)  
 namespace App\Services\Fsm;
 
+use App\Enums\ApplicationStatus;
+use App\Enums\EmployeeStatus;
+use App\Enums\ServiceProviderStatus;
+use App\Enums\UserStatus;
+use App\Enums\VacutugStatus;
+use App\Models\Fsm\Application;
 use App\Models\Fsm\ServiceProvider;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Session\SessionManager;
+use Laravel\Sanctum\Sanctum;
 use DB;
 use Carbon\Carbon;
 use Auth;
@@ -14,8 +22,8 @@ use Box\Spout\Writer\Style\Color;
 use Box\Spout\Writer\Style\StyleBuilder;
 use Box\Spout\Writer\WriterFactory;
 use Yajra\DataTables\DataTables;
-use App\Enums\ServiceProviderStatus;
 use App\Models\Fsm\Feedback;
+use DomainException;
 
 class ServiceProviderService
 {
@@ -182,7 +190,7 @@ class ServiceProviderService
      * @return bool
      */
     public function storeOrUpdate($id, $data)
-    {   
+    {
         $serviceArea = null;
         $wards = [];
 
@@ -206,53 +214,127 @@ class ServiceProviderService
                 ? implode(',', $wards)
                 : null;
         }
-        if (is_null($id)) {
-            $serviceProvider = new ServiceProvider();
-            $serviceProvider->company_name = $data['company_name'] ? $data['company_name'] : null;
-            $serviceProvider->email = $data['email'] ? $data['email'] : null;
-            $serviceProvider->ward = $data['ward'] ? $data['ward'] : null;
-            $serviceProvider->company_location = $data['company_location'] ? $data['company_location'] : null;
-            $serviceProvider->contact_person = $data['contact_person'] ? $data['contact_person'] : null;
-            $serviceProvider->contact_gender = $data['contact_gender'] ? $data['contact_gender'] : null;
-            $serviceProvider->contact_number = $data['contact_number'] ? $data['contact_number'] : null;
-            $serviceProvider->status = $data['status'] ? $data['status'] : 0;
-            $serviceProvider->contract_document_pdf =$data['contract_document_pdf'] ?? null;
-            $serviceProvider->service_area = $serviceArea;
-            $serviceProvider->save();
-            $this->syncServiceAreaWards($serviceProvider->id, $wards);
-            return $serviceProvider->id;
-        } else {
-            $serviceProvider = ServiceProvider::find($id);
-            $serviceProvider->company_name = $data['company_name'] ? $data['company_name'] : null;
-            $serviceProvider->email = $data['email'] ? $data['email'] : null;
-            $serviceProvider->ward = $data['ward'] ? $data['ward'] : null;
-            $serviceProvider->company_location = $data['company_location'] ? $data['company_location'] : null;
-            $serviceProvider->contact_person = $data['contact_person'] ? $data['contact_person'] : null;
-            $serviceProvider->contact_gender = $data['contact_gender'] ? $data['contact_gender'] : null;
-            $serviceProvider->contact_number = $data['contact_number'] ? $data['contact_number'] : null;
-            $serviceProvider->status = $data['status'] ? $data['status'] : 0;
-            $serviceProvider->contract_document_pdf = $data['contract_document_pdf']?? $serviceProvider->contract_document_pdf;
+        return DB::transaction(function () use ($id, $data, $serviceArea, $wards) {
+            $serviceProvider = is_null($id)
+                ? new ServiceProvider()
+                : ServiceProvider::whereKey($id)->lockForUpdate()->firstOrFail();
 
-            $serviceProvider->service_area = $serviceArea;
+            $wasOperational = (bool) $serviceProvider->status;
+            $willBeOperational = (bool) $data['status'];
 
-            $serviceProvider->save();
-            $this->syncServiceAreaWards($serviceProvider->id, $wards);
-            if ($data['status'] == 0) {
-                if ($serviceProvider->applications()->exists()) {
-                    $applicationsCount =  $serviceProvider->applications()->where('emptying_status', 'false')->count();
-
-                    if ($applicationsCount > 0) {
-                        /*While updating service provider status to not operational, update service_provider_id to null having emptying_status false i.e. if emptying service is not done yet for an application and corresponding service provider is deleted or not in operation, help desk should have privilege to assign another service provider */
-                        $results = \App\Models\Fsm\Application::where(['service_provider_id' => $id, 'emptying_status' => 'false'])->get();
-                        foreach ($results as $result) {
-                            $application = \App\Models\Fsm\Application::find($result->id);
-                            $application->service_provider_id = null;
-                            $application->save();
-                        }
-                    }
-                }
+            if (
+                !is_null($id)
+                && $wasOperational
+                && !$willBeOperational
+                && $this->hasActiveApplications($id, true)
+            ) {
+                throw new DomainException(
+                    __('The Service Provider cannot be made inactive while it has active or ongoing applications.')
+                );
             }
+
+            $serviceProvider->company_name = $data['company_name'] ?: null;
+            $serviceProvider->email = $data['email'] ?: null;
+            $serviceProvider->ward = $data['ward'] ?: null;
+            $serviceProvider->company_location = $data['company_location'] ?: null;
+            $serviceProvider->contact_person = $data['contact_person'] ?: null;
+            $serviceProvider->contact_gender = $data['contact_gender'] ?: null;
+            $serviceProvider->contact_number = $data['contact_number'] ?: null;
+            $serviceProvider->status = $willBeOperational;
+            $serviceProvider->contract_document_pdf =
+                $data['contract_document_pdf'] ?? $serviceProvider->contract_document_pdf;
+            $serviceProvider->service_area = $serviceArea;
+            $serviceProvider->save();
+
+            $this->syncServiceAreaWards($serviceProvider->id, $wards);
+
+            if (!is_null($id) && $wasOperational !== $willBeOperational) {
+                $willBeOperational
+                    ? $this->activateProviderAdministrators($serviceProvider)
+                    : $this->inactivateDependants($serviceProvider);
+            }
+
+            return $serviceProvider->id;
+        });
+    }
+
+    /** Determine whether a provider still owns work that has not been completed. */
+    public function hasActiveApplications(int $serviceProviderId, bool $lock = false): bool
+    {
+        $query = Application::where('service_provider_id', $serviceProviderId)
+            ->select(['id', 'emptying_status', 'trip_count']);
+
+        if ($lock) {
+            $query->lockForUpdate();
         }
+
+        $applications = $query->get();
+
+        if ($applications->isEmpty()) {
+            return false;
+        }
+
+        $applicationIds = $applications->pluck('id');
+        $emptyingTrips = DB::table('fsm.emptyings')
+            ->whereIn('application_id', $applicationIds)
+            ->whereNull('deleted_at')
+            ->select('application_id', DB::raw('MAX(COALESCE(trip_no, 0)) AS completed_trips'))
+            ->groupBy('application_id')
+            ->pluck('completed_trips', 'application_id');
+
+        return $applications->contains(function ($application) use ($emptyingTrips) {
+            $requiredTrips = max((int) ($application->trip_count ?: 1), 1);
+            $completedTrips = (int) ($emptyingTrips[$application->id] ?? 0);
+
+            return (int) $application->emptying_status !== ApplicationStatus::Completed
+                || $completedTrips < $requiredTrips;
+        });
+    }
+
+    /** Disable every dependent record and invalidate all linked login tokens. */
+    private function inactivateDependants(ServiceProvider $serviceProvider): void
+    {
+        $userIds = $serviceProvider->users()->pluck('id');
+
+        $serviceProvider->users()->update([
+            'status' => UserStatus::Inactive,
+            'remember_token' => null,
+            'updated_at' => now(),
+        ]);
+        $serviceProvider->employees()->update([
+            'status' => EmployeeStatus::Inactive,
+            'updated_at' => now(),
+        ]);
+        $serviceProvider->vacutugTypes()->update([
+            'status' => VacutugStatus::NotOperational,
+            'updated_at' => now(),
+        ]);
+
+        if ($userIds->isNotEmpty()) {
+            $personalAccessTokenModel = Sanctum::personalAccessTokenModel();
+
+            $personalAccessTokenModel::query()
+                ->where('tokenable_type', User::class)
+                ->whereIn('tokenable_id', $userIds)
+                ->delete();
+
+            DB::table(config('session.table', 'sessions'))
+                ->whereIn('user_id', $userIds)
+                ->delete();
+        }
+    }
+
+    /** Reactivate only credentials assigned the Service Provider administrator role. */
+    private function activateProviderAdministrators(ServiceProvider $serviceProvider): void
+    {
+        $serviceProvider->users()
+            ->whereHas('roles', function ($query) {
+                $query->where('name', 'Service Provider - Admin');
+            })
+            ->update([
+                'status' => UserStatus::Active,
+                'updated_at' => now(),
+            ]);
     }
 
     /** Keep normalized service-area coverage aligned with the legacy CSV field. */

@@ -26,6 +26,7 @@ use App\Models\UtilityInfo\Roadline;
 use Carbon\Carbon;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
 use Venturecraft\Revisionable\Revision;
@@ -504,7 +505,8 @@ class ApplicationService
                             inputType: 'date',
                             inputId: 'proposed_emptying_date',
                             required: true,
-                            placeholder: __('Proposed Emptying Date')
+                            placeholder: __('Proposed Emptying Date'),
+                            min: now()->toDateString()
                         ),
                         new FormField(
                             label: __('Service Provider Name'),
@@ -762,7 +764,6 @@ class ApplicationService
                     inputId: 'anf_ward',
                     selectValues: Ward::orderBy('ward')->pluck('ward', 'ward')->toArray(),
                     selectedValue: old('anf_ward', $application->ward),
-                    required: true,
                     placeholder: __('Ward Number')
                 ),
                 new FormField(
@@ -771,7 +772,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_locality',
                     inputValue: old('anf_locality', $application->anf_locality),
-                    required: true,
                     placeholder: __('Locality Name')
                 ),
                 new FormField(
@@ -780,7 +780,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_nearest_locality',
                     inputValue: old('anf_nearest_locality', $application->anf_nearest_locality),
-                    required: true,
                     placeholder: __('Nearest Landmark')
                 ),
             ]
@@ -1657,6 +1656,12 @@ class ApplicationService
                 'containment_id',
             ]));
 
+            // This attribute is intentionally assigned explicitly because it
+            // is not mass assignable on the Application model. Without this,
+            // the edit form appeared to accept a new capacity but the saved
+            // application retained its previous vehicle size.
+            $application->desludging_vehicle_size = $request->input('desludging_vehicle_size');
+
             if (!$isAnf) {
                 $building = Building::where('bin', '=', $application->bin)->firstOrFail();
                 $application->containment_id = $request->containment_id ?? $application->containment_id;
@@ -2187,9 +2192,10 @@ class ApplicationService
 
     public function getNextServiceProviderId(?int $capacity = null): ?int
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true);
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order');
 
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
@@ -2200,9 +2206,11 @@ class ApplicationService
 
     public function getNextServiceProviderName(?string $capacity = null): ?string
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true)->with('service_provider');
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order')
+            ->with('service_provider');
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
         }
@@ -2253,8 +2261,10 @@ class ApplicationService
             throw new \Exception(__('This application is not an Address Not Found (ANF) application or has already been resolved.'));
         }
 
-        // Find containment by code field
-        $containment = Containment::where('id', $containmentCode)->firstOrFail();
+        // Find containment by id or public_id
+        $containment = Str::isUuid($containmentCode)
+            ? Containment::where('public_id', $containmentCode)->firstOrFail()
+            : Containment::where('id', $containmentCode)->firstOrFail();
 
         // Check no duplicate containment in applications table (covers both not started and in-progress multi-trip)
         $alreadyExists = Application::where('containment_id', $containment->id)
@@ -2267,7 +2277,9 @@ class ApplicationService
             throw new \Exception(__('Error! This containment already has a running application.'));
         }
 
-        $building = Building::where('bin', $bin)->firstOrFail();
+        $building = Str::isUuid($bin)
+            ? Building::where('public_id', $bin)->firstOrFail()
+            : Building::where('bin', $bin)->firstOrFail();
 
         // Ensure the containment belongs to the selected building
         if (!$building->containments()->where('containments.id', $containment->id)->exists()) {

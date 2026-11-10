@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Fsm\ApplicationController;
 use App\Http\Controllers\Api\ApiServiceController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MapsController;
 use App\Http\Controllers\Proxy\WMSProxyController;
 use App\Http\Controllers\PlacesController;
@@ -47,7 +48,12 @@ Route::middleware('fixed_token_auth')->get('redirect-to-map/{ebps_id}', [ApiServ
 Route::get('/files', 'FileController@index')->name('files.index');
 Route::post('/files/upload', 'FileController@upload')->name('files.upload');
 
-
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'fetch']); // fetch notifications
+    Route::post('/notification/read', [NotificationController::class, 'markAsRead']); // single read
+    Route::post('/notification/read-all', [NotificationController::class, 'markAllAsRead']); // mark all as read
+    Route::post('/notification/clear-all', [NotificationController::class, 'clearAll']); // clear all
+}); 
 
 
 Route::post('/contact/send', [ContactController::class, 'send'])
@@ -116,6 +122,7 @@ Route::group([
     //replace this later when passed
     Route::get('buildings/get-containment-septic', 'BuildingController@getContainmentTypes')->name('building.get-containment-septic');
     Route::get('buildings/get-test', 'BuildingController@testFunc');
+    Route::post('buildings/map-lookup', 'BuildingController@mapLookup')->name('buildings.map-lookup');
     Route::get('buildings/{building:public_id}/history', 'BuildingController@history');
     Route::get('buildings/export', 'BuildingController@export');
     Route::post('owner-pii/unlock-list', 'OwnerPiiAccessController@unlockList')
@@ -400,12 +407,15 @@ Route::group([
     Route::get('containments/data', 'ContainmentController@getData');
     Route::get('containments/get-id', 'ContainmentController@getContainmentID')->name('containment.get-id');
 
-    Route::get('containments/building/{building:public_id}/containmentData', 'ContainmentController@getContainment');
+    Route::get('containments/building/{id}/containmentData', 'ContainmentController@getContainment');
+    Route::get('containments/{id}/containmentData', 'ContainmentController@getContainment');
     Route::get('containments/{containment:public_id}/listBuildings', 'ContainmentController@listBuildings');
     Route::delete('containments/{containment:public_id}/buildings/{building:public_id}', 'ContainmentController@deleteBuilding');
 
-    Route::get('containments/building/{building:public_id}/create', 'ContainmentController@createContainment');
-    Route::post('containments/building/{building:public_id}/store', 'ContainmentController@storeContainment');
+    Route::get('containments/building/{id}/create', 'ContainmentController@createContainment');
+    Route::post('containments/building/{id}/store', 'ContainmentController@storeContainment');
+    Route::get('containments/{id}/create', 'ContainmentController@createContainment');
+    Route::post('containments/{id}/store', 'ContainmentController@storeContainment');
 
     Route::get('containments/export', 'ContainmentController@export');
     Route::get('containments/export-building-containment','ContainmentController@exportBuildingContainment');

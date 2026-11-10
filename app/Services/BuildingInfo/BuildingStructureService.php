@@ -36,6 +36,8 @@ use App\Http\Requests\BuildingInfo\BuildingRequest;
 use App\Models\BuildingInfo\SanitationSystemTechnology;
 use Intervention\Image\Facades\Image;
 use App\Services\OwnerPiiPresenter;
+use App\Helpers\ImageOptimizationHelper;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class BuildingStructureService
 {
@@ -110,17 +112,18 @@ class BuildingStructureService
             // storing house image in folder /public/emptyings/houses
             if ($request->hasFile('house_image')) {
                 // Validate the uploaded image
-                $extension_house = $request->house_image->getClientOriginalExtension();
+                $extension_house = strtolower($request->house_image->getClientOriginalExtension());
                 $filename_house = $building->bin . '.' . $extension_house;
 
-                $storeHouseImg = Image::make($request->house_image);
-                if ($storeHouseImg->filesize() > 5 * 1024 * 1024) {
-                    $storeHouseImg->resize(null, 1080, function ($constraint) {
-                        $constraint->aspectRatio();
-                    })->encode($extension_house, 50);
+                $imageSaved = ImageOptimizationHelper::optimizeAndSave(
+                    $request->house_image,
+                    Storage::disk('local')->path('/public/emptyings/houses/' . $filename_house),
+                    1600,
+                    70
+                );
+                if (!$imageSaved) {
+                    throw new \RuntimeException(__('Unable to save the building image.'));
                 }
-                $storeHouseImg->save(Storage::disk('local')->path('/public/emptyings/houses/' . $filename_house));
-
             }
             //if toilet status is false sanitaiton system id will take request-> defecation_place
             if ($building->toilet_status == false) {
@@ -365,63 +368,100 @@ class BuildingStructureService
         $build_contain->save();
     }
 
-    public function storeGeomInfo($request, $flag, $type)
-    {
-        if ($type == 'create') {
-            // if kml file is passed through new building
-            if ($request->hasFile('geom')) {
-                $xml = new DOMDocument();
-                $xml->load($request->geom);
-            }
-            // if kml file is saved in server (approve building)
-            else if ($request->kml) {
+    protected array $cachedKmlPoints = [];
 
-                $buildingSurvey = BuildingSurvey::where('id', $request->survey_id)->where('is_enabled', true)->first();
+    /**
+     * Parse and extract clean, rounded coordinate points from KML (cached per request).
+     */
+    protected function extractKmlPoints($request, $type): ?array
+    {
+        $cacheKey = spl_object_hash($request) . '_' . ($request->survey_id ?? 'direct') . '_' . $type;
+        if (isset($this->cachedKmlPoints[$cacheKey])) {
+            return $this->cachedKmlPoints[$cacheKey];
+        }
+
+        $xml = new DOMDocument();
+        if ($type == 'create') {
+            if ($request->hasFile('geom')) {
+                $xml->load($request->geom);
+            } elseif ($request->kml) {
                 $filepath = storage_path('app/public/building-survey-kml/' . $request->kml);
                 if (File::exists($filepath)) {
-
-                    $xml = new DOMDocument();
                     $xml->load($filepath);
                 } else {
-                    return Redirect::back()->with('error', __("Failed to update building structure : kml file not found"));
+                    return null;
                 }
             }
-        } else if ($type == 'update') {
-            $xml = new DOMDocument();
-            if (@$xml->load($request->geom) == false) {
-                return Redirect::back()->with('error', __("Failed to update building structure due to invalid kml file"));
+        } elseif ($type == 'update') {
+            if ($request->hasFile('geom')) {
+                if (@$xml->load($request->geom) === false) {
+                    return null;
+                }
             } else {
-                $xml->load($request->geom);
+                return null;
             }
         }
 
-        // code that converts kml to geom
         $polygons = $xml->getElementsByTagName('Polygon');
-        if ($polygons->length > 0) {
-            $coordinates = $polygons[0]->getElementsByTagName('coordinates');
-            if ($coordinates->length > 0) {
-                $value = $coordinates[0]->nodeValue;
-                $points = preg_split('/\s/', $value);
-                $points = array_map(function ($value) {
-                    $arr = explode(',', $value);
-                    if (count($arr) > 1) {
-                        return $arr[0] . ' ' . $arr[1];
-                    } else {
-                        return null;
-                    }
-                }, $points);
-                // remove empty elements from array
-                $points = array_filter($points);
-                if ($flag == 'building') {
-                    return (DB::raw("ST_GeomFromText('MULTIPOLYGON(((" . implode(',', $points) .  ")))', 4326)"));
-                } elseif ($flag == 'area') {
-                    return (DB::raw("ST_Area(ST_Transform('SRID=4326;MULTIPOLYGON(((" . implode(',', $points) .  ")))'::geometry, 4326):: geography)"));
-                } elseif ($flag == 'containment') {
-                    $containmentPoint = DB::select("SELECT ST_AsText(ST_Centroid('MULTIPOINT ( " . implode(',', $points) .  " )'))");
-                    $containment_point = $containmentPoint[0]->st_astext;
-                    return (DB::raw("ST_GeomFromText('$containment_point', 4326)"));
-                }
+        if ($polygons->length === 0) {
+            return null;
+        }
+
+        $coordinates = $polygons[0]->getElementsByTagName('coordinates');
+        if ($coordinates->length === 0) {
+            return null;
+        }
+
+        $value = $coordinates[0]->nodeValue;
+        $rawPoints = preg_split('/\s+/', trim($value));
+        $cleanedPoints = [];
+
+        foreach ($rawPoints as $point) {
+            $arr = explode(',', trim($point));
+            if (count($arr) >= 2 && is_numeric($arr[0]) && is_numeric($arr[1])) {
+                // Round coordinates to 6 decimal places (~10cm precision) to optimize geometry storage
+                $lng = number_format((float) $arr[0], 6, '.', '');
+                $lat = number_format((float) $arr[1], 6, '.', '');
+                $cleanedPoints[] = "{$lng} {$lat}";
             }
+        }
+
+        if (count($cleanedPoints) < 3) {
+            return null;
+        }
+
+        // Auto-close linear ring if first and last point do not match
+        if ($cleanedPoints[0] !== end($cleanedPoints)) {
+            $cleanedPoints[] = $cleanedPoints[0];
+        }
+
+        return $this->cachedKmlPoints[$cacheKey] = $cleanedPoints;
+    }
+
+    public function storeGeomInfo($request, $flag, $type)
+    {
+        $points = $this->extractKmlPoints($request, $type);
+
+        if (!$points) {
+            if ($request->kml && !File::exists(storage_path('app/public/building-survey-kml/' . $request->kml))) {
+                return Redirect::back()->with('error', __("Failed to update building structure : kml file not found"));
+            }
+            if ($type == 'update') {
+                return Redirect::back()->with('error', __("Failed to update building structure due to invalid kml file"));
+            }
+            return null;
+        }
+
+        $wktPolygon = "MULTIPOLYGON(((" . implode(',', $points) . ")))";
+
+        if ($flag == 'building') {
+            // ST_MakeValid repairs self-intersections, ST_CollectionExtract extracts polygon geometries (3), ST_Multi enforces MULTIPOLYGON
+            return DB::raw("ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_GeomFromText('{$wktPolygon}', 4326)), 3))");
+        } elseif ($flag == 'area') {
+            return DB::raw("ST_Area(ST_Transform(ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_GeomFromText('{$wktPolygon}', 4326)), 3)), 4326)::geography)");
+        } elseif ($flag == 'containment') {
+            // Direct PostGIS centroid computation without extra synchronous query
+            return DB::raw("ST_Centroid(ST_GeomFromText('MULTIPOINT(" . implode(',', $points) . ")', 4326))");
         }
     }
 
@@ -511,7 +551,7 @@ class BuildingStructureService
 
             if ($request->hasFile('geom')) {
                 $building->geom = $this->storeGeomInfo($request, 'building', 'update');
-                $building->estimated_area = $this->storeGeomInfo($request, 'area', 'create');
+                $building->estimated_area = $this->storeGeomInfo($request, 'area', 'update');
             }
             $building->user_id = Auth::id();
             $this->storeOwnerInfo($request, $id);
@@ -623,16 +663,18 @@ class BuildingStructureService
              // storing house image in folder /public/emptyings/houses
              if ($request->hasFile('house_image')) {
                 // Validate the uploaded image
-                $extension_house = $request->house_image->getClientOriginalExtension();
+                $extension_house = strtolower($request->house_image->getClientOriginalExtension());
                 $filename_house = $building->bin . '.' . $extension_house;
 
-                $storeHouseImg = Image::make($request->house_image);
-                if ($storeHouseImg->filesize() > 5 * 1024 * 1024) {
-                    $storeHouseImg->resize(null, 1080, function ($constraint) {
-                        $constraint->aspectRatio();
-                    })->encode($extension_house, 50);
+                $imageSaved = ImageOptimizationHelper::optimizeAndSave(
+                    $request->house_image,
+                    Storage::disk('local')->path('/public/emptyings/houses/' . $filename_house),
+                    1600,
+                    70
+                );
+                if (!$imageSaved) {
+                    throw new \RuntimeException(__('Unable to save the building image.'));
                 }
-                $storeHouseImg->save(Storage::disk('local')->path('/public/emptyings/houses/' . $filename_house));
             }
             $building->save();
             // store owner
@@ -1059,11 +1101,18 @@ class BuildingStructureService
             foreach (Owner::select(['bin', 'owner_name'])->cursor() as $owner) {
                 $ownerName = $owner->getAttributes()['owner_name'] ?? null;
 
-                if ($this->ownerPiiPresenter->ownerNameContains(
-                    $ownerName,
-                    $ownerNameSearch
-                )) {
-                    $matchingOwnerBins[] = $owner->bin;
+                try {
+                    if ($this->ownerPiiPresenter->ownerNameContains(
+                        $ownerName,
+                        $ownerNameSearch
+                    )) {
+                        $matchingOwnerBins[] = $owner->bin;
+                    }
+                } catch (DecryptException $exception) {
+                    // Fail closed for legacy/invalid PII. The encryption
+                    // verification command reports the affected rows without
+                    // exposing their values.
+                    continue;
                 }
             }
 
@@ -1151,9 +1200,15 @@ class BuildingStructureService
                 }
             })
             ->editColumn('owner_name', function ($model) use ($revealOwnerPii) {
-                return $revealOwnerPii
-                    ? $this->ownerPiiPresenter->presentPlaintextValue($model->owner_name)
-                    : $this->ownerPiiPresenter->maskFully($model->owner_name);
+                if (!$revealOwnerPii) {
+                    return $this->ownerPiiPresenter->maskFully($model->owner_name);
+                }
+
+                try {
+                    return $this->ownerPiiPresenter->presentPlaintextValue($model->owner_name);
+                } catch (DecryptException $exception) {
+                    return $this->ownerPiiPresenter->maskFully($model->owner_name);
+                }
             })
             ->addColumn('action', function ($model) {
 

@@ -64,6 +64,24 @@ if ($piiKeyBackupStatus) {
                 </button>
             </li>
         @endif
+
+       <li class="nav-item ml-auto dropdown position-relative">
+        <a class="nav-link" href="#" id="bell" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="fa-regular fa-bell fa-lg"></i>
+            <span id="badge" style="position:absolute;top:5px;right:5px;background:#fd0808;color:white;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:50%;display:none;line-height:1;">!</span>
+        </a>
+
+          <div class="dropdown-menu dropdown-menu-right p-2 shadow-lg" aria-labelledby="bell" 
+            style="width: 300px; max-height: 400px; overflow-y: auto;">
+
+            <div class="d-flex justify-content-between align-items-center px-2 mb-2">
+                <strong>Notifications</strong>
+                <a href="#" onclick="clearAllNotifications()" class="text-danger small">Clear All</a>
+            </div>
+
+            <ul id="notification-list" class="list-unstyled mb-0"></ul>
+        </div>
+       </li>
         
         <!-- Display the user's name and roles on the right side -->
         <div style="display: flex; justify-content: flex-end; margin-top: 0.5%;">
@@ -316,6 +334,8 @@ if ($piiKeyBackupStatus) {
 @endif
 
 <script>
+
+
     function hideImage() {
         var logo = document.getElementById('map-logo');
         if (logo.style.display === 'none') {
