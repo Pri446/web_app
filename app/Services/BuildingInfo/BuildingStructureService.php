@@ -742,7 +742,7 @@ class BuildingStructureService
             }
         }
     }
-    public function fetchExport()
+    public function fetchExport(bool $includeOwnerPii = false)
     {
         $searchData = isset($_GET['searchData']) ? $_GET['searchData'] : null;
         $bin = isset($_GET['bin']) ? $_GET['bin'] : null;
@@ -805,6 +805,16 @@ class BuildingStructureService
             __('Verification Status'),
 
         ];
+
+        if ($includeOwnerPii) {
+            // Keep the ordinary export non-PII by default. These headings are
+            // appended only when the controller confirms an active, audited
+            // list-wide owner reveal grant for the current user.
+            $columns[] = __('Owner Name');
+            $columns[] = __('Owner Contact');
+            $columns[] = __('Owner Gender');
+        }
+
         $query = DB::table('building_info.buildings as b')
         ->LeftJoin('building_info.structure_types as st', 'st.id', '=', 'b.structure_type_id')
         ->LeftJoin('building_info.functional_uses as f', 'f.id', '=', 'b.functional_use_id')
@@ -864,6 +874,18 @@ class BuildingStructureService
         ->orderBy('b.bin')
         ->distinct('b.bin')
         ->whereNull('b.deleted_at');
+
+        if ($includeOwnerPii) {
+            // Query encrypted owner values only for an authorized PII export.
+            // Locked ordinary exports never select owner columns at all.
+            $query->leftJoin('building_info.owners as owner', 'owner.bin', '=', 'b.bin')
+                ->addSelect([
+                    'owner.owner_name as owner_name',
+                    'owner.owner_contact as owner_contact',
+                    'owner.owner_gender as owner_gender',
+                ]);
+        }
+
         if (!empty($bin)) {
             $query->where('b.bin','ILIKE', '%'. $bin .'%');
         }
@@ -918,7 +940,7 @@ class BuildingStructureService
         $writer->openToBrowser('Buildings.csv')
             ->addRowWithStyle($columns, $style); //Top row of excel
 
-        $query->chunk(5000, function ($buildings) use ($writer) {
+        $query->chunk(5000, function ($buildings) use ($writer, $includeOwnerPii) {
         $query = DB::table('building_info.buildings as b')
         ->LeftJoin('building_info.structure_types as st', 'st.id', '=', 'b.structure_type_id')
         ->LeftJoin('building_info.functional_uses as f', 'f.id', '=', 'b.functional_use_id')
@@ -1027,11 +1049,42 @@ class BuildingStructureService
             $values[] = $building->estimated_area;
             $values[] = $building->toilet_name;
             $values[] = $building->verification_status ? 'Yes' : 'No';
+
+            if ($includeOwnerPii) {
+                // Values remain encrypted in PostgreSQL and are decrypted one
+                // row at a time immediately before CSV output. Nothing is
+                // written back to the database or stored in the session.
+                $values[] = $this->escapeSpreadsheetValue(
+                    $this->ownerPiiPresenter->presentPlaintextValue(
+                        $building->owner_name
+                    )
+                );
+                $values[] = $this->escapeSpreadsheetValue(
+                    $this->ownerPiiPresenter->presentPlaintextValue(
+                        $building->owner_contact
+                    )
+                );
+                $values[] = $this->escapeSpreadsheetValue(
+                    $this->ownerPiiPresenter->presentPlaintextValue(
+                        $building->owner_gender
+                    )
+                );
+            }
+
             $writer->addRow($values);
         }
         });
 
         $writer->close();
+    }
+
+    private function escapeSpreadsheetValue(?string $value): ?string
+    {
+        if ($value !== null && preg_match('/^[=+\-@]/u', $value) === 1) {
+            return "'" . $value;
+        }
+
+        return $value;
     }
     public function fetchData(Request $request, bool $revealOwnerPii = false)
     {

@@ -93,7 +93,7 @@ class BuildingController extends Controller
         );
         $this->middleware(
             'pii.no-cache',
-            ['only' => ['index', 'getData', 'show', 'edit', 'listContainments', 'mapLookup']]
+            ['only' => ['index', 'getData', 'show', 'edit', 'export', 'listContainments', 'mapLookup']]
         );
 
         $this->buildingStructureService = $buildingStructureService;
@@ -587,7 +587,34 @@ class BuildingController extends Controller
     }
     public function export()
     {
-        return ($this->buildingStructureService->fetchExport());
+        $user = Auth::user();
+        $includeOwnerPii = $this->ownerPiiListIsUnlocked()
+            && $user
+            && $user->can('Export Owner PII');
+
+        if ($includeOwnerPii) {
+            // The ordinary Building export may contain plaintext owner values
+            // only while this same user's list-wide reveal grant is active.
+            // Record the disclosure separately from the dedicated PII export.
+            $this->ownerPiiAuditService->record(
+                'pii_exported',
+                true,
+                $user,
+                null,
+                [
+                    'surface' => 'building_standard_csv_export',
+                    'includes_owner_pii' => true,
+                    'owner_field_count' => 3,
+                ],
+                $this->piiAccessService->authenticationMethod(
+                    $user,
+                    'list',
+                    PiiAccessService::ALL_OWNERS_RESOURCE_ID
+                ) ?? 'password_reentry'
+            );
+        }
+
+        return $this->buildingStructureService->fetchExport($includeOwnerPii);
     }
     public function getHouseNumbers()
     {

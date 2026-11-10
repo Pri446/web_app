@@ -153,20 +153,21 @@
     
     <script>
         window.mapConfig = window.mapConfig || {
-            centerLng: 81.6333,
-            centerLat: 28.6000,
+            centerLng: 85.37004580498977,
+            centerLat: 27.643296216592432,
             minZoom: 12,
             maxZoom: 18
         };
 
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        // URL of GeoServer
-        var gurl = "<?php echo Config::get("constants.GEOSERVER_URL"); ?>/";
-        var gurl_wms = gurl + 'wms';
-        var gurl_wfs = gurl + 'wfs';
-        var authkey = '<?php echo Config::get("constants.AUTH_KEY"); ?>';
+        var gurl_wms = "{{ route('gis.wms') }}";
+        var gurl_wfs = "{{ route('gis.wfs') }}";
         // URL of GeoServer Legends
-        var gurl_legend = gurl_wms + "?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&BBOX=89.1281,23.502, 89.2068,23.5892&LAYER=";
+        var gurl_legend =
+                gurl_wms +
+                "?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.0.0" +
+                "&FORMAT=image/png&WIDTH=20&HEIGHT=20" +
+                "&BBOX=89.1281,23.502,89.2068,23.5892&LAYER=";
 
         var WARD_NUMBERS = <?php echo json_encode(array_values($wards)); ?>;
 
@@ -296,7 +297,7 @@
                 })
             ],
             view: typeof createMapView !== 'undefined' ? createMapView() : new ol.View({
-                center: ol.proj.transform([81.6333, 28.6000], 'EPSG:4326', 'EPSG:3857'),
+                center: ol.proj.transform([85.37004580498977,27.643296216592432], 'EPSG:4326', 'EPSG:3857'),
                 zoom: 13,
                 minZoom: 12,
                 maxZoom: 18
@@ -363,7 +364,7 @@
                 return;
             }
 
-            var wfsBase = gurl_wfs.replace(/([^:])\/{2,}/g, '$1/');
+            var wfsBase = gurl_wfs;
             var wfsUrl = wfsBase
                 + '?service=WFS'
                 + '&version=2.0.0'
@@ -612,7 +613,7 @@
                 ));
                 map.getView().setZoom(window.mapConfig.minZoom || 13);
             } else {
-                map.getView().setCenter(ol.proj.transform([81.6333, 28.6000], 'EPSG:4326', 'EPSG:3857'));
+                map.getView().setCenter(ol.proj.transform([85.37004580498977, 27.643296216592432], 'EPSG:4326', 'EPSG:3857'));
                 map.getView().setZoom(13);
             }
         }

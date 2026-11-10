@@ -88,7 +88,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         })
     });
     </script>
-    <script src="{{ asset('js/functions.js') }}"></script>
+    <script src="{{ asset('js/delete-action.js') }}"></script>
+    <script src="{{ asset('js/functions.js') }}?v={{ filemtime(public_path('js/functions.js')) }}"></script>
     <script>
     $(function() {
         bsCustomFileInput.init();

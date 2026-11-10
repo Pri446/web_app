@@ -1,29 +1,77 @@
-Version: V1.0.0
+Version: V1.1.0
 
 # Utility IMS
 
 ## Utility Dashboard
 
-The dashboard utilizes the following tools to deliver data and insights:
+The Utility Dashboard uses the shared shell-first dashboard loading pattern documented in `03 - Dashboard.md`.
 
--   Charts: Created with Chart.js for visual representation of trends.
--   Cards: Built with Bootstrap, HTML, and CSS.
--   Icons: SVG and Font Awesome.
+It uses:
+
+- Chart.js for charts and trends.
+- Bootstrap, HTML, and CSS for cards and count boxes.
+- SVG assets and Font Awesome for icons.
+- `UtilityDashboardController` and `UtilityDashboardService` for server-side data preparation.
+- The shared asynchronous dashboard loader for content retrieval and error handling.
+
+### Routes and Controller
+
+| Purpose | Route | Controller method |
+|---|---|---|
+| Dashboard shell | `GET /utilityinfo/utilitydashboard` | `UtilityDashboardController@index` |
+| Dashboard content | `GET /utilityinfo/utilitydashboard/content` | `UtilityDashboardController@content` |
+
+Both routes require authentication.
+
+`app/Http/Controllers/UtilityInfo/UtilityDashboardController.php` separates the fast page shell from the slower data preparation:
+
+- `index()` returns `resources/views/dashboard/utilityDashboardShell.blade.php`.
+- `content()` calls `buildDashboardData()`, renders `resources/views/dashboard/utilityDashboard.blade.php`, and returns the HTML inside JSON.
+- Unexpected failures are logged and return a generic JSON error.
+- The content response sets `Cache-Control: private, no-store`.
+
+The successful content contract is:
+
+```json
+{
+    "status": "ok",
+    "html": "<rendered authorized dashboard content>"
+}
+```
 
 ### Data Retrieval
 
--   Controller: The UtilityDashboardController (located at app\\Http\\Controllers\\UtilityInfo) initiates data fetching.
--   Service Class: The UtilityDashboardService (located at app\\Services\\UtilityInfo) has been called by controller to perform necessary operations.
+`buildDashboardData()` retrieves road, sewer, drain, and water-supply counts and chart values. It uses `app/Services/UtilityInfo/UtilityDashboardService.php` and the related Utility service classes. Queries use Eloquent and raw SQL where appropriate.
 
-Charts
-
--   Data Fetching: Laravel Eloquent & Raw SQL queries are used to fetch data for charts.
+The Utility dashboard currently uses asynchronous loading but does not use the main dashboard's authorization-scoped HTML cache. Any future Utility cache must define and test every applicable authorization, organization, locale, and filter boundary.
 
 ### Views
 
-**Layout:** The core dashboard structure is defined in the resources\\views\\dashboard\\utilityDashboard.blade.php file. This file acts as the overall layout and likely includes placeholders for the various components.
+| Purpose | File |
+|---|---|
+| Loading shell | `resources/views/dashboard/utilityDashboardShell.blade.php` |
+| Dashboard content | `resources/views/dashboard/utilityDashboard.blade.php` |
+| Shared loader | `resources/views/dashboard/_asyncDashboardLoader.blade.php` |
 
-Charts are fetched from resources\\views\\dashboard\\charts.
+Charts are stored in `resources/views/dashboard/charts`. Chart scripts must support initialization after the content HTML is inserted by the loader.
+
+### Error and Session Handling
+
+The shared loader:
+
+- Displays `Loading dashboard data...` during the content request.
+- Redirects to login when the authenticated session has expired.
+- Shows a retry action when the content request fails.
+- Removes the loading state after success or failure.
+
+### Tests
+
+`tests/Feature/UtilityDashboardLoadingTest.php` verifies:
+
+- The Utility shell is returned before the dashboard content.
+- The content endpoint returns the expected JSON and HTML contract.
+- The shell and content endpoints require authentication.
+- Dashboard navigation uses the shared selected-item loading behavior.
 
 ## Road Network
 

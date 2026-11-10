@@ -4,7 +4,7 @@
         <div class="card card-solid card-default panell panell-default" style="background-color: transparent !important;">
         @foreach ($subCategory_titles as $key=>$subCategory_title)
             <h3 class="panell-title" text-align="center">
-                <centre><a>{!! $subCategory_title !!}</a></centre>
+                <centre><a>{{ $subCategory_title }}</a></centre>
             </h3>
             
             @for($i=0; $i<$param_listcount ; $i++)
@@ -12,14 +12,14 @@
                 @foreach ($param_titles[$i] as $param_title)
                     <div class=" card-header with-borderpanell-heading my-5"> 
                         <h6 class="card-title panell-title">
-                            <span data-toggle="collapse" href="#collapseparam{{$i}}" class="">{!! $param_title !!}
+                            <span data-toggle="collapse" href="#collapseparam{{$i}}" class="">{{ $param_title }}
                             </span>
                         </h6>
                     </div>
                     <div id="collapseparam{{$i}}" class="card-body panell-collapse collapse">
                         <table class="table table-bordered" width='100%'>
                         <tr>
-                            <th colspan=4 width='50%' style="margin-left:auto; margin-right:auto;">Parameter: {!! $param_title !!}</th>
+                            <th colspan=4 width='50%' style="margin-left:auto; margin-right:auto;">Parameter: {{ $param_title }}</th>
                         </tr>
                         <tr class="" width='100%'>
                             <th width='50%'>Assessment Metric or Data Point	Unit</th>

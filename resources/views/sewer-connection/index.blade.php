@@ -131,20 +131,7 @@ $(function() {
         $('.delete').on('click', function(e) {
             var form = $(this).closest("form");
             event.preventDefault();
-            Swal.fire({
-               title: "{{__('Are you sure?')}}",
-                    text: "{!! __('You won\'t be able to revert this!') !!}",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: "{{ __('Yes, delete it!') }}",
-                    cancelButtonText: '{{ __('Cancel') }}',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            })
+            deleteAction(form || this);
         });
     });
 
@@ -254,7 +241,7 @@ $(function() {
 
     function initializeMap() {
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        var gurl = "<?php echo Config::get("constants.GEOSERVER_URL"); ?>/";
+        var gurl = "{{ url('/gis') }}/";
         var gurl_wms = gurl + 'wms';
 
         var googleLayerRoadmap = new ol.layer.Tile({

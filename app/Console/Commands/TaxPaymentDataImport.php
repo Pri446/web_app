@@ -43,15 +43,29 @@ class TaxPaymentDataImport extends Command
     public function handle()
     {
         $start_time=time();
-        $storage = Storage::disk('importtax')->path('/');
-        $location = preg_replace('/\\\\/', '', $storage);
-        
-        $file_selection = Storage::disk('importtax')->listContents();
-        $filename = $file_selection[0]['basename'];
+        // Flysystem v3 requires a directory argument for listContents() and
+        // returns DirectoryListing objects rather than the old array format.
+        // The scheduled import needs one predictable file, so address the same
+        // filename used by the web upload instead of choosing the first entry
+        // from a directory scan.
+        $filename = 'building-tax-payments.csv';
+        $disk = Storage::disk('importtax');
+
+        if (!$disk->exists($filename)) {
+            $this->error("Tax import file was not found: {$filename}");
+
+            return Command::FAILURE;
+        }
+
+        // path() supplies the correct platform-specific absolute path. Keeping
+        // Windows backslashes intact prevents malformed paths such as E:folder.
+        $filePath = $disk->path($filename);
         
         \DB::statement('TRUNCATE TABLE taxpayment_info.tax_payments RESTART IDENTITY');
         \DB::statement('ALTER SEQUENCE IF exists taxpayment_info.tax_payments_id_seq RESTART WITH 1');
-        Excel::import(new TaxImport, $location.$filename);
+        // TaxImport constructs TaxPayment models, whose PII mutators encrypt
+        // owner_name and owner_contact before the rows are written in batches.
+        Excel::import(new TaxImport, $filePath);
 
         $end_time=time();
         

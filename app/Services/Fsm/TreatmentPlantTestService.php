@@ -124,16 +124,16 @@ class TreatmentPlantTestService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['treatment-plant-test.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit Treatment Plant Efficiency Test')) {
-                    $content .= '<a title="' . __('Edit') . '" href="' . action("Fsm\TreatmentPlantTestController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__('Edit')) . '" href="' . action("Fsm\TreatmentPlantTestController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Treatment Plant Efficiency Test')) {
-                    $content .= '<a title="' . __('Detail') . '" href="' . action("Fsm\TreatmentPlantTestController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__('Detail')) . '" href="' . action("Fsm\TreatmentPlantTestController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View Treatment Plant Efficiency Test History')) {
-                    $content .= '<a title="' . __('History') . '" href="' . action("Fsm\TreatmentPlantTestController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__('History')) . '" href="' . action("Fsm\TreatmentPlantTestController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete Treatment Plant Efficiency Test')) {
-                    $content .= '<a href title="' . __('Delete') . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href title="' . e(__('Delete')) . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
                 $content .= \Form::close();
                 return $content;

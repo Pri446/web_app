@@ -25,6 +25,13 @@ class User extends Authenticatable
     use HasApiTokens;
     use SoftDeletes;
     use AuthenticationLogable;
+
+    /**
+     * Request-local cache used by the sidebar's repeated permission-group checks.
+     *
+     * @var array<int, string>|null
+     */
+    private ?array $permissionGroupsCache = null;
     /**
      * The database table used by the model.
      *
@@ -83,26 +90,29 @@ class User extends Authenticatable
 
     public function hasanyPermissionInGroup(array $permgroupNames)
     {
-        if (!is_array($permgroupNames)) {
-            $permgroupNames = [$permgroupNames]; // Convert to array if a single group name is passed
+        if ($this->permissionGroupsCache === null) {
+            $this->permissionGroupsCache = DB::table('auth.permissions as permissions')
+                ->join(
+                    'auth.role_has_permissions as role_permissions',
+                    'role_permissions.permission_id',
+                    '=',
+                    'permissions.id'
+                )
+                ->join(
+                    'auth.model_has_roles as user_roles',
+                    'user_roles.role_id',
+                    '=',
+                    'role_permissions.role_id'
+                )
+                ->where('user_roles.model_id', $this->getKey())
+                ->where('user_roles.model_type', self::class)
+                ->whereNotNull('permissions.group')
+                ->distinct()
+                ->pluck('permissions.group')
+                ->all();
         }
 
-        $user = Auth::user();
-        $roleIds = $user->roles->pluck('id')->unique()->toArray();  // Get unique role IDs
-        $permissions = DB::table('auth.role_has_permissions')
-            ->whereIn('role_id', array_values($roleIds))
-            ->pluck('permission_id')
-            ->unique()->toArray();
-
-        // Now query the permissions table and filter by group using whereIn
-        $filteredPermissions = DB::table('auth.permissions')
-                        ->whereIn('id', $permissions)  // Use whereIn to filter by group
-                        ->pluck('group')->unique()->toArray();  // Get the results
-
-        // Compare if there is any common group between $filteredPermissions and $groupNames
-        $isInGroup = !empty(array_intersect($filteredPermissions, $permgroupNames));
-
-        return $isInGroup;  // Will return true if any group name matches, otherwise false
+        return !empty(array_intersect($this->permissionGroupsCache, $permgroupNames));
     }
 
     public function buildingSurveys()

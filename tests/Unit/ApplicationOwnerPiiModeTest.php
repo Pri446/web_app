@@ -63,6 +63,41 @@ class ApplicationOwnerPiiModeTest extends TestCase
         ));
     }
 
+    public function test_empty_password_returns_modal_error_without_unlocking(): void
+    {
+        $user = $this->user(704, 'correct-password');
+        $request = Request::create('/fsm/application/customer-pii/unlock-list', 'POST', [
+            'current_password' => '',
+        ]);
+        $request->setUserResolver(fn () => $user);
+        $request->setLaravelSession(app('session.store'));
+
+        $audit = Mockery::mock(OwnerPiiAuditService::class);
+        $audit->shouldReceive('record')
+            ->once()
+            ->with(
+                'application_pii_password_failed',
+                false,
+                $user,
+                null,
+                ['surface' => 'application_data_table'],
+                'password_reentry'
+            );
+
+        $access = app(ApplicationPiiAccessService::class);
+        $controller = new ApplicationPiiAccessController($access, $audit);
+        $controller->unlockList($request);
+
+        $this->assertTrue(
+            $request->session()->get('errors')->has('application_pii_password')
+        );
+        $this->assertFalse($access->isUnlocked(
+            $user,
+            'list',
+            ApplicationPiiAccessService::ALL_APPLICATIONS_RESOURCE_ID
+        ));
+    }
+
     public function test_bin_lookup_is_masked_without_owner_lookup_scope(): void
     {
         $user = $this->user(702);

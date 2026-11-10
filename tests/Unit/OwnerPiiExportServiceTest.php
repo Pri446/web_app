@@ -12,6 +12,14 @@ use Tests\TestCase;
 
 class OwnerPiiExportServiceTest extends TestCase
 {
+    public function test_it_uses_readable_export_column_headings(): void
+    {
+        $this->assertSame(
+            ['BIN', 'Owner Name', 'Owner Contact', 'Owner Gender', 'NID', 'Status'],
+            $this->service()->headers()
+        );
+    }
+
     public function test_it_parses_normalizes_and_deduplicates_bins(): void
     {
         $file = UploadedFile::fake()->createWithContent(

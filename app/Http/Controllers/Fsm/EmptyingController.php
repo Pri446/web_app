@@ -11,6 +11,7 @@ use App\Models\Fsm\Emptying;
 use App\Models\Fsm\SludgeCollection;
 use App\Models\Fsm\TreatmentPlant;
 use App\Services\Fsm\EmptyingService;
+use App\Services\Fsm\OperationalDataAccessService;
 use DateTimeZone;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -84,6 +85,7 @@ class EmptyingController extends Controller
     {
         $exists = Emptying::where('application_id', $id)->exists();
         $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         
         return view('fsm.emptying.create',[
             'formAction' => $this->emptyingService->getCreateFormAction(),
@@ -115,41 +117,15 @@ class EmptyingController extends Controller
     public function show($id)
     {
         $emptying = Emptying::findOrFail($id);
-        $this->authorizeEmptyingRecord($emptying);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
 
         $page_title = __("Emptying Details");
         $formFields = $this->emptyingService->getShowFormFields($emptying);
         $indexAction = url()->previous();
         return view('layouts.show',compact('page_title','formFields','emptying','indexAction'));
-    }
-
-    /**
-     * Scope direct record access to the actor's municipality-level authority,
-     * service provider, treatment plant, or records created by that actor.
-     */
-    private function authorizeEmptyingRecord(Emptying $emptying): void
-    {
-        $actor = Auth::user();
-
-        if ($actor->hasAnyRole([
-            'Super Admin',
-            'Municipality - Super Admin',
-            'Municipality - IT Admin',
-            'Municipality - Sanitation Department',
-            'Municipality - Executive',
-        ])) {
-            return;
-        }
-
-        $authorized = $emptying->user_id === $actor->id;
-
-        if ($actor->service_provider_id) {
-            $authorized = $emptying->service_provider_id === $actor->service_provider_id;
-        } elseif ($actor->treatment_plant_id) {
-            $authorized = $emptying->treatment_plant_id === $actor->treatment_plant_id;
-        }
-
-        abort_unless($authorized, 403);
     }
 
     /**
@@ -161,6 +137,10 @@ class EmptyingController extends Controller
     public function edit($id)
     {
         $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
         $application = Application::with('emptying')
             ->findOrFail($emptying->application_id);
         $application_id = $application->id;
@@ -223,6 +203,10 @@ public function destroy($id)
 {
     try {
         $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
 
         if ($emptying->feedback()->exists()) {
             return redirect(route('emptying.index'))

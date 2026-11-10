@@ -30,7 +30,7 @@
                 @endif
             @endif
 
-                    <form method="POST" action="{{ route('login.perform') }}">
+                    <form method="POST" action="{{ route('login.perform') }}" id="login-form">
                         @csrf
                         <div class="input-group mb-3">
                             <input type="username" class="form-control @error('username') is-invalid @enderror" name="username" value="{{ old('username') }}" required placeholder="Email or Username">
@@ -88,7 +88,11 @@
                         </div>
                         <div class="row justify-content-end">
                             <div class="col-12 "> <!-- Adjust the column width as needed -->
-                                <button type="submit" class="btn btn-primary btn-block">Log In</button>
+                                <button type="submit" class="btn btn-primary btn-block" id="login-submit">
+                                    <span class="spinner-border spinner-border-sm d-none" id="login-submit-spinner"
+                                        role="status" aria-hidden="true"></span>
+                                    <span id="login-submit-text">Log In</span>
+                                </button>
                             </div>
                             <div class="col-12 mt-2 text-center">
                                 @if (Route::has('password.request'))
@@ -100,5 +104,46 @@
                         </div>
 
             </form>
+
+            <script>
+                (function () {
+                    var form = document.getElementById('login-form');
+                    var submitButton = document.getElementById('login-submit');
+                    var submitSpinner = document.getElementById('login-submit-spinner');
+                    var submitText = document.getElementById('login-submit-text');
+
+                    if (!form || !submitButton || !submitSpinner || !submitText) {
+                        return;
+                    }
+
+                    function resetLoginButton() {
+                        form.dataset.submitting = 'false';
+                        submitButton.disabled = false;
+                        submitButton.removeAttribute('aria-busy');
+                        submitSpinner.classList.add('d-none');
+                        submitText.textContent = 'Log In';
+                    }
+
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            return;
+                        }
+
+                        if (form.dataset.submitting === 'true') {
+                            event.preventDefault();
+                            return;
+                        }
+
+                        form.dataset.submitting = 'true';
+                        submitButton.disabled = true;
+                        submitButton.setAttribute('aria-busy', 'true');
+                        submitSpinner.classList.remove('d-none');
+                        submitText.textContent = 'Signing in...';
+                    });
+
+                    // Restore the button if the browser returns to this page from its back/forward cache.
+                    window.addEventListener('pageshow', resetLoginButton);
+                }());
+            </script>
 
 

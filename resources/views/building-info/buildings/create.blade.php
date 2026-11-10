@@ -203,7 +203,7 @@
         /*
           script to dynamically display child dropdown values according to value selected in parent dropdown
           */
-        var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
+        var usecatgs = {{ Illuminate\Support\Js::from(json_decode($usecatgsJson)) }};
         $(document).on('ready', function() {
             @if ($errors->any())
                 @if (old('functional_use'))
@@ -428,6 +428,18 @@
             }
         });
     var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
+       // code that checks house image greater than 5MB from frontend
+    $('#house_image').on('change', function() {
+        validateFileSize(document.querySelector('#house_image'),'fileSizeHintImg','5');
+    });
+
+     // code that checks geom greater than 1MB from frontend
+     $('#geom').on('change', function() {
+        validateFileSize(document.querySelector('#geom'),'fileSizeHintKML','1');
+    });
+
+
+    var usecatgs = {{ Illuminate\Support\Js::from(json_decode($usecatgsJson)) }};
     // use category handled on initial load
     var html = '<option value="">' + _('Use Category of Building') + '</option>';
         var functional_use = $('#functional_use_id').val();

@@ -76,10 +76,8 @@ $('#locateBuildingModal').on('shown.bs.modal', function () {
     }
 
     var workspace = '{{ Config::get("constants.GEOSERVER_WORKSPACE") }}';
-    var gurl      = '{{ Config::get("constants.GEOSERVER_URL") }}/';
-    var gurl_wms  = gurl + 'wms';
-    var gurl_wfs  = gurl + 'wfs';
-    var authkey   = '{{ Config::get("constants.AUTH_KEY") }}';
+    var gurl_wms = "{{ route('gis.wms') }}";
+    var gurl_wfs = "{{ route('gis.wfs') }}";
 
     var centerLng    = 85.32;
 var centerLat    = 27.68;

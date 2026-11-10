@@ -11,13 +11,13 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
         var myChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: [<?php echo implode(',', $sewerLengthPerWardChart['labels']); ?>],
+                labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($sewerLengthPerWardChart['labels'] ?? [])))),
                 datasets: [
                     {
                         label: "Sewer Length (m)",
                         backgroundColor: "rgba(54, 162, 235,0.5)",
                         hoverBackgroundColor: "rgba(54, 162, 235,0.7)",
-                        data: [<?php echo implode(',', $sewerLengthPerWardChart['values']); ?>],
+                        data: @json(array_values($sewerLengthPerWardChart['values'] ?? [])),
                     }
                 ]
             },

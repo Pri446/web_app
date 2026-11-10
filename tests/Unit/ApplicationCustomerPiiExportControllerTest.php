@@ -50,7 +50,7 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
             (string) $response->headers->get('Cache-Control')
         );
         $this->assertStringContainsString(
-            'application-customer-pii-export-bin_list-',
+            'Application Customer PII Export BIN List.csv',
             (string) $response->headers->get('Content-Disposition')
         );
     }
@@ -76,7 +76,7 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertStringContainsString(
-            'application-customer-pii-export-all-',
+            'Application Customer PII Export ALL.csv',
             (string) $response->headers->get('Content-Disposition')
         );
     }
@@ -185,6 +185,22 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
             : Mockery::mock(User::class)->makePartial();
 
         if ($canExportAll !== null) {
+            // These full-export tests use a partial User mock because they must
+            // independently control the result of the trusted-role check below.
+            //
+            // The controller first calls $user->can(...) for the ordinary
+            // Application PII permissions. If that real method runs on this
+            // partial mock, Spatie Permission tries to load the mock's `roles`
+            // Eloquent relationship and fails before the test reaches the
+            // full-export rule that it is actually meant to verify.
+            //
+            // Mock only the base permission boundary as allowed here. The
+            // separate hasAnyRole() result remains controlled by $canExportAll,
+            // so these tests still prove that a non-admin cannot export every
+            // Application record and an approved administrator can.
+            $user->shouldReceive('can')
+                ->andReturn(true);
+
             $user->shouldReceive('hasAnyRole')
                 ->once()
                 ->andReturn($canExportAll);
@@ -201,12 +217,12 @@ class ApplicationCustomerPiiExportControllerTest extends TestCase
     private function headers(): array
     {
         return [
-            'application_id',
-            'bin',
-            'customer_name',
-            'customer_gender',
-            'customer_contact',
-            'status',
+            'Application ID',
+            'BIN',
+            'Customer Name',
+            'Customer Gender',
+            'Customer Contact',
+            'Status',
         ];
     }
 

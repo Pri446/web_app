@@ -9,14 +9,14 @@ var ctx = document.getElementById("SolidwasteChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $solidWasteChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($solidWasteChart['labels'] ?? [])))),
     datasets: [
         {
             label: "Payment Due",
-            backgroundColor: [<?php echo implode(',', $solidWasteChart['background_colors']); ?>],
-            hoverBackgroundColor: [<?php echo implode(',', $solidWasteChart['colors']); ?>],
+            backgroundColor: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($solidWasteChart['background_colors'] ?? [])))),
+            hoverBackgroundColor: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($solidWasteChart['colors'] ?? [])))),
             borderWidth: 1,
-            data: [<?php echo implode(',', $solidWasteChart['values']); ?>],
+            data: @json(array_values($solidWasteChart['values'] ?? [])),
         }
     ]
 },

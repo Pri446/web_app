@@ -48,7 +48,7 @@
                                 </label>
                                 <input id="current_password" name="current_password" type="password"
                                     class="form-control @error('current_password') is-invalid @enderror"
-                                    required maxlength="255" autocomplete="current-password"
+                                    maxlength="255" autocomplete="current-password"
                                     aria-describedby="current-password-help">
                                 <small id="current-password-help" class="form-text text-muted">
                                     {{ __('Re-enter your login password to confirm access. The password is not stored.') }}
@@ -141,6 +141,10 @@
                                 <input id="bin_csv" name="bin_csv" type="hidden" value="">
                                 <small class="form-text text-muted">
                                     {{ __('Upload a CSV containing a bin header and one BIN per row.') }}
+                                    <a href="{{ asset('templates/building-owner-pii-bin-sample.csv') }}"
+                                        download="Building Owner PII BIN List Sample.csv">
+                                        {{ __('Download sample CSV') }}
+                                    </a>
                                 </small>
                                 <div id="bin-file-validation" class="small mt-1" role="status"
                                     aria-live="polite"></div>
@@ -1043,17 +1047,15 @@
                 e.preventDefault();
                 var cql_param = getCQLParams();
                 window.location.href =
-                    "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:buildings_layer+&CQL_FILTER=" +
-                    cql_param + "&PROPERTYNAME=" + encodeURIComponent(buildingNonPiiExportProperties) +
-                    "&outputFormat=SHAPE-ZIP&format_options=filename:Buildings.zip";
+                    "{{ route('gis.wfs') }}?service=WFS&version=1.0.0&request=GetFeature&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:buildings_layer+&CQL_FILTER=" +
+                    cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Buildings.zip";
             });
             $("#export-kml").on("click", function(e) {
                 e.preventDefault();
                 var cql_param = getCQLParams();
                 window.location.href =
-                    "{{ Config::get('constants.GEOSERVER_URL') }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get('constants.AUTH_KEY') }}&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:buildings_layer+&CQL_FILTER=" +
-                    cql_param + "&PROPERTYNAME=" + encodeURIComponent(buildingNonPiiExportProperties) +
-                    "&outputFormat=KML&format_options=filename:Buildings.kml";
+                    "{{ route('gis.wfs') }}?service=WFS&version=1.0.0&request=GetFeature&typeName={{ Config::get('constants.GEOSERVER_WORKSPACE') }}:buildings_layer+&CQL_FILTER=" +
+                    cql_param + " &outputFormat=KML&format_options=filename:Buildings.kml";
 
             });
 
@@ -1141,31 +1143,30 @@
         });
 
 
-        document.getElementById('toilet').addEventListener('change', function() {
-            const toiletPresence = this.value;
-            const sanitationSelect = document.getElementById('sanitation_system_id');
+        const toiletEl = document.getElementById('toilet');
+        if (toiletEl) {
+            toiletEl.addEventListener('change', function () {
+                const toiletPresence = this.value;
+                const sanitationSelect = document.getElementById('sanitation_system_id');
+                if (!sanitationSelect) return;
 
-            // Clear existing options
-            sanitationSelect.innerHTML = '<option value="">Sanitation Systems</option>';
+                sanitationSelect.innerHTML = '<option value="">Sanitation Systems</option>';
 
-            if (toiletPresence === "Yes") {
-                // Add options for IDs 1 to 8 and 11
-                @foreach ($sanitation_systems as $key => $value)
-                    @if (($key >= 1 && $key <= 8) || $key == 11)
-                        sanitationSelect.innerHTML +=
-                            `<option value="{{ $key }}">{{ $value }}</option>`;
-                    @endif
-                @endforeach
-            } else if (toiletPresence === "No") {
-                // Add remaining options (IDs not in 1 to 8 and 11)
-                @foreach ($sanitation_systems as $key => $value)
-                    @if (($key < 1 || $key > 8) && $key != 11)
-                        sanitationSelect.innerHTML +=
-                            `<option value="{{ $key }}">{{ $value }}</option>`;
-                    @endif
-                @endforeach
-            }
-        });
+                if (toiletPresence === "Yes") {
+                    @foreach ($sanitation_systems as $key => $value)
+                        @if (($key >= 1 && $key <= 8) || $key == 11)
+                            sanitationSelect.innerHTML += '<option value="{{ $key }}">{{ addslashes($value) }}</option>';
+                        @endif
+                    @endforeach
+                } else if (toiletPresence === "No") {
+                    @foreach ($sanitation_systems as $key => $value)
+                        @if (($key < 1 || $key > 8) && $key != 11)
+                            sanitationSelect.innerHTML += '<option value="{{ $key }}">{{ addslashes($value) }}</option>';
+                        @endif
+                    @endforeach
+                }
+            });
+        }
 
 
 

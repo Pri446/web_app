@@ -124,21 +124,7 @@ $(function() {
         $('.delete').on('click', function(e) {
             var form = $(this).closest("form");
             event.preventDefault();
-            Swal.fire({
-                title: "{{ __('Are you sure?') }}",
-                text: "{!! __('You won\'t be able to revert this!') !!}",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: "{{__('Yes, delete it!')}}",
-                cancelButtonText: '{{ __('Cancel') }}',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            })
-
+            deleteAction(form || this);
         });
     });
 
@@ -169,14 +155,14 @@ $(function() {
       e.preventDefault();
         var cql_param = getCQLParams();
 
-        window.location.href = "{{ Config::get("constants.GEOSERVER_URL") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName={{ Config::get("constants.GEOSERVER_WORKSPACE") }}:watersupply_network_layer+&CQL_FILTER=" + cql_param + " &outputFormat=SHAPE-ZIP&format_options=filename:Water Supply Network.zip";
+        window.location.href = "{{ route('gis.export', ['format' => 'shp']) }}?layer=watersupply_network_layer&filter=" + encodeURIComponent(cql_param);
 
     })
     $("#export-kml").on("click", function(e) {
         e.preventDefault();
         var cql_param = getCQLParams();
 
-        window.location.href = "{{ Config::get("constants.GEOSERVER_URL") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName={{ Config::get("constants.GEOSERVER_WORKSPACE") }}:watersupply_network_layer+&CQL_FILTER=" + cql_param +" &outputFormat=KML&format_options=filename:Water Supply Network.kml";
+        window.location.href = "{{ route('gis.export', ['format' => 'kml']) }}?layer=watersupply_network_layer&filter=" + encodeURIComponent(cql_param);
     });
 
 
@@ -196,7 +182,7 @@ $(function() {
         if (project_name) {
             cql_param += " AND project_name ='" + project_name + "'";
         }
-        return encodeURI(cql_param);
+        return (cql_param);
     }
 
    
