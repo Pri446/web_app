@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\BuildOwner;
 use App\Exports\SummaryInfoMultiSheetExport;
+use App\Exports\SummaryInfoMultiSheetKmlExport;
 use App\Exports\WaterbodySummaryInfoMultiSheetExport;
 use App\Exports\WardBuildingsSummaryInfoMultiSheetExport;
 use App\Exports\RoadBuildingsSummaryInfoMultiSheetExport;
@@ -1333,29 +1334,26 @@ class MapsController extends Controller
     /**
      * Generates and downloads a summary report in Excel format based on multiple KML geometries.
      *
-     * @param Request $request The request object containing 'kml_dragdrop_geom', a raw string of KML polygon geometries.
+     * @param Request $request The request object containing JSON encoded KML polygon names and geometries.
      * @return \Symfony\Component\HttpFoundation\BinaryFileResponse Returns a downloadable Excel file with summary information for the provided geometries.
      */
 
     public function getKmlInfoReportCsv(Request $request)
     {
         ob_end_clean();
-
-        // Get the raw geometry string
-        $geometriesString = $request->input('kml_dragdrop_geom');
-        // Split the string by `),POLYGON Z(` while keeping `POLYGON Z(` in the result
-        $geometries = preg_split('/\,POLYGON Z\(/', $geometriesString);
-
-        // Add back the missing prefix `POLYGON Z(` to each geometry (except the first one)
-
-        foreach ($geometries as $key => &$geometry) {
-            if ($key !== 0) {
-                $geometry = 'POLYGON Z(' . $geometry;
-            }
-            $geometry = trim($geometry);
+    
+        $polygons = json_decode($request->input('kml_dragdrop_geom', ''), true);
+        if (!is_array($polygons) || empty($polygons)) {
+            return back()->with('error', __('Invalid KML geometry data.'));
         }
 
-        return $this->excel->download(new SummaryInfoMultiSheetExport($geometries, 0), 'Summary Information KML Drag and Drop.xlsx');
+        $geometries = array_values(array_filter(array_column($polygons, 'geom')));
+        $names = array_values(array_column($polygons, 'name'));
+
+        return $this->excel->download(
+            new SummaryInfoMultiSheetKmlExport($geometries, 0, $names),
+            'Summary Information KML Drag and Drop.xlsx'
+        );
     }
 
 
@@ -1365,38 +1363,51 @@ class MapsController extends Controller
      * @param Request $request The request containing an array of WKT geometries.
      * @return \Illuminate\Http\JsonResponse JSON response indicating intersection results for each geometry.
      */
-    public function checkGeometry(Request $request)
-        {
-            $geometries = $request->input('geometries'); // Get all geometries
+       public function checkGeometry(Request $request)
+     {
+         $geometries = $request->input('geometries', []);
+         $results = [];
 
-            $results = [];
-            foreach ($geometries as $geometry) {
-                // Detect geometry type
-                $geometryType = $this->checkGeometryType($geometry);
+         foreach ($geometries as $item) {
+             // Accept both the legacy WKT string and the named object used by the KML Viewer.
+             $geometry = is_array($item) ? ($item['wkt'] ?? '') : $item;
+             $name = is_array($item) ? ($item['name'] ?? 'Unnamed Feature') : 'Unnamed Feature';
 
-                if (!in_array(strtoupper($geometryType), ['ST_POINT', 'ST_POLYGON', 'ST_LINESTRING'])) {
-                    $results[] = [
-                        'geometry' => $geometry,
-                        'intersects' => false,
-                        'message' => 'Unsupported geometry type: ' . $geometryType
-                    ];
-                    continue;
-                }
+             if (!is_string($geometry) || $geometry === '') {
+                 $results[] = [
+                     'name' => $name,
+                     'wkt' => $geometry,
+                     'intersects' => false,
+                     'message' => 'Missing geometry'
+                 ];
+                 continue;
+             }
 
-                // Query database to check intersection
-                $queryResult = DB::select("SELECT * FROM layer_info.citypolys WHERE ST_Intersects(ST_GeomFromText(?, 4326), geom)", [$geometry]);
-                $results[] = [
-                    'geometry' => $geometry,
-                    'intersects' => !empty($queryResult)
-                ];
-            }
+             $geometryType = $this->checkGeometryType($geometry);
+             if (!in_array(strtoupper((string) $geometryType), ['ST_POINT', 'ST_POLYGON', 'ST_LINESTRING'])) {
+                 $results[] = [
+                     'name' => $name,
+                     'wkt' => $geometry,
+                     'intersects' => false,
+                     'message' => 'Unsupported geometry type: ' . $geometryType
+                 ];
+                 continue;
+             }
 
-            return response()->json([
-                'success' => true,
-                'details' => $results
-            ]);
-        }
+             $queryResult = DB::select(
+                 "SELECT * FROM layer_info.citypolys WHERE ST_Intersects(ST_GeomFromText(?, 4326), geom)",
+                 [$geometry]
+             );
 
+             $results[] = [
+                 'name' => $name,
+                 'wkt' => $geometry,
+                 'intersects' => !empty($queryResult)
+             ];
+         }
+
+         return response()->json(['success' => true, 'details' => $results]);
+     }
 
         /**
          * Processes an array of geometries from the request and filters only valid polygons (ST_POLYGON).
@@ -1406,16 +1417,20 @@ class MapsController extends Controller
          * @return \Illuminate\Http\JsonResponse|\Illuminate\Http\Response Returns the result of building lookup
          *         if valid polygons exist; otherwise, returns an error response indicating no valid polygons found.
          */
-        public function getKmlSummaryInfo(Request $request)
+           public function getKmlSummaryInfo(Request $request)
         {
-            // Get all the geometries sent in the request
-            $geometries = $request->geometries;
-
+             // Get all the geometries sent in the request.
+             $geometries = $request->input('geometries', []);
+        
             $validPolygons = []; // Array to store valid polygons (ST_POLYGON)
 
             // Iterate over each geometry
-            foreach ($geometries as $geom) {
-
+             foreach ($geometries as $geom) {
+                 $geom = is_array($geom) ? ($geom['wkt'] ?? '') : $geom;
+                 if (!is_string($geom) || $geom === '') {
+                     continue;
+                 }
+              
                 // Check the geometry type for each geometry
                 $geometry_type = $this->checkGeometryType($geom);
 
@@ -1424,16 +1439,25 @@ class MapsController extends Controller
                     $validPolygons[] = $geom;
                 }
             }
+
+             // Keep summary queries bounded even when a large KML is uploaded.
+             $validPolygons = array_slice($validPolygons, 0, 100);
+
             // If we have valid polygons, pass them to getBufferPolygonBuildings
-            if (!empty($validPolygons)) {
+             if (!empty($validPolygons)) {
                 $polygon_request = new Request([
                     'bufferPolygonGeoms' => $validPolygons, // Pass the array of polygons
                 ]);
 
                 // Call the function to get buildings for the polygons
                 return $this->getKmlBufferPolygonBuildings($polygon_request);
+        
+             }
 
-            }
+             return response()->json([
+                 'success' => false,
+                 'responseText' => __('No polygon features were found in the KML file.')
+             ]);
         }
 
 

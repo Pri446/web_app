@@ -48,7 +48,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         <a href="#" id="wms_layer" class="btn btn-default map-control"
                            data-toggle="tooltip" data-placement="bottom" title="{{ __('Import from WMS') }}"  ><i class="fas fa-layer-group"></i></a>
                         <a href="#" id="get_location" class="btn btn-default map-control"data-toggle="tooltip" data-placement="bottom" title="{{ __('Locate Me') }}" ><img src="{{ asset('img/locate_me.png')}}" style="height:17px;"alt="Location Icon"> </a>
-                        <a href="#" id="kml_drag_drop" class="btn btn-default map-control"data-toggle="tooltip" data-placement="bottom" title="{{ __('KML Drag and Drop') }}" ><img src="{{ asset('img/kml_icon.png')}}" style="height:22px;"alt="Location Icon"> </a>
+<a href="#" id="kml_viewer" class="btn btn-default map-control" data-toggle="tooltip" data-placement="bottom" title="{{ __('KML Viewer') }}">
+                            <img src="{{ asset('img/kml_icon.png') }}" style="height:22px;" alt="KML Upload">
+                        </a>
+                        <input type="file" id="fileInput" style="display:none;" accept=".kml">
                         <a href="#" id="removemarkers_control" class="btn btn-default map-control" data-toggle="tooltip"
                            data-placement="bottom" title="{{ __('Remove Markers') }}"><i class="fa fa-trash fa-fw"></i></a>
                           
@@ -1993,15 +1996,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             var coord = [centerX, centerY];  //[latitude,longitude]
             //Modifying these values will affect functions like zoomToCity(), setInitialZoom(), and tools like Hard to Reach Building,Buildings Close to Water Bodies.
 
-            var dragAndDropInteraction = new ol.interaction.DragAndDrop({
-                formatConstructors: [
-                    ol.format.GPX,
-                    ol.format.GeoJSON,
-                    ol.format.IGC,
-                    ol.format.KML,
-                    ol.format.TopoJSON
-                ]
-            });
             // OpenLayers Map
             var map = new ol.Map({
                 controls: ol.control.defaults().extend([new ol.control.ScaleLine()]),
@@ -2011,7 +2005,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     rotate: false,
                     // mouseWheelZoom: false,
                     doubleClickZoom: false
-                }).extend([new ol.interaction.DragPan({kinetic: null}), dragAndDropInteraction]),
+                }).extend([new ol.interaction.DragPan({kinetic: null})]),
                 target: 'olmap',
                 view: new ol.View({
                     minZoom: 13,
@@ -2020,8 +2014,152 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 })
             });
 
-            //KML Drag and drop
-            dragAndDropInteraction.on('addfeatures', function (event) {
+            // Shared KML Viewer workflow for file-picker uploads.
+            function handleKmlFeatures(features) {
+                if (!features || !features.length) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '{{ __("No Features Found") }}',
+                        text: '{{ __("The uploaded KML does not contain any features.") }}'
+                    });
+                    return;
+                }
+
+                if (features.length > 1000) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '{{ __("Too Many Features!") }}',
+                        text: '{{ __("Upload a KML file with 1000 features or less") }}',
+                        confirmButtonColor: '#d33'
+                    });
+                    return;
+                }
+
+                displayAjaxLoader();
+                var wktFormat = new ol.format.WKT();
+                var geometries = features.map(function (feature) {
+                    var wkt = wktFormat.writeGeometry(feature.getGeometry().clone().transform('EPSG:3857', 'EPSG:4326'));
+                    var name = feature.get('name') || 'Unnamed Feature';
+                    feature.set('name', name);
+                    feature.set('kmlViewerWkt', wkt);
+                    return { name: name, wkt: wkt };
+                });
+
+                $.ajax({
+                    url: '{{ url("maps/check-geometry") }}',
+                    type: 'POST',
+                    data: { geometries: geometries },
+                    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                    success: function (data) {
+                        var details = Array.isArray(data.details) ? data.details : [];
+                        var intersecting = details.filter(function (item) { return item.intersects === true; });
+                        var outside = details.filter(function (item) { return item.intersects === false; });
+
+                        if (outside.length) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: '{{ __("Some Features do not Intersect") }}',
+                                text: '{{ __("These features do not intersect: ") }}' + outside.map(function (item) { return item.name; }).join(', '),
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+
+                        if (!intersecting.length) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '{{ __("No Features Intersect") }}',
+                                text: '{{ __("None of the Features Intersect with the Municipality") }}',
+                                confirmButtonColor: '#d33'
+                            });
+                            removeAjaxLoader();
+                            return;
+                        }
+
+                        if (eLayer.kml_features) {
+                            eLayer.kml_features.layer.getSource().clear();
+                        } else {
+                            addExtraLayer('kml_features', 'KML Features', new ol.layer.Vector({ source: new ol.source.Vector() }));
+                        }
+
+                        features.forEach(function (feature) {
+                            var detail = intersecting.find(function (item) { return item.wkt === feature.get('kmlViewerWkt'); });
+                            if (!detail) return;
+                            var geometry = feature.getGeometry();
+                            var isPoint = geometry.getType() === 'Point';
+                            feature.setStyle(new ol.style.Style({
+                                image: isPoint ? new ol.style.Icon({ anchor: [0.5, 1], src: '{{ url("/") }}/img/marker-green.png' }) : undefined,
+                                stroke: isPoint ? undefined : new ol.style.Stroke({ color: '#FF0000', width: 1 }),
+                                fill: isPoint ? undefined : new ol.style.Fill({ color: 'rgba(255, 255, 0, 0.3)' }),
+                                text: new ol.style.Text({
+                                    text: feature.get('name'),
+                                    font: '20px Calibri,sans-serif',
+                                    fill: new ol.style.Fill({ color: '#000' }),
+                                    stroke: new ol.style.Stroke({ color: '#fff', width: 3 }),
+                                    overflow: true,
+                                    offsetY: isPoint ? -20 : 0
+                                })
+                            }));
+                            eLayer.kml_features.layer.getSource().addFeature(feature);
+                        });
+
+                        var source = eLayer.kml_features.layer.getSource();
+                        var extent = source.getExtent();
+                        if (ol.extent.isEmpty(extent)) {
+                            removeAjaxLoader();
+                            return;
+                        }
+                        map.getView().fit(extent, map.getSize());
+                        var center = ol.extent.getCenter(extent);
+                        var polygons = intersecting.filter(function (item) { return /^POLYGON(?: Z)?/.test(item.wkt); });
+                        $('#kml_dragdrop_geom').val(JSON.stringify(polygons.map(function (item) {
+                            return { name: item.name, geom: item.wkt };
+                        })));
+
+                        if (eLayer.kmlbuildings) {
+                            eLayer.kmlbuildings.layer.getSource().clear();
+                        } else {
+                            addExtraLayer('kmlbuildings', 'KML Buildings', new ol.layer.Vector({
+                                source: new ol.source.Vector(),
+                                style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#0000FF', width: 1 }) })
+                            }));
+                        }
+
+                        $.ajax({
+                            url: '{{ url("maps/get-kml-summary-info") }}',
+                            type: 'POST',
+                            data: { geometries: polygons.map(function (item) { return item.wkt; }) },
+                            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                            success: function (response) {
+                                if (response.success === false) {
+                                    displayAjaxErrorModal(response.responseText);
+                                } else {
+                                    kmlDragDropPopupContent.innerHTML = response.popContentsHtml || '';
+                                    kmlDragDropPopupOverlay.setPosition(center);
+                                    (response.buildings || []).forEach(function (building) {
+                                        var buildingFeature = wktFormat.readFeature(building.geom, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+                                        buildingFeature.setStyle(styleFunction(building.id));
+                                        eLayer.kmlbuildings.layer.getSource().addFeature(buildingFeature);
+                                    });
+                                }
+                                removeAjaxLoader();
+                            },
+                            error: function (xhr) {
+                                displayAjaxErrorModal(xhr.statusText || '{{ __("Unable to load KML summary information.") }}');
+                                removeAjaxLoader();
+                            }
+                        });
+                    },
+                    error: function (xhr) {
+                        displayAjaxErrorModal(xhr.statusText || '{{ __("Unable to validate the KML file.") }}');
+                        removeAjaxLoader();
+                    }
+                });
+            }
+
+            /* Legacy drag-and-drop handler disabled.
+            Legacy handler body retained only for historical reference; drag-and-drop is disabled.
+                handleKmlFeatures(event.features);
+                return;
                 if (event.features.length > 1000) {
                     Swal.fire({
                         icon: 'warning',
@@ -2105,7 +2243,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     }
 
                     map.getView().fit(
-                        eLayer.kml_features.layer.getSource().getExtent(), /** @type {ol.Size} */ (map.getSize())
+                        eLayer.kml_features.layer.getSource().getExtent(), // @type {ol.Size} (map.getSize())
                     ); 
                     
                     var center = ol.extent.getCenter(eLayer.kml_features.layer.getSource().getExtent());
@@ -2129,12 +2267,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         // Send the geometry to get KML summary information
                         var url1 = '{{ url("maps/get-kml-summary-info") }}';
                         displayAjaxLoader();
-                       var polygonGeometries = geometries.filter(g => g.startsWith("POLYGON Z"));
+                       var polygonGeometries = geometries.filter(g => /^POLYGON(?: Z)?/.test(g));
                         $.ajax({
                             url: url1,
                             type: 'post',
                             data: {
-                                geometries: geometries,
+                                geometries: polygonGeometries,
                             },
                             headers: {
                                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -2169,12 +2307,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             }
                         });
                
-                        $('#kml_dragdrop_geom').val(polygonGeometries.join(','));
-                        document.getElementById('kml-export-form').addEventListener('submit', function (e) {
-                            const sourceGeom = document.getElementById('kml_dragdrop_geom').value;
-                            // Copy the geometry string to the actual form field
-                            document.getElementById('kml_dragdrop_geom_post').value = sourceGeom;
+                        var polygonExportData = polygonGeometries.map(function (geometry) {
+                            var featureIndex = geometries.indexOf(geometry);
+                            return {
+                                name: event.features[featureIndex].get('name') || 'Unnamed Feature',
+                                geom: geometry
+                            };
                         });
+                        $('#kml_dragdrop_geom').val(JSON.stringify(polygonExportData));
+                        // The geometry is already stored in the form's hidden input.
                     }
                 },
 
@@ -2182,7 +2323,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     console.error('Error checking geometry:', error);
                 }
             });
-        });
+            */
             // Base Layers Object
             var bLayer = {
                 osm: {name: 'OpenStreetMap', type: 'osm'},
@@ -3417,17 +3558,55 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     }
            
            
-               $('#kml_drag_drop').click(function (e) {
+               $('#kml_viewer').click(function (e) {
                 e.preventDefault();
                 disableAllControls();
                 currentControl = '';
-                 Swal.fire({
-                    icon: 'info',
-                    title: "{{ __('KML Viewer')}}",
-                    text: "{{ __('To View KML, Please Drag and Drop the KML File Directly onto the Map')}}",
-                    confirmButtonText: "{{ __('OK')}}"
-                });
+                document.getElementById('fileInput').click();
+            });
 
+            // The viewer button supports selecting a KML file from the file picker.
+            document.getElementById('fileInput').addEventListener('change', function (event) {
+                var file = event.target.files[0];
+                if (!file) return;
+
+                if (!/\.kml$/i.test(file.name)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '{{ __("Invalid KML File") }}',
+                        text: '{{ __("Please upload a KML file.") }}'
+                    });
+                    event.target.value = '';
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function (loadEvent) {
+                    try {
+                        var features = new ol.format.KML().readFeatures(loadEvent.target.result, {
+                            dataProjection: 'EPSG:4326',
+                            featureProjection: 'EPSG:3857'
+                        });
+                        if (!features.length) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: '{{ __("No Features Found") }}',
+                                text: '{{ __("The uploaded KML does not contain any features.") }}'
+                            });
+                            return;
+                        }
+                        handleKmlFeatures(features);
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: '{{ __("Invalid KML File") }}',
+                            text: '{{ __("The KML file could not be read.") }}'
+                        });
+                    }
+                };
+                reader.readAsText(file);
+                // Allow selecting the same file again.
+                event.target.value = '';
             });
 
             // Add handler to zoom in button click
