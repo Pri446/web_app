@@ -59,19 +59,19 @@ class HotspotServiceClass
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['hotspots.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit Hotspot Identification')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("PublicHealth\HotspotController@edit", [$model->id]) . '"  class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("PublicHealth\HotspotController@edit", [$model->id]) . '"  class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Hotspot Identification')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("PublicHealth\HotspotController@show", [$model->id]) . '"class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("PublicHealth\HotspotController@show", [$model->id]) . '"class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View Hotspot Identification History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("PublicHealth\HotspotController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("PublicHealth\HotspotController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete Hotspot Identification')) {
-                    $content .= '<a title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1">&nbsp;<i class="fa fa-trash"></i>&nbsp;</a> ';
+                    $content .= '<a title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1">&nbsp;<i class="fa fa-trash"></i>&nbsp;</a> ';
                 }
             if (Auth::user()->can('View Hotspot Identification On Map')) {
-                $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'waterborne_hotspots_layer', 'field' => 'id', 'val' => $model->id]) .
+                $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'waterborne_hotspots_layer', 'field' => 'id', 'val' => $model->id]) .
                     '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
             }
 

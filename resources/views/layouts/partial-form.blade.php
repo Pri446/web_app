@@ -80,7 +80,7 @@ A dynamic form layout
                                         {!! Form::select($field->inputId,$field->selectValues,$field->selectedValue,['class' => $field->inputClass,'disabled' => $field->disabled]) !!}
                                     @endif
                                     @if($field->inputType === 'date')
-                                        {!! Form::date($field->inputId, $field->inputValue, ['onclick' => 'this.showPicker()', 'class' => $field->inputClass, 'disabled' => $field->disabled, 'autocomplete' => 'off']) !!}
+                                        {!! Form::date($field->inputId, $field->inputValue, ['onclick' => 'this.showPicker()', 'class' => $field->inputClass, 'disabled' => $field->disabled, 'autocomplete' => 'off', 'min' => $field->min]) !!}
                                     @endif
                                 </div>
                             </div>
@@ -91,21 +91,21 @@ A dynamic form layout
                         <div id="anf-address-fields" style="display:none;">
                             <input type="hidden" name="is_anf" id="is_anf" value="0">
 
-                            <div class="form-group row required">
+                            <div class="form-group row">
                                 {!! Form::label('anf_ward', __('Ward Number'), ['class' => 'col-sm-4 col-form-label']) !!}
                                 <div class="col-sm-4">
                                     {!! Form::select('anf_ward', $anfWardOptions ?? [], null, ['class' => 'form-control', 'placeholder' => __('Ward Number'), 'id' => 'anf_ward']) !!}
                                 </div>
                             </div>
 
-                            <div class="form-group row required">
+                            <div class="form-group row">
                                 {!! Form::label('anf_locality', __('Locality Name'), ['class' => 'col-sm-4 col-form-label']) !!}
                                 <div class="col-sm-4">
                                     {!! Form::text('anf_locality', null, ['class' => 'form-control', 'placeholder' => __('Locality Name'), 'id' => 'anf_locality']) !!}
                                 </div>
                             </div>
 
-                            <div class="form-group row required">
+                            <div class="form-group row">
                                 {!! Form::label('anf_nearest_locality', __('Nearest Landmark'), ['class' => 'col-sm-4 col-form-label']) !!}
                                 <div class="col-sm-4">
                                     {!! Form::text('anf_nearest_locality', null, ['class' => 'form-control', 'placeholder' => __('Nearest Landmark'), 'id' => 'anf_nearest_locality']) !!}
@@ -148,7 +148,8 @@ A dynamic form layout
                                     'onclick' => 'this.showPicker()',
                                     'class' => $field->inputClass,
                                     'disabled' => $field->disabled,
-                                    'autocomplete' => 'off'
+                                    'autocomplete' => 'off',
+                                    'min' => $field->min
                                 ]) !!}
                                 @endif
                                 @if($field->inputType === 'file_viewer')
@@ -171,8 +172,7 @@ A dynamic form layout
                                                     pointGeomDrawer(
                                                         {
                                                             workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                            geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                            authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                            geoserverUrl: '{{ url('/gis') }}/',
                                                             mapID:'map'
                                                         }
                                                     )
@@ -191,8 +191,7 @@ A dynamic form layout
                                                         geomViewer(
                                                             {
                                                                 workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
-                                                                geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}',
-                                                                authKey:'{{ Config::get("constants.AUTH_KEY") }}',
+                                                               geoserverUrl: '{{ url('/gis') }}/',
                                                                 mapID:'map',
                                                                 geom: '{{ $formField->inputValue }}'
                                                             }
@@ -214,7 +213,7 @@ A dynamic form layout
 @else
     @foreach($formFields as $formField)
     <div class="col-sm-12 col-md-8 col-lg-8">
-        <div class="form-group row @if($formField->required) required @endif" @if(!empty($formField->hidden)) @if($formField->hidden === true) style="display: none" @endif @endif>
+        <div id="{{ $formField->inputId }}_form_group" class="form-group row @if($formField->required) required @endif" @if(!empty($formField->hidden)) @if($formField->hidden === true) style="display: none" @endif @endif>
             {!! Form::label($formField->labelFor,$formField->label,['class' => $formField->labelClass,'disabled' => $formField->disabled]) !!}
             <div class="col-sm-4">
                 @if($formField->inputType === 'text')
@@ -269,7 +268,7 @@ A dynamic form layout
                     {!! Form::datetimeLocal($formField->inputId,$formField->inputValue,['class' => $formField->inputClass]) !!}
                 @endif
                 @if($formField->inputType === 'date')
-                {!! Form::date($formField->inputId, $formField->inputValue, ['onclick' => 'this.showPicker()', 'class' => $formField->inputClass, 'disabled' => $formField->disabled]) !!}
+                {!! Form::date($formField->inputId, $formField->inputValue, ['onclick' => 'this.showPicker()', 'class' => $formField->inputClass, 'disabled' => $formField->disabled, 'min' => $formField->min]) !!}
                 @endif
                     @if($formField->inputType === 'year')
                         <input type="text" id="{{ $formField->inputId }}" name="{{ $formField->inputId }}" value="{{ $formField->inputValue }}" class="{{ $formField->inputClass }}" autocomplete="off" placeholder="{{ $formField->placeholder }}">
@@ -307,27 +306,73 @@ A dynamic form layout
                 @endif
                @if($formField->inputType === 'file_upload')
                     @if($formField->inputId === 'house_image' )
-                            <div class="custom-file">
-                                <input type="file" class="custom-file-input" name="{{ $formField->inputId }}" id="{{ $formField->inputId }}" accept="image/*">
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" name="{{ $formField->inputId }}" id="{{ $formField->inputId }}" accept=".jpg,.jpeg,image/jpeg">
                             <label class="custom-file-label" for="{{ $formField->inputId }}">
                                 {{ $formField->inputValue ? basename($formField->inputValue) : 'Choose file' }}
                             </label>
                         </div>
-                       @if(!empty($formField->inputValue))
-                        <input type="hidden" name="{{ $formField->inputId }}_existing" value="{{ $formField->inputValue }}">
+                        @if(!empty($formField->inputValue))
+                            <input type="hidden" name="{{ $formField->inputId }}_existing" id="{{ $formField->inputId }}_existing" value="{{ $formField->inputValue }}">
                         @endif
-                        <small class="form-text" id="fileSizeHintImg">(Image (JPG, JPEG) size should not be more than 5MB)</small>
+                        <small class="form-text text-muted" id="fileSizeHintImg">{{ __('Image (JPG, JPEG) size should not be more than 5MB.') }}</small>
+                        <div id="houseImageFeedback" class="file-feedback mt-1" role="status" aria-live="polite"></div>
+                        @php
+                            $houseImageSrc = null;
+                            if (!empty($formField->inputValue)) {
+                                $storedHouseImage = public_path('storage/emptyings/houses/' . basename($formField->inputValue));
+                                if (file_exists($storedHouseImage)) {
+                                    $houseImageSrc = asset('storage/emptyings/houses/' . basename($formField->inputValue)) . '?v=' . filemtime($storedHouseImage);
+                                } elseif (file_exists(public_path($formField->inputValue))) {
+                                    $fallbackHouseImage = public_path($formField->inputValue);
+                                    $houseImageSrc = asset($formField->inputValue) . '?v=' . filemtime($fallbackHouseImage);
+                                }
+                            }
+                        @endphp
+                        <div>
+                            <img
+                                id="houseImagePreview"
+                                class="img-thumbnail mt-2 {{ $houseImageSrc ? '' : 'd-none' }}"
+                                style="max-width: 320px; max-height: 240px; object-fit: contain;"
+                                src="{{ $houseImageSrc ?? '#' }}"
+                                data-default-src="{{ $houseImageSrc ?? '' }}"
+                                alt="{{ __('Selected house image preview') }}"
+                            >
+                        </div>
                     @elseif($formField->inputId === 'receipt_image')
-                          <div class="custom-file">
-                                <input type="file" class="custom-file-input" name="{{ $formField->inputId }}" id="{{ $formField->inputId }}" accept="image/*">
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" name="{{ $formField->inputId }}" id="{{ $formField->inputId }}" accept=".jpg,.jpeg,image/jpeg">
                             <label class="custom-file-label" for="{{ $formField->inputId }}">
                                 {{ $formField->inputValue ? basename($formField->inputValue) : 'Choose file' }}
                             </label>
                         </div>
-                       @if(!empty($formField->inputValue))
-                        <input type="hidden" name="{{ $formField->inputId }}_existing" value="{{ $formField->inputValue }}">
+                        @if(!empty($formField->inputValue))
+                            <input type="hidden" name="{{ $formField->inputId }}_existing" id="{{ $formField->inputId }}_existing" value="{{ $formField->inputValue }}">
                         @endif
-                        <small class="form-text" id="fileSizeRintImg">(Image (JPG, JPEG) size should not be more than 5MB)</small>
+                        <small class="form-text text-muted" id="fileSizeRintImg">{{ __('Image (JPG, JPEG) size should not be more than 5MB.') }}</small>
+                        <div id="receiptImageFeedback" class="file-feedback mt-1" role="status" aria-live="polite"></div>
+                        @php
+                            $receiptImageSrc = null;
+                            if (!empty($formField->inputValue)) {
+                                $storedReceiptImage = public_path('storage/emptyings/receipts/' . basename($formField->inputValue));
+                                if (file_exists($storedReceiptImage)) {
+                                    $receiptImageSrc = asset('storage/emptyings/receipts/' . basename($formField->inputValue)) . '?v=' . filemtime($storedReceiptImage);
+                                } elseif (file_exists(public_path($formField->inputValue))) {
+                                    $fallbackReceiptImage = public_path($formField->inputValue);
+                                    $receiptImageSrc = asset($formField->inputValue) . '?v=' . filemtime($fallbackReceiptImage);
+                                }
+                            }
+                        @endphp
+                        <div>
+                            <img
+                                id="receiptImagePreview"
+                                class="img-thumbnail mt-2 {{ $receiptImageSrc ? '' : 'd-none' }}"
+                                style="max-width: 320px; max-height: 240px; object-fit: contain;"
+                                src="{{ $receiptImageSrc ?? '#' }}"
+                                data-default-src="{{ $receiptImageSrc ?? '' }}"
+                                alt="{{ __('Selected receipt image preview') }}"
+                            >
+                        </div>
                     @else
                         <div class="custom-file">
                             <input type="file" class="custom-file-input" name="{{ $formField->inputId }}" id="{{ $formField->inputId }}">
@@ -351,7 +396,15 @@ A dynamic form layout
                                 <script src="{{ asset('js/map-functions.js') }}"></script>
                                 <script>
                                     $(document).ready(function () {
-                                        pointGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}', authKey:'{{ Config::get("constants.AUTH_KEY") }}', mapID:'map', geom: '{{ $formField->inputValue }}' })
+                                        pointGeomDrawer(
+                                            {
+                                                workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
+                                                geoserverUrl: '{{ url('/gis') }}',
+                                                mapID:'map',
+                                                geom: '{{ $formField->inputValue }}'
+                                            }
+                                        )
+                                        pointGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl: '{{ url('/gis') }}/', mapID:'map', geom: '{{ $formField->inputValue }}' })
                                     });
                                 </script>
                             @endpush
@@ -369,7 +422,14 @@ A dynamic form layout
                                 <script src="{{ asset('js/map-functions.js') }}"></script>
                                 <script>
                                     $(document).ready(function () {
-                                        polyGeomDrawer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}', authKey:'{{ Config::get("constants.AUTH_KEY") }}', mapID:'map', geom: '{{ $formField->inputValue }}' })
+                                        polyGeomDrawer(
+                                            {
+                                                workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
+                                                geoserverUrl: '{{ url('/gis') }}/',
+                                                mapID:'map',
+                                                geom: '{{ $formField->inputValue }}'
+                                            }
+                                        )
                                     });
                                 </script>
                             @endpush
@@ -386,7 +446,14 @@ A dynamic form layout
                                 <script src="{{ asset('js/map-functions.js') }}"></script>
                                 <script>
                                     $(document).ready(function () {
-                                        geomViewer({ workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}', geoserverUrl:'{{ Config::get("constants.GEOSERVER_URL") }}', authKey:'{{ Config::get("constants.AUTH_KEY") }}', mapID:'map', geom: '{{ $formField->labelValue }}' })
+                                        geomViewer(
+                                            {
+                                                workspace:'{{ Config::get("constants.GEOSERVER_WORKSPACE") }}',
+                                                geoserverUrl: '{{ url('/gis') }}/',
+                                                mapID:'map',
+                                                geom: '{{ $formField->labelValue }}'
+                                            }
+                                        )
                                     });
                                 </script>
                             @endpush

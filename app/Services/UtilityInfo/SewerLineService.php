@@ -63,23 +63,23 @@ class SewerLineService {
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['sewerlines.destroy', $model->code]]);
 
                 if (Auth::user()->can('Edit Sewer')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("UtilityInfo\SewerLineController@edit", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("UtilityInfo\SewerLineController@edit", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Sewer')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("UtilityInfo\SewerLineController@show", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("UtilityInfo\SewerLineController@show", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Sewer History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("UtilityInfo\SewerLineController@history", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("UtilityInfo\SewerLineController@history", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Sewer')) {
-                    $content .= '<a href="#" title="' . __("Delete") . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="' . e(__("Delete")) . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Sewer On Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'sewerlines_layer', 'field' => 'code', 'val' => $model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'sewerlines_layer', 'field' => 'code', 'val' => $model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -105,23 +105,21 @@ class SewerLineService {
      */
     public function storeOrUpdate($code = null,$data)
     {
-        
         if(empty($code)){
 
-            // $sewerLineTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM sewerlines_temp");
-            // $geom = ($sewerLineTemp[0]->geom);
+            $sewerLineTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM sewerlines_temp");
+            $geom = ($sewerLineTemp[0]->geom);
             $maxcode = SewerLine::withTrashed()->max('code');
             $maxcode = str_replace('S', '', $maxcode);
             $sewerLine = new SewerLine();
-            $sewerLine->code = 'S' . sprintf('%06d', $maxcode + 1);
+            $sewerLine->code = 'S' . sprintf('%04d', $maxcode + 1);
             $sewerLine->user_id = Auth::id();
             $sewerLine->road_code = $data['road_code'] ? $data['road_code'] : null;
             $sewerLine->length = $data['length'] ? $data['length'] : null;
             $sewerLine->location = $data['location'] ? $data['location'] : null;
             $sewerLine->diameter = $data['diameter'] ? $data['diameter'] : null;
             $sewerLine->treatment_plant_id = $data['treatment_plant_id'] ? $data['treatment_plant_id'] : null;
-            $sewerLine->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $data['geom'] . "', 4326))") : null;
-
+            $sewerLine->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $geom . "', 4326))") : null;
             $sewerLine->save();
         }
         else{
@@ -150,14 +148,7 @@ class SewerLineService {
     $location = $data['location'] ?? null;
     
 
-    $columns = [
-            __('Code'),
-            __('Road Code'),
-            __('Location'),
-            __('Length (m)'),
-            __('Diameter (mm)'),
-            __('Treatment Plant'),
-        ];
+    $columns = ['Code', 'Road Code', 'Location', 'Length (m)', 'Diameter (mm)', 'Treatment Plant'];
 
     $query = SewerLine::select('sewers.code', 'sewers.road_code', 'sewers.location', 'sewers.length', 'sewers.diameter', 'fsm.treatment_plants.name as Treatment Plant')
         ->leftJoin('fsm.treatment_plants', 'sewers.treatment_plant_id', '=', 'fsm.treatment_plants.id')
@@ -177,7 +168,7 @@ class SewerLineService {
     $sewers = $query->get();
     if ($sewers->isEmpty()) {
         // No data found, handle accordingly
-        return response()->json(['message' => __('No data found for the given filters.')], 404);
+        return response()->json(['message' => 'No data found for the given filters'], 404);
     }
 
     $style = (new StyleBuilder())

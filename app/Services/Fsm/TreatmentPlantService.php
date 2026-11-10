@@ -80,24 +80,24 @@ class TreatmentPlantService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['treatment-plants.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit Treatment Plant')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\TreatmentPlantController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\TreatmentPlantController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Treatment Plant')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\TreatmentPlantController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\TreatmentPlantController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Treatment Plant History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\TreatmentPlantController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\TreatmentPlantController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Treatment Plant')) {
 
-                    $content .= '<a href title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Treatment Plant on Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'treatmentplants_layer', 'field' => 'id', 'val' => $model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'treatmentplants_layer', 'field' => 'id', 'val' => $model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -178,14 +178,7 @@ class TreatmentPlantService
             $type = $data['type'] ? $data['type'] : null;
     
 
-            $columns = [
-            __('Name'),
-            __('Capacity Per Day (m³)'),
-            __('Caretaker Name'),
-            __('Caretaker Number'),
-            __('Status'),
-            __('Treatment Plant Type'),
-        ];
+            $columns = ['Name', 'Capacity Per Day (m3)',  'Caretaker Name', 'Caretaker Number',  'Status','Treatment Plant Type'];
             $query = TreatmentPlant::select( 'name', 'capacity_per_day', 'caretaker_name', 'caretaker_number', 'status','type')
                 ->whereNull('deleted_at');
 

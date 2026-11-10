@@ -32,7 +32,7 @@
                   <td>{{ $building->estimated_area }}</td>
                   <td>{{ $building->functionalUse->name }}</td>
                   <td>
-                  {!! Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $containment->id, $building->bin]]) !!}
+                  {!! Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $containment->public_id, $building->public_id]]) !!}
                     @can('Delete Building from Containment')
                     <button title="Remove Connection of Containment From Building" type="submit" class="btn btn-info btn-xs delete">&nbsp;<i class="fa fa-trash"></i>&nbsp;</button>
                     @endcan
@@ -60,20 +60,7 @@
          
          var form =  $(this).closest("form");
          event.preventDefault();
-         Swal.fire({
-           title: '{{ __('Are you sure?') }}',
-                      text: "{!! __('You won\'t be able to revert this!') !!}",
-                      icon: 'warning',
-                      showCancelButton: true,
-                      confirmButtonColor: '#3085d6',
-                      cancelButtonColor: '#d33',
-                      confirmButtonText: "{{ __('Yes, delete it!') }}",
-                      cancelButtonText: "{{ __('Cancel') }}",
-         }).then((result) => {
-           if (result.isConfirmed) {
-             form.submit();
-           }
-         })
+         deleteAction(form || this);
      });
 </script>
 @endpush

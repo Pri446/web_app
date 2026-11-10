@@ -1,4 +1,6 @@
-Version: V1.0.0
+Version: V1.1.0
+
+Last Updated: 2026-10-12
 
 Contents
 
@@ -126,9 +128,13 @@ Contents
 
 [16.1.1 User](#user)
 
-[16.1.2 Roles](#roles)
+[16.1.2 Owner PII Audit Logs](#owner-pii-audit-logs)
 
-[16.1.3 Permissions](#permissions)
+[16.1.3 PII Key Backup Downloads](#pii-key-backup-downloads)
+
+[16.1.4 Roles](#roles)
+
+[16.1.5 Permissions](#permissions)
 
 [17 Miscellaneous Tables](#miscellaneous-tables)
 
@@ -139,6 +145,39 @@ Contents
 [17.3 Spatial refrencing ](#spatial-ref-sys)
 
 [17.4 Authentication Log ](#authentication-log)
+
+# Database Change Register (PII, URL Binding, and Scheduling)
+
+This register summarizes the final database schema introduced by the PII protection, public URL binding, key-backup audit, and scheduled-desludging work. It records final schema state; transient columns that were later removed are identified separately.
+
+Schema types in this section were checked against the local PostgreSQL `information_schema` on 2026-10-12. The repository contains explicit type-change migrations for Application and Property Tax PII. The local `building_info.owners` columns are also `TEXT`; before deployment, confirm that the production release includes the corresponding owner-column type migration or an approved equivalent database change.
+
+| Schema.Table | Change | Column / Table | Previous Type | Final Type / State | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| `building_info.buildings` | Added | `public_id` | — | `uuid NOT NULL UNIQUE` | Non-sequential public identifier used for show, edit, delete, history, and other URL model binding. Internal `bin` remains unchanged. |
+| `building_info.owners` | Modified | `owner_name` | `character varying` | `text NULL` | Stores versioned AES-256-GCM ciphertext. |
+| `building_info.owners` | Modified | `owner_gender` | `character varying` | `text NULL` | Stores versioned AES-256-GCM ciphertext. |
+| `building_info.owners` | Modified | `owner_contact` | `bigint` | `text NULL` | Numeric storage was replaced because encrypted envelopes are text. |
+| `building_info.owners` | Modified | `nid` | `bigint` | `text NULL` | Numeric storage was replaced because encrypted envelopes are text. |
+| `fsm.containments` | Added | `public_id` | — | `uuid NOT NULL UNIQUE` | Public URL-binding identifier; internal containment `id` remains unchanged. |
+| `fsm.containments` | Added | `status` | — | `smallint NULL DEFAULT 0` | Scheduled-desludging workflow status. |
+| `fsm.containments` | Added | `priority` | — | `smallint NULL` | Calculated scheduling priority. |
+| `fsm.containments` | Added | `fstp_distance` | — | `numeric(12,2) NULL` | Distance used for queue ordering. |
+| `fsm.containments` | Added | `closest_fstp_id` | — | `bigint NULL` | Logical identifier of the closest treatment plant. |
+| `fsm.service_providers` | Added | `contract_document_pdf` | — | `character varying NULL` | Optional contract-document reference. |
+| `fsm.service_providers` | Added | `service_area` | — | `character varying NULL` | Optional comma-separated service-area wards. |
+| `fsm.service_provider_wards` | Added table | all columns | — | See table definition below | Normalized service-provider-to-ward coverage. |
+| `fsm.desludging_schedule_temp` | Added table | all operational columns | — | See table definition below | Regenerated, non-PII scheduling queue. |
+| `fsm.desludging_schedule_temp` | Modified | `service_provider_id` | `bigint NOT NULL` | `bigint NULL` | Allows queue generation before provider assignment. |
+| `fsm.desludging_schedule_temp` | Added | `next_emptying_date` | — | `date NULL` | Scheduled emptying date snapshot. |
+| `fsm.desludging_schedule_temp` | Removed | `owner_name`, `owner_gender`, `owner_contact`, `respondent_name`, `respondent_contact` | PII snapshot columns | Not present | Prevents owner/respondent PII from being copied into the operational queue. |
+| `fsm.applications` | Modified | `customer_name`, `customer_gender`, `customer_contact` | `character varying` / `bigint` | `text NULL` | Stores encrypted customer/owner PII envelopes. |
+| `fsm.applications` | Added | `supervisory_assessment_date` | — | `date NULL` | Records supervisory assessment date. |
+| `taxpayment_info.tax_payments` | Modified | `owner_name`, `owner_contact` | `character varying` / `bigint` | `text NULL` | Stores encrypted property-tax owner PII envelopes. |
+| `taxpayment_info.tax_payment_status` | Removed | `owner_name`, `owner_contact` | Derived plaintext columns | Not present | Prevents owner PII duplication in the derived map/status table. |
+| `auth.owner_pii_audit_logs` | Added table | all columns | — | See table definition below | Audits reveal, export, unlock, and other PII-access events without storing decrypted values. |
+| `auth.pii_key_backup_downloads` | Added table | all columns | — | See table definition below | Records backup-download metadata only; the encryption key is never stored in the database. |
+| `auth.users` | Removed | `pii_pin_hash` | `character varying NULL` | Not present | The temporary PIN design was removed in favor of password re-entry and authorization. |
 
 # Data Type Standard for IMIS
 
@@ -279,6 +318,7 @@ Table Name: **buildings**
 | **Field Name**                 | **Label**                                     | **Description**                                                                                                          | **Data Type**                                         |
 | ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | bin                            |                                               | Unique building identification number (auto generated)                                                                   | character varying pk                                  |
+| public_id                      | Public ID                                     | Non-sequential identifier exposed in URLs; unique and required. Internal relationships continue to use `bin`.             | uuid NOT NULL UNIQUE                                  |
 | building_associated_to         | BIN of Main Building                          | If the building is not a main building, BIN of the main building for that associated building                            | character varying                                     |
 | ward                           | Ward No                                       | The ward number where the building is situated                                                                           | integer fk:layer_info.wards(ward)                     |
 | road_code                      | Road Code                                     | Road Code of the road to which the building is connected                                                                 | character varying fk:utility_info.roads(code)         |
@@ -330,10 +370,10 @@ Table Name: **Owners**
 | -------------- | -------------------- | -------------------------------------------------------------- | ------------------------------------------------- |
 | id             |                      | Unique identifier for the record (auto generated)              | integer pk                                        |
 | bin            |                      | Building identification number                                 | character varying fk:building_info.buildings(bin) |
-| owner_name     | Owner Name           | Name of the building owner                                     | character varying                                 |
-| owner_gender   | Owner Gender         | Gender of the building owner                                   | character varying                                 |
-| owner_contact  | Owner Contact Number | Contact Number of the building owner                           | big integer                                       |
-| nid            | Owner NID            | National Identification Number of the building owner           | big integer                                       |
+| owner_name     | Owner Name           | Versioned AES-256-GCM encrypted owner name (`enc:<version>:<payload>`); decrypted only in authorized application flows | text (nullable) |
+| owner_gender   | Owner Gender         | Versioned AES-256-GCM encrypted owner gender; decrypted only in authorized application flows | text (nullable) |
+| owner_contact  | Owner Contact Number | Versioned AES-256-GCM encrypted owner contact number; stored as text because ciphertext is not numeric | text (nullable) |
+| nid            | Owner NID            | Versioned AES-256-GCM encrypted national identification number; stored as text because ciphertext is not numeric | text (nullable) |
 | created_at     |                      | Timestamp when the record was created (Auto Fill, Hidden)      | timestamp without time zone                       |
 | updated_at     |                      | Timestamp when the record was last updated (Auto Fill, Hidden) | timestamp without time zone                       |
 | deleted_at     |                      | Timestamp when the record was deleted (Auto Fill, Hidden)      | timestamp without time zone                       |
@@ -598,6 +638,7 @@ Table Name: **containments**
 | **Field Name**        | **Label**                       | **Description**                                                                                                                                      | **Data Type**                                     |
 | --------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | id                    |                                 | Unique identifier for the containment                                                                                                                | character varying pk                              |
+| public_id             | Public ID                       | Non-sequential identifier exposed in containment URLs; unique and required. Internal relationships continue to use `id`.                            | uuid NOT NULL UNIQUE                              |
 | type_id               | Containment Type                | Type of the containment with outlet connnection information                                                                                          | integer fk:fsm.containment_types(id)              |
 | location              | Containment Location            | Location of the containment (Inside the house\|Outside the house)                                                                                    | character varying                                 |
 | size                  | Containment Volume (m³)         | Volume of the containment in cubic meters (m³)                                                                                                       | numeric                                           |
@@ -772,7 +813,7 @@ Table Name: treatmentplant_tests
 
 Table Name: **desludging_schedule_temp**
 
-This table stores a regenerated operational queue. Its building, owner, containment and provider details are snapshots, not a replacement for the application, emptying, sludge-collection or feedback records. The provider may be unassigned; the `next_emptying_date` column was added by a later migration. References below are logical, not database-enforced foreign keys.
+This table stores a regenerated operational queue. Its building, containment and provider details are snapshots, not a replacement for the application, emptying, sludge-collection or feedback records. Owner and respondent PII is deliberately not stored in this table. The provider may be unassigned; the `next_emptying_date` column was added by a later migration. References below are logical, not database-enforced foreign keys.
 
 | **Field Name** | **Label** | **Description** | **Data Type** |
 | -------------- | --------- | --------------- | ------------- |
@@ -790,11 +831,6 @@ This table stores a regenerated operational queue. Its building, owner, containm
 | priority | Priority | Containment priority snapshot | smallint (nullable) |
 | sequence | Sequence | Generated queue sequence | integer (nullable) |
 | status | Status | Scheduling-status snapshot | smallint (nullable, DEFAULT 0) |
-| owner_name | Owner Name | Owner-name snapshot | character varying(255) (nullable) |
-| owner_gender | Owner Gender | Owner-gender snapshot | character varying(50) (nullable) |
-| owner_contact | Owner Contact | Owner-contact snapshot | character varying(255) (nullable) |
-| respondent_name | Respondent Name | Optional respondent-name snapshot | character varying(255) (nullable) |
-| respondent_contact | Respondent Contact | Optional respondent-contact snapshot | character varying(255) (nullable) |
 | generated_by | Generated By | Identifier of the user who generated the queue (logical reference to `auth.users.id`) | bigint (nullable) |
 | generated_at | Generated At | Time at which the queue row was generated | timestamp without time zone (nullable) |
 | created_at | | Timestamp when the row was created (Auto Fill, Hidden) | timestamp without time zone (nullable) |
@@ -815,13 +851,14 @@ Table Name: applications
 | address                     |                           | Address of the building                                                      | character varying                                 |
 | containment_id              |                           | Identifier for the containment connected to the building                     | character varying fk:fsm.containments(id)         |
 | application_date            | Application Date          | Date when the application was lodged                                         | date                                              |
-| customer_name               | Owner Name                | Name of the owner of the building                                            | character varying                                 |
-| customer_gender             | Owner Gender              | Gender of the owner                                                          | character varying                                 |
-| customer_contact            | Owner Contact (Phone)     | Contact number of the owner                                                  | big integer                                       |
+| customer_name               | Owner Name                | Versioned AES-256-GCM encrypted owner/customer name; decrypted only through authorized PII flows | text (nullable)                                   |
+| customer_gender             | Owner Gender              | Versioned AES-256-GCM encrypted owner/customer gender                        | text (nullable)                                   |
+| customer_contact            | Owner Contact (Phone)     | Versioned AES-256-GCM encrypted owner/customer contact; text accommodates the encryption envelope | text (nullable)                         |
 | applicant_name              | Applicant Name            | Name of the applicant, can be same as owner                                  | character varying                                 |
 | applicant_gender            | Applicant Gender          | Gender of the applicant                                                      | character varying                                 |
 | applicant_contact           | Applicant Contact (Phone) | Contact number of the applicant                                              | big integer                                       |
 | proposed_emptying_date      | Proposed Emptying Date    | Date when the septic tank is proposed to be emptied                          | date                                              |
+| supervisory_assessment_date | Supervisory Assessment Date | Date recorded for the supervisory assessment                               | date (nullable)                                   |
 | service_provider_id         | Service Provider Name     | Identifier for the service provider assigned to provide the emptying service | integer fk:fsm.service_providers(id)              |
 | emergency_desludging_status | Emergency Desludging      | Boolean indicating whether the desludging is of high priority                | boolean                                           |
 | user_id                     |                           | Identifier for the user who created the record (Hidden)                      | integer fk:auth.users(id)                         |
@@ -896,9 +933,9 @@ Table Name: **feedbacks**
 | ------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------ |
 | id                  |                                                        | A unique identifier for each feedback                                                                  | integer pk                           |
 | application_id      | Application ID                                         | A unique identifier for the application submitted by the customer                                      | integer fk:fsm.applications(id)      |
-| customer_name       | Applicant Name                                         | The name of the customer who submitted the feedback                                                    | character varying                    |
-| customer_gender     | Applicant Gender                                       | The email address of the customer who submitted the feedback                                           | character varying                    |
-| customer_number     | Applicant Contact Number                               | The phone number of the customer who submitted the feedback                                            | big integer                          |
+| customer_name       | Applicant Name                                         | Server-side snapshot of `fsm.applications.applicant_name`; encrypted application customer/owner fields are not copied here | character varying(255) (nullable) |
+| customer_gender     | Applicant Gender                                       | Server-side snapshot of `fsm.applications.applicant_gender`                                            | character varying (nullable)         |
+| customer_number     | Applicant Contact Number                               | Server-side snapshot of `fsm.applications.applicant_contact`                                           | bigint (nullable)                    |
 | fsm_service_quality | Are you satisfied with the Service Quality?            | A boolean value indicating whether the customer is satisfied with the Service Quality                  | boolean                              |
 | wear_ppe            | Did the sanitation workers wear PPE during desludging? | A boolean value indicating whether the service provider is wearing Personal Protective Equipment (PPE) | boolean                              |
 | comments            | Comments                                               | Comments provided by the customer                                                                      | character varying                    |
@@ -1455,8 +1492,6 @@ Table name: **tax_payment_status**
 | bin                    |                   | Corresponding building identification number for the tax code  | Character varying           |
 | ward                   | Ward              | Ward number where the property is located                      | Integer                     |
 | building_associated_to |                   | Auxiliary Building number or ID associated to the property     | Character varying           |
-| owner_name             | Owner Name        | Name of the property owner                                     | Character varying           |
-| owner_contact          | Owner Contact     | Phone number of the property owner                             | Big Integer                 |
 | last_payment_date      | Last Payment Date | Date when the last payment was made (Format:YYYY-MM-DD)        | Date                        |
 | due_year               | Due Year          | Year for which the payment is due                              | Integer                     |
 | geom                   |                   | Geospatial data of the building (represented as a polygon)     | geometry(MultiPolygon,4326) |
@@ -1470,8 +1505,8 @@ Table name: **tax_payment_status**
 | -------------------- | --------------------------------------------------------- | --------------------------- |
 | id                   | Unique identifier for each record                         | Integer pk                  |
 | tax_code             | Identifier for the building’s tax code/ holding ID       | character varying           |
-| owner_name           | Name of the owner                                         | character varying           |
-| owner_contact        | Phone number of the owner                                 | bigint                      |
+| owner_name           | Versioned AES-256-GCM encrypted property-owner name       | text (nullable)             |
+| owner_contact        | Versioned AES-256-GCM encrypted property-owner contact    | text (nullable)             |
 | last_payment_date    | Date when the last payment was made (Format:YYYY-MM-DD)   | date                        |
 | created_at           | Timestamp when the record was created (Auto Fill, Hidden) | timestamp without time zone |
 | updated_at           | Timestamp when the record was created (Auto Fill, Hidden) | timestamp without time zone |
@@ -1820,6 +1855,8 @@ Data Tables
 -   password_resets: Stores data for password reset tokens, facilitating the process of resetting user passwords.
 -   personal_access_tokens: Stores personal access tokens used for authentication in API requests.
 -   users: Stores information about users, including usernames, passwords, and other relevant details.
+-   owner_pii_audit_logs: Stores metadata for owner/customer PII access events without storing decrypted values.
+-   pii_key_backup_downloads: Stores PII-key backup download metadata without storing the key or backup file.
 
 Lookup Tables
 
@@ -1890,6 +1927,46 @@ Table name: **users**
 | created_at          |                  | Timestamp when the record was last updated (Auto Fill, Hidden)                       | Timestamp                            |
 | updated_at          |                  | Timestamp when the record was deleted (Auto Fill, Hidden)                            | Timestamp                            |
 | deleted_at          |                  | Timestamp when the record was created (Auto Fill, Hidden)                            | Timestamp                            |
+
+### Owner PII Audit Logs
+
+Table name: **owner_pii_audit_logs**
+
+Schema name: **auth**
+
+This append-only audit table records PII access activity. It stores identifiers and request metadata only; it must never store decrypted owner values or encryption-key material.
+
+| **Field Name** | **Description** | **Data Type** |
+| --- | --- | --- |
+| id | Unique audit-event identifier | bigint pk |
+| user_id | User who attempted the PII operation; logical reference to `auth.users.id` | bigint (nullable) |
+| building_public_id | Public building identifier associated with the event, when applicable | uuid (nullable) |
+| event | PII event name such as reveal, lock, unlock, or export | character varying(64) |
+| successful | Whether the attempted action succeeded | boolean |
+| authentication_method | Re-authentication method used, when applicable | character varying(32) (nullable) |
+| ip_address | Request IP address | character varying(45) (nullable) |
+| user_agent | Request user-agent string | text (nullable) |
+| context | Non-PII structured event metadata | json (nullable) |
+| created_at | Event timestamp | timestamp with time zone (DEFAULT current timestamp) |
+
+Indexes: (`user_id`, `created_at`), (`building_public_id`, `created_at`), and (`event`, `created_at`).
+
+### PII Key Backup Downloads
+
+Table name: **pii_key_backup_downloads**
+
+Schema name: **auth**
+
+This table records when an authorized administrator downloads a key backup. It stores metadata only. The PII encryption key and downloaded backup file are not stored in this table.
+
+| **Field Name** | **Description** | **Data Type** |
+| --- | --- | --- |
+| id | Unique backup-download audit identifier | bigint pk |
+| user_id | Administrator who downloaded the backup; logical reference to `auth.users.id` | bigint |
+| key_version | Version of the PII key that was downloaded | character varying(32) |
+| downloaded_at | Time the backup was downloaded | timestamp with time zone (DEFAULT current timestamp) |
+
+Index: (`key_version`, `downloaded_at`).
 
 ### Roles
 

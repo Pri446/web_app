@@ -8,7 +8,7 @@
         @include('layouts.components.error-list')
         {!! Form::model($building, [
             'method' => 'PATCH',
-            'action' => ['BuildingInfo\BuildingController@update', $building->bin],
+            'action' => ['BuildingInfo\BuildingController@update', $building->public_id],
             'files' => true,
 
             'class' => 'form-horizontal',
@@ -17,6 +17,12 @@
         @include('building-info.buildings.partial-form', ['submitButtomText' => 'Update'])
         {!! Form::close() !!}
     </div><!-- /.card -->
+
+    @if ($piiUnlocked)
+        <form id="pii-lock-form" method="POST" action="{{ route('owner-pii.lock') }}" class="d-none">
+            @csrf
+        </form>
+    @endif
 @stop
 
 
@@ -24,6 +30,16 @@
 @push('scripts')
     <script>
     $(document).ready(function() {
+        @if ($piiUnlocked && $piiUnlockSeconds > 0)
+            window.setTimeout(function() {
+                var lockForm = document.getElementById('pii-lock-form');
+
+                if (lockForm) {
+                    lockForm.submit();
+                }
+            }, {{ $piiUnlockSeconds * 1000 }});
+        @endif
+
         // Trigger event handlers when page loads
         handleMainBuildingChange();
         handleLowIncomeChange();
@@ -44,7 +60,7 @@
                 processing: true,
                 serverSide: true,
                 ajax: {
-                    url: '{!! url("fsm/containments/$building->bin/containmentData") !!}',
+                    url: '{!! url("fsm/containments/building/$building->public_id/containmentData") !!}',
                     data: function(d) {
 
                     }
@@ -80,20 +96,7 @@
 
                     var form = $(this).closest("form");
                     event.preventDefault();
-                    Swal.fire({
-                        title: '{{ __('Are you sure?') }}',
-                        text: "{!! __('You won\'t be able to revert this!') !!}",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: '{{ __('Yes, delete it!') }}',
-                        cancelButtonText: '{{ __('Cancel') }}',
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            form.submit();
-                        }
-                    })
+                    deleteAction(form || this);
                 });
             });
         });
@@ -598,16 +601,6 @@
 
 
     });
-    // code that checks house image greater than 5MB from frontend
-    $('#house_image').on('change', function() {
-        validateFileSize(document.querySelector('#house_image'),'fileSizeHintImg','5');
-    });
-
-     // code that checks geom greater than 1MB from frontend
-     $('#geom').on('change', function() {
-        validateFileSize(document.querySelector('#geom'),'fileSizeHintKML','1');
-    });
-
     var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
     // use category handled on initial load
     var html = '<option value="">Use Categories of Building</option>';

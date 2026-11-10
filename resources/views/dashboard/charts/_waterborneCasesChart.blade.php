@@ -9,7 +9,7 @@
         var myChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [<?php echo implode(',', $waterborneCasesChart['labels']); ?>],
+                labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($waterborneCasesChart['labels'] ?? [])))),
                 datasets: [
                     {
                         label: "Waterborne Cases",
@@ -17,7 +17,7 @@
                         hoverBackgroundColor: "rgba(54, 162, 235,0.7)",
                         pointBackgroundColor: 'rgba(75, 192, 192, 1)', // Point color
 
-                        data: [<?php echo implode(',', $waterborneCasesChart['values']); ?>],
+                        data: @json(array_values($waterborneCasesChart['values'] ?? [])),
                         fill: false,
                         cubicInterpolationMode: 'monotone' // Use 'monotone' for smooth curves
                     }

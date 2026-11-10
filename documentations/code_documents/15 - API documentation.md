@@ -66,6 +66,41 @@ Error Response
 
 }
 
+#### Login Rate Limiting and Retry Behavior (BASEIMIS-44)
+
+The following contract applies to releases containing the login-rate-limiting remediation. The release owner must confirm that `throttle:api-login` and its named limiter are included; this documentation does not itself activate the protection.
+
+`POST /api/login` uses the named `api-login` limiter in addition to the existing general API limiter. Its configurable default limits are:
+
+| Requests counted | Default maximum | Window |
+|---|---:|---:|
+| Same normalized email and client IP | 5 | 1 minute |
+| Same client IP across email addresses | 20 | 1 minute |
+| Same normalized email across client IPs | 15 | 15 minutes |
+
+The submitted email is trimmed and converted to lowercase for the limiter key, then SHA-256 hashed. Web login uses a separate counter namespace. These controls count admitted login requests, including requests with correct credentials; they are not failed-password-only counters.
+
+When a login-specific limit is exceeded, the response is **HTTP `429 Too Many Requests`**, with a `Retry-After` header indicating the remaining wait in seconds. Example:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+Retry-After: 60
+```
+
+```json
+{
+  "status": false,
+  "message": "Too many login attempts. Please try again in 60 seconds."
+}
+```
+
+The message is translated using `auth.throttle`; wording and waiting time may vary. It must not reveal whether the email exists. The general API limiter can also return HTTP 429; clients must handle that status without depending on an exact error-message string or assuming every 429 body has the login-specific structure.
+
+Clients should stop automatic login retries after HTTP 429, show a temporary waiting message, and wait at least the duration in `Retry-After` before allowing another attempt. If the header is absent, avoid a tight retry loop and use a bounded retry delay. A later request can still be blocked by another active limit, so handle each response's waiting time. Restrictions expire automatically and do not permanently disable the account.
+
+See [24 - Authentication and Web Security](24%20-%20Authentication%20and%20Web%20Security.md) for configuration names, trusted-proxy and shared-cache requirements, web-login behavior, and verification steps.
+
 ### App Logout
 
 | URL           | {Base_URL}/api/logout             |          |                   |

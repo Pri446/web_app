@@ -313,10 +313,7 @@ WITH candidates AS (
         building.ward,
         building.house_number,
         building.house_locality,
-        building.road_code,
-        owner.owner_name,
-        owner.owner_gender,
-        owner.owner_contact
+        building.road_code
     FROM fsm.containments AS containment
     JOIN building_info.build_contains AS building_containment
       ON building_containment.containment_id = containment.id
@@ -324,17 +321,6 @@ WITH candidates AS (
     JOIN building_info.buildings AS building
       ON building.bin = building_containment.bin
      AND building.deleted_at IS NULL
-    LEFT JOIN LATERAL (
-        SELECT
-            building_owner.owner_name,
-            building_owner.owner_gender,
-            building_owner.owner_contact
-        FROM building_info.owners AS building_owner
-        WHERE building_owner.bin = building.bin
-          AND building_owner.deleted_at IS NULL
-        ORDER BY building_owner.id
-        LIMIT 1
-    ) AS owner ON TRUE
     WHERE containment.deleted_at IS NULL
       AND (containment.status IS NULL OR containment.status IN (0, 3))
       AND NOT EXISTS (
@@ -358,8 +344,7 @@ ranked AS (
 INSERT INTO fsm.desludging_schedule_temp (
     service_provider_id, service_provider_name, bin, ward, house_number,
     house_locality, road_code, containment_id, next_emptying_date,
-    fstp_distance, priority, sequence, status, owner_name, owner_gender,
-    owner_contact, respondent_name, respondent_contact, generated_by,
+    fstp_distance, priority, sequence, status, generated_by,
     generated_at, created_at, updated_at
 )
 SELECT
@@ -376,11 +361,6 @@ SELECT
     ranked.priority,
     ranked.schedule_sequence,
     ranked.status,
-    ranked.owner_name,
-    ranked.owner_gender,
-    ranked.owner_contact,
-    NULL::varchar,
-    NULL::varchar,
     ?,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP,
@@ -707,8 +687,25 @@ SQL
     /** Return generated rows through Yajra server-side DataTables. */
     public function getData(Request $request)
     {
+        // Scheduling is an operational workflow, not a PII viewing surface.
+        // Use an explicit allowlist so legacy owner snapshot columns can never
+        // be serialized to the browser, even if they still exist in the table.
         $query = DB::table('fsm.desludging_schedule_temp as schedule')
-            ->select('schedule.*')
+            ->select([
+                'schedule.service_provider_id',
+                'schedule.service_provider_name',
+                'schedule.bin',
+                'schedule.ward',
+                'schedule.house_number',
+                'schedule.house_locality',
+                'schedule.road_code',
+                'schedule.containment_id',
+                'schedule.next_emptying_date',
+                'schedule.fstp_distance',
+                'schedule.priority',
+                'schedule.sequence',
+                'schedule.status',
+            ])
             ->where(function ($query) {
                 $query->whereNull('schedule.status')
                     ->orWhereIn('schedule.status', [0, 3]);
@@ -731,18 +728,7 @@ SQL
             $request->input('holding_num')
         );
 
-        if ($request->filled('owner_name')) {
-            $value = '%' . trim((string) $request->input('owner_name')) . '%';
-            $query->where('schedule.owner_name', 'ILIKE', $value);
-        }
-
         return DataTables::of($query)
-            ->addColumn('display_name', function ($row) {
-                return $row->owner_name ?: '-';
-            })
-            ->addColumn('display_contact', function ($row) {
-                return $row->owner_contact ?: '-';
-            })
             ->addColumn('action', function ($row) {
                 $buttons = '';
 

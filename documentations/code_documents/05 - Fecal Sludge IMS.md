@@ -61,7 +61,7 @@ The containment module encompasses one major sub modules:
 
 The Containment Sub Module uses the following tables:
 
--   containments: stores primary information of the building
+-   containments: stores primary containment information. The internal identifier remains id, while the unique public_id UUID is used for browser URLs and route-model binding.
 -   Build_contains: relational database that connects buildings and containments. Foreign Key: bin and containment_id.
 -   Sanitation_system_types: stores sanitation system types attributes used as dropdowns
 
@@ -112,6 +112,8 @@ buildings: belongsToMany relationship (n to n relationship)
 
 emptyingService: hasMany relationship with applications
 
+The Containment model uses app\\Models\\Concerns\\HasPublicId. This trait generates a UUID public_id for newly created records and makes Laravel resolve Containment route parameters by public_id instead of the internal containment id.
+
 ### ContainmentController
 
 Controller: app\\Http\\Controllers\\Fsm\\ContainmentController.php
@@ -150,35 +152,35 @@ The basic classes of the controller are:
 | **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                       |
 | **Remarks**     | storeContainmentData(\$request) Service Class Function Name                  |
 
-| **Function**    | show()                                                                  |
-|-----------------|-------------------------------------------------------------------------|
-| **Description** | Returns the page displaying individual containment data                 |
-| **Parameters**  | \$id                                                                    |
-| **Return**      | fsm.containments.show  compact('page_title', 'containment','building')  |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                  |
+| **Function**    | show()                                                                          |
+|-----------------|---------------------------------------------------------------------------------|
+| **Description** | Returns the page displaying individual containment data                         |
+| **Parameters**  | Containment \$containment resolved from the public_id route parameter           |
+| **Return**      | fsm.containments.show compact('page_title', 'containment', 'building')           |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                         |
 
-| **Function**    | edit()                                                                                 |
-|-----------------|----------------------------------------------------------------------------------------|
-| **Description** | Returns the edit form page displaying pre-existing individual containment data as well |
-| **Parameters**  | \$id                                                                                   |
-| **Return**      | fsm.containments.edit  ompact('page_title','containment')                              |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                 |
+| **Function**    | edit()                                                                                  |
+|-----------------|-----------------------------------------------------------------------------------------|
+| **Description** | Returns the edit form page displaying pre-existing individual containment data          |
+| **Parameters**  | Containment \$containment resolved from the public_id route parameter                    |
+| **Return**      | fsm.containments.edit compact('page_title', 'containment')                               |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                  |
 
-| **Function**    | update()                                                                      |
-|-----------------|-------------------------------------------------------------------------------|
-| **Description** | Calls the service class that handles the process of updating containment data |
-| **Parameters**  | ContainmentRequest \$request                                                  |
-| **Return**      | Success or error message.                                                     |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                        |
-| **Remarks**     | updateContainmentData(\$request, \$id) (service class function)               |
+| **Function**    | update()                                                                                         |
+|-----------------|--------------------------------------------------------------------------------------------------|
+| **Description** | Calls the service class that handles the process of updating containment data                    |
+| **Parameters**  | ContainmentRequest \$request, Containment \$containment resolved from public_id                 |
+| **Return**      | Success or error message                                                                         |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                          |
+| **Remarks**     | Uses the bound model's internal id only after public_id route resolution succeeds.                |
 
-| **Function**    | destroy()                                                                    |
-|-----------------|------------------------------------------------------------------------------|
-| **Description** | Soft deletes containment information if it is not connected to any buildings |
-| **Parameters**  | \$id                                                                         |
-| **Return**      |                                                                              |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                       |
-| **Remarks**     | Button present in the actions column of the fsm.containments.index page      |
+| **Function**    | destroy()                                                                          |
+|-----------------|------------------------------------------------------------------------------------|
+| **Description** | Soft deletes containment information if it is not connected to any buildings       |
+| **Parameters**  | Containment \$containment resolved from the public_id route parameter               |
+| **Return**      | Redirect with success or error message                                              |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                             |
+| **Remarks**     | The delete form URL contains public_id and does not expose the internal id.          |
 
 | **Function**    | export()                                                                       |
 |-----------------|--------------------------------------------------------------------------------|
@@ -197,27 +199,29 @@ The basic classes of the controller are:
 | **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                         |
 | **Remarks**     | getExportBuildingContainment() (service class function)                                           |
 
-| **Function**    | listBuildings()                                                                                          |
-|-----------------|----------------------------------------------------------------------------------------------------------|
-| **Description** | Calls the service class that handles the process of fetching all buildings connected to that containment |
-| **Parameters**  |                                                                                                          |
-| **Return**      | fsm.containments.listBuilding', compact('page_title', 'containment', 'buildings')                        |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                                   |
-| **Remarks**     |                                                                                                          |
+| **Function**    | listBuildings()                                                                                                 |
+|-----------------|-----------------------------------------------------------------------------------------------------------------|
+| **Description** | Fetches all Buildings connected to the route-bound Containment                                                  |
+| **Parameters**  | Containment \$containment resolved from the public_id route parameter                                          |
+| **Return**      | fsm.containments.listBuilding compact('page_title', 'containment', 'buildings')                                 |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                                        |
+| **Remarks**     | The internal containment id can still be displayed as business data, but it is not used in the browser URL.     |
 
-| **Function**    | deleteBuilding()                                                                       |
-|-----------------|----------------------------------------------------------------------------------------|
-| **Description** | This code manages the deletion of a containment and its connection to a building while ensuring data integrity. It checks if the containment or building has active applications (with incomplete emptying) and prevents deletion if such applications exist. If no active applications are found, it removes the connection, updates the sewer/drain codes for the building if there are no remaining connections, and deletes the containment if it has no other connections. The process uses a database transaction for consistency and provides user feedback based on the outcome..                         |
-| **Parameters**  | \$id, \$bin                                                                            |
-| **Return**      |                                                                                        |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                 |
-| **Remarks**     | Button present in the page: containments.listBuildings and buildings.edit-partial-form |
+| **Function**    | deleteBuilding()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Removes a Containment–Building connection while checking active applications and maintaining sewer/drain data integrity.                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Parameters**  | Containment \$containment and Building \$building, both resolved from their public_id route parameters                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Return**      | Redirect with success or error message                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ContainmentController.php                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Remarks**     | Both internal identifiers are hidden from the relationship-delete URL. The action is available from containments.listBuilding and the Building edit form.                                                                                                                                                                                                                                                                                                                                                           |
 
 ### ContainmentService
 
 Location: app\\Services\\Fsm\\ContainmentService.php
 
 The Service Class contains all the business logic. It contains all the functions that are being called in the ContainmentController.
+
+ContainmentService uses public_id when generating DataTable action URLs for details, edit, delete, history, type-change history, connected Buildings, maps, emptying history and nearest-road tools. Internal ids remain available for database relationships and displayed business data but are not used as URL identifiers.
 
 | **Function**    | fetchData()                                                                                                                                                                                                                                   |
 |-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -269,6 +273,51 @@ The Service Class contains all the business logic. It contains all the functions
 | **Source**      | app\\Services\\Fsm\\ContainmentService.php                                                                                                                                                                                                                                                                                                                                                                                               |
 | **Logic**       | \$bin = isset(\$_GET['bin']) ? \$_GET['bin'] : null; Fetching value on the basis of which filter is to be carried out. This value needs to be declared in the script of the index page. Define columns, and the query fetching the respective columns Check if any filter values are present, if yes, filter accordingly Set styles using StyleBuilding provided by Box/Spout\^2 Run query, store values in the columns Export the data  |
 
+
+### Containment Public ID URL Binding
+
+Containment browser URLs use a random UUID public_id instead of the internal containment id. The internal id remains the database primary key and may still be displayed as business data, but record-specific actions do not place it in the URL.
+
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| public_id migration | database\\migrations\\2026_08_12_000001_add_public_ids_to_buildings_and_containments.php | Adds UUID public_id columns, backfills existing Containments and Buildings, makes them required and creates unique indexes. |
+| HasPublicId trait | app\\Models\\Concerns\\HasPublicId.php | Generates a UUID on model creation, returns public_id from getRouteKeyName() and validates incoming UUID route values. |
+| Containment model | app\\Models\\Fsm\\Containment.php | Uses HasPublicId so implicit Containment route-model binding resolves by public_id. |
+| Containment routes | routes\\web.php | Declares public_id binding for Containment actions and for Building–Containment relationship routes. |
+| ContainmentService | app\\Services\\Fsm\\ContainmentService.php | Builds action buttons and forms with public_id rather than internal containment id or Building BIN. |
+
+The following Containment actions use public_id in the URL:
+
+| Action | Example route behavior |
+|--------|------------------------|
+| Show/Details | GET fsm/containments/{containment_public_id} |
+| Edit | GET fsm/containments/{containment_public_id}/edit |
+| Update | PUT/PATCH fsm/containments/{containment_public_id} |
+| Delete | DELETE fsm/containments/{containment_public_id} |
+| History | GET fsm/containments/{containment_public_id}/history |
+| Type-change history | GET fsm/containments/{containment_public_id}/type-change-history |
+| Connected Buildings | GET fsm/containments/{containment_public_id}/listBuildings |
+| Map and nearest-road actions | Pass field=public_id and val={containment_public_id} instead of the internal id |
+| Emptying-service history | Passes containment_public_id instead of the internal containment id |
+
+Building–Containment routes protect both identifiers:
+
+| Action | Route binding behavior |
+|--------|------------------------|
+| List Containments for a Building | GET fsm/containments/building/{building_public_id}/containmentData |
+| Create Containment for a Building | GET fsm/containments/building/{building_public_id}/create |
+| Store Containment for a Building | POST fsm/containments/building/{building_public_id}/store |
+| Remove Building–Containment connection | DELETE fsm/containments/{containment_public_id}/buildings/{building_public_id} |
+
+Controller methods type-hint the resolved models, including show(Containment \$containment), edit(Containment \$containment), update(ContainmentRequest \$request, Containment \$containment), history(Containment \$containment), typeChangeHistory(Containment \$containment), destroy(Containment \$containment), listBuildings(Containment \$containment) and deleteBuilding(Containment \$containment, Building \$building).
+
+Laravel resolves each UUID to the correct model before the controller executes. After binding succeeds, controller and service code may use the internal id or BIN for database relationships, but those identifiers are not exposed in the action URL.
+
+HasPublicId::resolveRouteBinding() rejects an internal numeric containment id, a Building BIN or a malformed UUID and returns a normal 404 response. It validates the value before PostgreSQL compares it with the native UUID column, preventing an invalid UUID from causing a database 500 error.
+
+Public IDs reduce internal-identifier exposure and make sequential URL enumeration more difficult. They are not a replacement for authorization: authentication and the existing Containment permissions are still checked for show, edit, update, delete, history, relationship and map actions.
+
+The URL-binding behavior is covered by tests\\Feature\\PublicIdUrlBindingTest.php. The tests verify UUID population and uniqueness, public_id usage in action URLs, absence of internal Containment IDs and Building BINs from those URLs, correct model resolution, automatic UUID generation and 404 responses for internal or malformed identifiers.
 
 **ContainmentRequest**
 
@@ -821,7 +870,7 @@ Tables
 
 The Application Module uses the following tables:
 
--   Fsm.applications: stores the primary information of the application
+-   Fsm.applications: stores the primary information of the application. customer_name, customer_gender and customer_contact contain application-encrypted customer/owner PII. applicant_name, applicant_gender and applicant_contact remain a separate operational snapshot for downstream FSM workflows.
 -   Building_info.buildings: retrieves informations of required building
 -   Building_info.owners: relational database that connects buildings and their owner.
 -   Utility_info.roads: retrieves road information of required building
@@ -838,6 +887,14 @@ Views
 -   resources/views/layouts/partial-form.blade.php: the form template
 -   resources/views/layouts/application_report.blade.php: shows applications for pdf download
 -   resources/views/layouts/monthly_report.blade.php: shows detailed information month wise for pdf download
+
+Application customer PII behavior in the views:
+
+-   applications.index: displays fixed masks for customer name and contact while PII is locked. Authorized users can activate View Owner PII Information after re-entering their current password.
+-   applications.index: shows the customer-name filter only while Application PII reveal mode is active.
+-   applications.create: keeps Building owner lookup fields masked unless the current user has an unexpired Application owner_lookup scope and Add Application permission.
+-   layouts.show and applications.edit: show fixed masks while locked. Customer PII edit fields remain disabled until an edit-scoped privileged session is active.
+-   applications.index: provides a dedicated customer PII export for either a validated BIN list or, for approved administrative roles, all authorized Application rows.
 
 Models
 
@@ -875,6 +932,16 @@ There are multiple relationships defined in the Application Model. They are:
 -   feedback: hasOne
 -   sludge_collection: hasOne
 
+The Application model encrypts these attributes before writing to fsm.applications:
+
+-   customer_name
+-   customer_gender
+-   customer_contact
+
+The setCustomerNameAttribute(), setCustomerGenderAttribute() and setCustomerContactAttribute() mutators call PiiEncryptionService. Null remains null and an already encrypted value is not encrypted twice. These fields are excluded from revision history so plaintext or ciphertext is not copied into the revisions table.
+
+The applicant_name, applicant_gender and applicant_contact fields are intentionally separate from the encrypted customer fields. Customer and applicant may be different people. Applicant fields are used as an operational snapshot by downstream workflows and are copied from customer data only when the user explicitly selects the Same as Owner option.
+
 Application Controller
 
 path: App\\Http\\Controllers\\Fsm\\ApplicationController.php
@@ -883,19 +950,19 @@ The controller’s main function is to provide the connection between the callin
 
 The basic classes of the controller are:
 
-| **Function**    | \__construct()                                                         |
-|-----------------|------------------------------------------------------------------------|
-| **Description** | Initializes authentication, permissions and the service class instance |
-| **Parameters**  | Service class instance(ApplicationService)                             |
-| **Return**      | null                                                                   |
-| **Source**      | app\\Http\\Controllers\\Fsm\\ApplicationController.php                 |
+| **Function**    | \__construct()                                                                                                     |
+|-----------------|--------------------------------------------------------------------------------------------------------------------|
+| **Description** | Initializes ApplicationService, ApplicationPiiAccessService, OwnerPiiAuditService and no-cache middleware          |
+| **Parameters**  | ApplicationService, ApplicationPiiAccessService and OwnerPiiAuditService                                            |
+| **Return**      | null                                                                                                               |
+| **Source**      | app\\Http\\Controllers\\Fsm\\ApplicationController.php                                                             |
 
-| **Function**    | index()                                                                                                                                                                |
-|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Description** | Returns the index.blade.php page with links and filter form fields from the service class.                                                                             |
-| **Parameters**  | null                                                                                                                                                                   |
-| **Return**      | view('fsm.applications.index',compact('createBtnLink','createBtnTitle','filterFormFields','exportBtnLink','reportBtnLink', 'application_months', 'application_years')) |
-| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                                 |
+| **Function**    | index()                                                                                                                                                                                              |
+|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Returns the Application list with links, filters, customer PII permissions, reveal state, export permission and remaining privileged-session time.                                                   |
+| **Parameters**  | null                                                                                                                                                                                                 |
+| **Return**      | fsm.applications.index with the existing list data plus customerPiiListUnlocked, canUnlockCustomerPii, canExportCustomerPii and customerPiiUnlockSeconds                                               |
+| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                                                               |
 
 | **Function**    | create()                                                                                                                                                                                                                                             |
 |-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -904,12 +971,13 @@ The basic classes of the controller are:
 | **Return**      | view('fsm.applications.create',[  'formAction' =\> \$this-\>applicationService-\>getCreateFormAction(),  'formFields' =\> \$this-\>applicationService-\>getCreateFormFields(),  'indexAction' =\> \$this-\>applicationService-\>getIndexAction()  ]) |
 | **Source**      | app\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                                                                                                               |
 
-| **Function**    | getData()                                                                                                                            |
-|-----------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| **Description** | Calls the getDatatable function of the service class and handles the process of fetching application data and respective information |
-| **Parameters**  | \$request                                                                                                                            |
-| **Return**      | Returns data of application and respective information for datatable                                                                 |
-| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                                                                           |
+| **Function**    | getData()                                                                                                                                                              |
+|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Returns the Application DataTable with customer name and contact fixed-masked while locked or explicitly decrypted during a valid list-scoped Application PII session. |
+| **Parameters**  | Request \$request                                                                                                                                                      |
+| **Return**      | DataTable response from getDatatable(\$request, \$revealed)                                                                                                           |
+| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                                |
+| **Remarks**     | Privileged list responses and customer-name filter use are audited.                                                                                                    |
 
 | **Function**    | store()                                                                      |
 |-----------------|------------------------------------------------------------------------------|
@@ -919,27 +987,28 @@ The basic classes of the controller are:
 | **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                       |
 | **Remarks**     | createApplication(\$request) Service Class Function Name                     |
 
-| **Function**    | show()                                                                                                   |
-|-----------------|----------------------------------------------------------------------------------------------------------|
-| **Description** | Returns the page with detailed information of the application                                            |
-| **Parameters**  | \$id                                                                                                     |
-| **Return**      | view('layouts.show',compact('page_title','formFields','application','indexAction'),['cardForm'=\>true]); |
-| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                   |
+| **Function**    | show()                                                                                                                                      |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Returns Application details with fixed-masked customer PII unless a valid view-scoped Application PII session exists.                       |
+| **Parameters**  | Application id                                                                                                                              |
+| **Return**      | view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'), ['cardForm'=\>true])                                |
+| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                     |
+| **Remarks**     | Successful plaintext viewing is audited.                                                                                                    |
 
-| **Function**    | edit()                                                                                                                        |
-|-----------------|-------------------------------------------------------------------------------------------------------------------------------|
-| **Description** | Returns the edit form page displaying pre-existing individual application data as well                                        |
-| **Parameters**  | \$id                                                                                                                          |
-| **Return**      | view('fsm.applications.edit',compact('page_title','formFields','formAction','indexAction','application'),['cardForm'=\>true]) |
-| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                        |
+| **Function**    | edit()                                                                                                                                                       |
+|-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Returns the edit form. Customer PII is masked and disabled while locked and plaintext/editable only during a valid edit-scoped Application PII session.       |
+| **Parameters**  | Application id                                                                                                                                               |
+| **Return**      | view('fsm.applications.edit', compact('page_title', 'formFields', 'formAction', 'indexAction', 'application'), ['cardForm'=\>true])                            |
+| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                      |
 
-| **Function**    | update()                                                                      |
-|-----------------|-------------------------------------------------------------------------------|
-| **Description** | Calls the service class that handles the process of updating application data |
-| **Parameters**  | ApplicationRequest \$request, \$id                                            |
-| **Return**      | Redirection to index page with success or failure prompt                      |
-| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                        |
-| **Remarks**     | updateApplication(\$request,\$id) (service class function)                    |
+| **Function**    | update()                                                                                                                                                 |
+|-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Updates Application data and rejects customer_name, customer_gender or customer_contact changes unless an edit-scoped Application PII session is active. |
+| **Parameters**  | ApplicationRequest \$request, \$id                                                                                                                       |
+| **Return**      | Redirection to index page with success or failure prompt                                                                                                 |
+| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                   |
+| **Remarks**     | Authorized changes are audited and encrypted by Application model mutators before database storage.                                                      |
 
 | **Function**    | export()                                                                   |
 |-----------------|----------------------------------------------------------------------------|
@@ -949,13 +1018,13 @@ The basic classes of the controller are:
 | **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                     |
 | **Remarks**     | export(\$request) (service class function)                                 |
 
-| **Function**    | buildingDetails()                                                                                                                                                                        |
-|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Description** | Calls the service class that handles the process of fetching building details according to the selected house number                                                                     |
-| **Parameters**  | Request \$request                                                                                                                                                                        |
-| **Return**      | JSON response of details of the building which includes customer name,customer’s gender,customer’s contact,road,ward,containments,status,household served,population served,toilet count |
-| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                                                   |
-| **Remarks**     | getBuildingDetails(\$request) (service class function)                                                                                                                                   |
+| **Function**    | buildingDetails()                                                                                                                                                                                       |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Fetches Building details after BIN selection. Building owner PII is returned only when the user has Add Application permission and an unexpired owner_lookup scope from Application PII password re-entry. |
+| **Parameters**  | Request containing bin                                                                                                                                                                                  |
+| **Return**      | JSON containing non-PII Building information, lock flags and either authorized owner plaintext or null owner fields                                                                                     |
+| **Source**      | App\\Http\\Controllers\\Fsm\\ApplicationController.php                                                                                                                                                  |
+| **Remarks**     | The server validates access on every lookup; a browser flag cannot unlock PII. Authorized owner lookup is audited and protected by no-cache middleware.                                                   |
 
 | **Function**    | history                                                                                                                        |
 |-----------------|--------------------------------------------------------------------------------------------------------------------------------|
@@ -1008,19 +1077,19 @@ The service class contains all the business logic and provides all the services 
 | **Return**      | createFormFields()                         |
 | **Source**      | App\\Services\\Fsm\\ApplicationService.php |
 
-| **Function**    | getShowFormFields                                                                 |
-|-----------------|-----------------------------------------------------------------------------------|
-| **Description** | Get form fields for showing applications after initializing the show form fields. |
-| **Parameters**  | null                                                                              |
-| **Return**      | showFormFields                                                                    |
-| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                        |
+| **Function**    | getShowFormFields(\$application, bool \$revealCustomerPii = false)                                        |
+|-----------------|------------------------------------------------------------------------------------------------------------|
+| **Description** | Builds Application detail fields with fixed-masked or explicitly decrypted customer PII.                  |
+| **Parameters**  | Application and server-authorized reveal flag                                                             |
+| **Return**      | showFormFields                                                                                             |
+| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                                                  |
 
-| **Function**    | getEditFormFields()                                                               |
-|-----------------|-----------------------------------------------------------------------------------|
-| **Description** | Get form fields for editing applications after initializing the edit form fields. |
-| **Parameters**  | \$application                                                                     |
-| **Return**      | editFormFields                                                                    |
-| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                        |
+| **Function**    | getEditFormFields(\$application, bool \$revealCustomerPii = false)                                         |
+|-----------------|------------------------------------------------------------------------------------------------------------|
+| **Description** | Builds Application edit fields; customer PII fields remain masked and disabled unless edit scope is valid. |
+| **Parameters**  | Application and server-authorized reveal flag                                                              |
+| **Return**      | editFormFields                                                                                              |
+| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                                                   |
 
 | **Function**    | getCreateFormAction()                      |
 |-----------------|--------------------------------------------|
@@ -1078,19 +1147,19 @@ The service class contains all the business logic and provides all the services 
 | **Return**      | Collection of applications                 |
 | **Source**      | App\\Services\\Fsm\\ApplicationService.php |
 
-| **Function**    | getDatatable()                             |
-|-----------------|--------------------------------------------|
-| **Description** | Get Datatables of Applications.            |
-| **Parameters**  | Request \$request                          |
-| **Return**      | DataTables                                 |
-| **Source**      | App\\Services\\Fsm\\ApplicationService.php |
+| **Function**    | getDatatable(Request \$request, bool \$revealCustomerPii = false)                                         |
+|-----------------|------------------------------------------------------------------------------------------------------------|
+| **Description** | Returns the allowlisted Application DataTable with customer PII masked or decrypted according to server-authorized reveal state. |
+| **Parameters**  | Request and reveal flag                                                                                   |
+| **Return**      | DataTables                                                                                                |
+| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                                                  |
 
-| **Function**    | getBuildingDetails                             |
-|-----------------|------------------------------------------------|
-| **Description** | Get building details of specified Application. |
-| **Parameters**  | Request \$request                              |
-| **Return**      | JSONResponse                                   |
-| **Source**      | App\\Services\\Fsm\\ApplicationService.php     |
+| **Function**    | getBuildingDetails(Request \$request, bool \$revealOwnerPii = false)                                               |
+|-----------------|--------------------------------------------------------------------------------------------------------------------|
+| **Description** | Returns selected Building data and includes owner plaintext only when the controller supplies an authorized owner_lookup flag. |
+| **Parameters**  | Request containing BIN and server-authorized reveal flag                                                           |
+| **Return**      | JSON response with lock flags, non-PII Building data and authorized owner fields or null                            |
+| **Source**      | App\\Services\\Fsm\\ApplicationService.php                                                                          |
 
 | **Function**    | createApplication()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -1137,6 +1206,180 @@ The service class contains all the business logic and provides all the services 
 | **Parameters**  | \$id                                       |
 | **Return**      | PDF file containing applications report    |
 | **Source**      | App\\Services\\Fsm\\ApplicationService.php |
+
+### Application Customer PII Security
+
+The Application module protects customer_name, customer_gender and customer_contact in fsm.applications. These columns are the Application's customer/owner snapshot and are encrypted before database storage. The Application module uses the same PiiEncryptionService, active key version and external key provider as the Building module; it does not require or generate a separate encryption key.
+
+Applicant information is intentionally separate:
+
+-   customer_name, customer_gender and customer_contact are encrypted PII and use the controlled Application PII workflow.
+-   applicant_name, applicant_gender and applicant_contact are an independent operational snapshot used by Emptying, Feedback, reports and other downstream FSM workflows.
+-   Customer and applicant are not assumed to be the same person.
+-   Applicant values are copied from customer values only when the user explicitly selects Same as Owner.
+-   Normal Application edits do not silently overwrite the Building owner from the Application customer snapshot or overwrite the customer snapshot from applicant data.
+
+#### Application PII Data States
+
+| State | Handling |
+|-------|----------|
+| At rest | Customer PII is stored as versioned AES-256-GCM ciphertext such as `enc:v1:payload` in fsm.applications. The encryption key remains outside the project/database. |
+| In transit | Authorized plaintext must use HTTPS in production. Application DataTable, owner lookup, show, edit and dedicated PII export responses use no-store/no-cache protection. |
+| In use | Plaintext exists temporarily in PHP request memory and in an authorized browser response. The session stores grant metadata only; it does not store customer plaintext or the encryption key. |
+| Locked | Customer fields use the fixed `********` mask. Locked DataTable and BIN lookup responses do not send customer/owner plaintext or ciphertext. |
+
+#### Application PII Components
+
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| Application mutators | app\\Models\\Fsm\\Application.php | Encrypt customer_name, customer_gender and customer_contact on assignment and exclude those fields from revision history. |
+| PiiEncryptionService | app\\Services\\PiiEncryptionService.php | Provides shared versioned encryption/decryption, randomized ciphertext and double-encryption prevention. |
+| ApplicationCustomerPiiPresenter | app\\Services\\ApplicationCustomerPiiPresenter.php | Returns fixed masks, controlled plaintext values and authorized customer-name matching. |
+| ApplicationPiiAccessService | app\\Services\\ApplicationPiiAccessService.php | Stores and validates the Application-specific short-lived list, view, edit and owner_lookup scopes. |
+| ApplicationPiiAccessController | app\\Http\\Controllers\\Fsm\\ApplicationPiiAccessController.php | Performs Application permissions and current-password verification before granting reveal mode. |
+| ApplicationCustomerPiiExportService | app\\Services\\ApplicationCustomerPiiExportService.php | Validates selected BIN files, applies Application row-level visibility and builds allowlisted PII export rows. |
+| ApplicationCustomerPiiExportController | app\\Http\\Controllers\\Fsm\\ApplicationCustomerPiiExportController.php | Enforces export permissions, administrative full-export rules, password re-entry, audit and secure streaming. |
+
+#### Application PII Access Flow
+
+ApplicationPiiAccessController::unlockList() requires List Applications, View Application Customer PII and Unlock Application Customer PII. It verifies the user's current login password and creates a five-minute Application-specific privileged session.
+
+The Application grant is separate from the Building Owner PII grant. Revealing Building PII does not automatically reveal Application PII, and revealing Application PII does not unlock the Building module.
+
+| Scope | Granted when | Allows |
+|-------|--------------|--------|
+| list | Password and Application PII permissions are valid | Plaintext customer values in the Application DataTable and customer-name filtering. |
+| view | Password and Application PII permissions are valid | Plaintext customer values on Application details. |
+| edit | User additionally has Edit Application | Plaintext customer values and editing on the Application edit page. |
+| owner_lookup | User additionally has Add Application | Building owner lookup on Add Application after Street/House/BIN selection. |
+
+ApplicationPiiAccessService::isUnlocked() checks the current user, expiry, requested scope and resource on the server. The grant is removed on manual lock or expiration. The list page automatically locks when the remaining timer expires.
+
+Failure at login authentication, module permission, PII permission, password re-entry, user ownership, scope, resource or expiry checks blocks plaintext access.
+
+#### Application DataTable and Customer Name Filter
+
+ApplicationService::getAllApplications() selects only DataTable columns and disables automatic eager loading so unused relationships and PII fields cannot leak through JSON serialization.
+
+ApplicationService::getDatatable(Request \$request, bool \$revealCustomerPii) controls presentation:
+
+-   Locked mode returns `********` for customer_name and customer_contact.
+-   Revealed mode decrypts only the customer fields required by the DataTable.
+-   customer_gender and applicant fields are not added to the DataTable response when they are not required.
+-   The customer-name filter is available only while Application PII reveal mode is active.
+-   Randomized encryption cannot support SQL LIKE on customer_name. Authorized filtering reads names with a cursor, decrypts them temporarily in PHP, gathers matching Application IDs and then filters the main query.
+-   Existing Service Provider and Treatment Plant row-level visibility continues to limit the Application query.
+-   Each revealed DataTable request is audited without storing customer values.
+
+#### Add Application Owner Lookup
+
+When the user selects Street Name / Street Code and House Number / BIN, ApplicationController::buildingDetails() checks Add Application permission and the owner_lookup scope on every request.
+
+-   If authorized, ApplicationService::getBuildingDetails() explicitly decrypts the related Building owner through OwnerPiiPresenter and returns owner name, gender and contact for form confirmation.
+-   If locked, expired or unauthorized, customer_name, customer_gender and customer_contact are null and the owner_pii_locked/customer_pii_locked flags are true. Neither ciphertext nor partially masked owner values are sent.
+-   The create page displays a fixed mask before authorized lookup.
+-   The JavaScript unlock flag and disabled fields are presentation controls only; the controller remains the security boundary.
+-   Authorized lookups audit the BIN and result, never the decrypted owner values.
+
+When an Application is stored, missing customer values may be populated server-side from the current Building owner snapshot and then encrypted by Application model mutators. This server-side copy does not make applicant and customer permanently linked. Later edits treat the Application customer snapshot, applicant snapshot and Building owner as independent records.
+
+#### Application Show, Edit and Update
+
+ApplicationService::getShowFormFields() and getEditFormFields() use ApplicationCustomerPiiPresenter:
+
+-   Show returns fixed masks unless a valid view scope exists.
+-   Edit returns fixed masks and disables customer inputs unless a valid edit scope exists.
+-   ApplicationController::update() rejects crafted customer PII fields with HTTP 403 when edit scope is missing, even if a caller bypasses disabled browser inputs.
+-   Authorized plaintext views and customer PII changes are audited.
+-   Application model mutators encrypt authorized changes before database storage.
+-   customer_name, customer_gender and customer_contact are excluded from revision history.
+
+#### Application Customer PII Export
+
+The normal operational Application export remains separate from the dedicated customer PII export. Any export or report that requires plaintext customer PII must use the dedicated password-confirmed endpoint; operational exports and reports must not serialize either decrypted customer values or encrypted `enc:v...` payloads.
+
+| **Function**    | ApplicationCustomerPiiExportController::export(Request \$request)                                                                                                                    |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Description** | Streams an allowlisted CSV containing application_id, bin, customer_name, customer_gender, customer_contact and status after authorization and password re-entry.                     |
+| **Parameters**  | application_export_mode, application_bin_csv for bin_list, confirm_application_export_all for all mode, and application_export_password                                              |
+| **Return**      | UTF-8 CSV download with no-store headers                                                                                                                                               |
+| **Remarks**     | Full export requires Super Admin, Municipality - Super Admin or Municipality - IT Admin. A selected BIN export is restricted by normal Application row-level visibility.              |
+
+Export modes:
+
+| Mode | Behavior |
+|------|----------|
+| bin_list | Requires a CSV with a bin header. BINs are normalized, validated and deduplicated. All authorized Applications matching each BIN are exported. |
+| all | Requires an approved administrative role and a separate explicit confirmation. Streams all Applications inside the user's authorized row scope. |
+
+The export service returns found for exported records and not_found_or_unauthorized when it cannot disclose whether a requested BIN exists outside the user's scope. A missing or invalid BIN file never falls back to a full export. Full exports use cursor() so the entire decrypted dataset is not retained in PHP memory. Spreadsheet formula prefixes are escaped before values are written.
+
+#### Application PII Audit and Cache Protection
+
+Application PII events use app\\Services\\OwnerPiiAuditService.php and auth.owner_pii_audit_logs. Events include password success/failure, reveal grants, list/detail/edit views, owner lookup, authorized/denied updates, lock, export success, validation failure and permission denial.
+
+Audit context may include user, Application id, BIN, surface, export mode and counts. Application PII audit calls do not record applicant values. `OwnerPiiAuditService` automatically removes customer/owner values, passwords, encryption keys, ciphertext, payloads, sessions and tokens from audit context.
+
+ApplicationController applies pii.no-cache middleware to getData, buildingDetails, show and edit. Dedicated PII export responses also include no-store, private, max-age=0, Pragma no-cache, expiry and nosniff headers.
+
+#### Application PII Permissions and Routes
+
+Permissions created by database\\seeders\\ApplicationPiiPermissionsSeeder.php:
+
+-   View Application Customer PII
+-   Unlock Application Customer PII
+-   Export Application Customer PII
+
+Routes under the authenticated fsm group:
+
+| Method | Route | Name | Purpose |
+|--------|-------|------|---------|
+| POST | fsm/application/customer-pii/unlock-list | application-pii.unlock-list | Password-confirmed five-minute Application reveal; rate limited to five attempts per minute. |
+| POST | fsm/application/customer-pii/lock | application-pii.lock | Immediately removes the Application privileged session. |
+| POST | fsm/application/customer-pii/export | application-pii.export | Password-confirmed dedicated customer PII export; rate limited to five attempts per minute. |
+| GET | fsm/application/getBuildingDetails | application.get-building-details | BIN lookup with server-side owner_lookup scope enforcement. |
+
+#### Application PII Configuration and Commands
+
+Application customer PII uses config\\pii.php and the same environment configuration as Building Owner PII:
+
+-   PII_KEY_PROVIDER
+-   PII_ACTIVE_KEY_VERSION
+-   PII_KEY_V1_FILE
+-   PII_ALLOW_LEGACY_PLAINTEXT
+-   PII_AUDIT_ENABLED
+-   PII_EXPORT_MAX_BINS
+-   PII_EXPORT_MAX_FILE_KB
+
+The external key must remain outside the project, database and source control. If the configured key is missing or incorrect, encrypted Application customer values cannot be decrypted. Key backup and recovery therefore protect Building, Application and other modules using the same active PII key.
+
+| Command | Purpose |
+|---------|---------|
+| php artisan pii:check-configuration | Validates the active key and encryption round trip without displaying key material. |
+| php artisan pii:encrypt-existing-applications --dry-run | Counts plaintext customer fields without changing fsm.applications. |
+| php artisan pii:encrypt-existing-applications | Encrypts only non-null customer fields that are not already encrypted, in transactional chunks. |
+| php artisan pii:verify-application-encryption | Verifies that all non-null Application customer fields are encrypted and decryptable without printing values. |
+
+Recommended migration sequence:
+
+1. Back up the database and external PII key securely.
+2. Run pii:check-configuration.
+3. Run pii:encrypt-existing-applications --dry-run and review the counts.
+4. Run pii:encrypt-existing-applications.
+5. Run pii:verify-application-encryption.
+6. Keep PII_ALLOW_LEGACY_PLAINTEXT=false after all module backfills pass verification, then clear the configuration cache.
+
+#### Application PII Tests
+
+The main automated tests are located in:
+
+-   tests\\Unit\\ApplicationCustomerPiiTest.php
+-   tests\\Unit\\ApplicationOwnerPiiModeTest.php
+-   tests\\Unit\\ApplicationCustomerPiiExportServiceTest.php
+-   tests\\Unit\\ApplicationCustomerPiiExportControllerTest.php
+-   tests\\Unit\\PiiEncryptionServiceTest.php
+-   tests\\Unit\\OwnerPiiAuditServiceTest.php
+-   tests\\Unit\\PreventPiiResponseCachingTest.php
 
 ### Emptying
 

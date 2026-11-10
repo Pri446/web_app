@@ -24,14 +24,14 @@ var ctx = document.getElementById("proposedEmptyingDateContainmentsChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $proposedEmptyingDateContainmentsChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($proposedEmptyingDateContainmentsChart['labels'] ?? [])))),
     plugins: [backgroundFill],
     datasets: [
         {
             label: "No. of requests",
             backgroundColor: "rgba(54, 162, 235,0.5)",
             hoverBackgroundColor: "rgba(54, 162, 235,0.7)",
-            data: [<?php echo implode(',', $proposedEmptyingDateContainmentsChart['values']); ?>],
+            data: @json(array_values($proposedEmptyingDateContainmentsChart['values'] ?? [])),
         }
     ]
 },

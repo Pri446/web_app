@@ -130,15 +130,13 @@ $(document).ready(function(){
 
     $('#export_form').on('submit', function() {
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        var gurl = '<?php echo Config::get("constants.GEOSERVER_URL"); ?>';
-        var gurl_wfs = gurl + 'wfs';
+        var gurl_wfs = "{{ route('gis.wfs') }}";
 
         var selectedWards = $('#ward').val();
         // var selectedTaxzone = $('#taxzone').val();
         var selectedLayers = $('#ward_overlay').val();
         var selectedFormat = $('#export_format').val();
-
-        if(checkValidation(selectedWards, selectedLayers, selectedFormat))
+ if(checkValidation(selectedWards, selectedLayers, selectedFormat))
         {
             var filters = [];
 
@@ -152,21 +150,21 @@ $(document).ready(function(){
             });
 
             var outputFormat = selectedFormat == 'kml' ? 'KML' : 'SHAPE-ZIP';
-            var fileExtension = selectedFormat == 'kml' ? 'kml' : 'zip';
-            var exportFilename = 'export_imis_' +
-                moment().format('YYYYMMDD_HHmmss') + '.' + fileExtension;
 
             var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName=" + layers.join(',') + "&CQL_FILTER=INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL" +
     "&outputFormat=" + outputFormat;
 
-            exportLink += '&format_options=filename:' + exportFilename;
+            if(outputFormat == 'SHAPE-ZIP') {
+                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.zip';
+            } else {
+                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.kml';
+            }
             window.open(exportLink);
 
         }
         return false;
 
     });
-
     function checkValidation(selectedWards, selectedLayers, selectedFormat){
 
             if ( !selectedWards || selectedWards.length < 1 || !selectedLayers || selectedLayers.length < 1 || !selectedFormat) {

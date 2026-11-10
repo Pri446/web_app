@@ -10,21 +10,21 @@ var ctx = document.getElementById("applicationResponseEfficiencyCharts");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo "'" . implode("', '", $applicationResponseEfficiencyCharts['labels']) . "'"; ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, $applicationResponseEfficiencyCharts['labels'] ?? []))),
     datasets: [
         {
           type: "bar",
             label: "Targets",
             backgroundColor: "rgba(251, 176, 64,0.8)",
             hoverBackgroundColor: "rgba(251, 176, 64,0.9)",
-            data: [<?php echo implode(',', $applicationResponseEfficiencyCharts['target_values']); ?>],
+            data: @json(array_values($applicationResponseEfficiencyCharts['target_values'] ?? [])),
         },
         {
           type: "bar",
             label: "Achievements",
             backgroundColor: "rgba(153, 202, 60,0.8)",
             hoverBackgroundColor: "rgba(153, 202, 60,0.9)",
-            data: [<?php echo implode(',', $applicationResponseEfficiencyCharts['achievement_values']); ?>],
+            data: @json(array_values($applicationResponseEfficiencyCharts['achievement_values'] ?? [])),
         }
     ]
 },

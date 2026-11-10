@@ -9,13 +9,13 @@ var ctx = document.getElementById("emptyingServiceByTypeYearChart");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo implode(',', $emptyingServiceByTypeYearChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($emptyingServiceByTypeYearChart['labels'] ?? [])))),
     datasets: [
         @foreach($emptyingServiceByTypeYearChart['datasets'] as $dataset)
         {
-            label: <?php echo $dataset['label']; ?>,
-            backgroundColor: <?php echo $dataset['color']; ?>,
-            data: [<?php echo implode(',', $dataset['data']); ?>],
+            label: @json($dataset['label'] ?? null),
+            backgroundColor: @json($dataset['color'] ?? null),
+            data: @json(array_values($dataset['data'] ?? [])),
         },
         @endforeach
     ]
