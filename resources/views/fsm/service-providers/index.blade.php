@@ -120,6 +120,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 @push('scripts')
 <script>
 $(function() {
+    @if(session('activation_review'))
+    Swal.fire({
+        icon: 'info',
+        title: @json(__('Service Provider activated')),
+        text: @json(__('Administrator credentials were activated. Please manually review and activate the appropriate staff, staff credentials, and vehicles.')),
+        confirmButtonText: @json(__('OK'))
+    });
+    @endif
+
     var dataTable = $('#data-table').DataTable({
         bFilter: false,
         processing: true,
@@ -180,20 +189,7 @@ $(function() {
         $('.delete').on('click', function(e) {
             var form = $(this).closest("form");
             event.preventDefault();
-            Swal.fire({
-                title: '{{ __('Are you sure?') }}',
-                        text: "{!! __('You won\'t be able to revert this!') !!}",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: '{{ __('Yes, delete it!') }}',
-                        cancelButtonText: '{{ __('Cancel') }}',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            })
+            deleteAction(form || this);
 
         });
     });

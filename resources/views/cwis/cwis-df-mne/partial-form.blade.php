@@ -24,7 +24,13 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
                                         <td><input type="text" class="form-control data-input" placeholder="{{__('Enter value in percent.')}}" min="0" max="100" step="1" name="EQ-1" value="{{ $data['EQ-1'] ?? '' }}" {{ $data['EQ-1'] !== null ? 'disabled' : '' }}>
                                         <input type="hidden" name="EQ-1_hidden" value="{{ isset($data['EQ-1']) ? $data['EQ-1'] : '' }}"></td>
                                     </tr>
-                                                                        
+                                    @foreach(($equityIndicators ?? collect())->where('indicator_code', '!=', 'EQ-1') as $indicator)
+                                    <tr>
+                                        <td>{{ $indicator->indicator_code }} - {{ __($indicator->label) }}</td>
+                                        <td>{{ __('Equity') }}</td>
+                                        <td><input type="text" class="form-control" value="{{ $data[$indicator->indicator_code] ?? __('No data') }}" aria-label="{{ $indicator->indicator_code }}" readonly></td>
+                                    </tr>
+                                    @endforeach
                                 </table>
                             </div>
                         </div>
@@ -44,6 +50,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
                                         <th width='50%'>{{__('Indicators')}}</th>
                                         <th width='10%'>{{__('Outcome')}}</th>
                                         <th width='20%'>{{__('Value')}}</th>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ __('Access to safely managed sanitation') }}</td>
+                                        <td>{{ __('Safety') }}</td>
+                                        <td><input type="text" class="form-control" value="{{ $data['SF-1'] ?? __('No data') }}" aria-label="SF-1" readonly></td>
                                     </tr>
                                     <tr>
                                         <td>{{__('Population with access to safe individual toilets')}}</td>

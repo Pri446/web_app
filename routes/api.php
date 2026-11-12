@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\WaterSupplyPaymentApiController;
 use App\Http\Controllers\Fsm\ApplicationController;
 use App\Http\Controllers\Api\SludgeCollectionController;
 use App\Http\Controllers\Api\ContainmentsApiController;
+use App\Http\Controllers\GISProxyController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -46,7 +47,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::get('get-Building-sewercode/{sewercode}',[BuildingSearchController::class,'getSewerCode']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:api-login');
 
 /*
 |
@@ -59,6 +61,8 @@ Route::group([
     'name' => 'protected-api-routes',
     'middleware' => 'auth:sanctum'
 ],function (){
+    Route::get('gis/wms', [\App\Http\Controllers\GISProxyController::class, 'wms'])
+        ->name('mobile.gis.wms');
     /*
     |
     | Logout---------------------------------------------------------------
@@ -160,7 +164,7 @@ Route::group([
         Route::post('/buildings/save', [BuildingApiController::class, 'storeBuildingDataMobile']);
         Route::get('/map/building-by-point', [BuildingSurveyController::class, 'locateBuildingByPoint']);
     });
-   // Write endpoints — force JSON on validation/auth/throttle failures
+   // Write endpoints â€” force JSON on validation/auth/throttle failures
     Route::middleware([
         'auth:sanctum',
         'force.json',

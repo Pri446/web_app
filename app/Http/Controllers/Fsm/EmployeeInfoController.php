@@ -70,8 +70,10 @@ class EmployeeInfoController extends Controller
         $page_title =__("Add Employee Information") ;
         if (Auth::user()->service_provider_id) {
             $id = Auth::user()->service_provider_id;
-            $service_provider_id = ServiceProvider::Operational()->where('id', $id)->pluck('id');
-            $service_providers = ServiceProvider::Operational()->pluck('company_name', 'id');
+            $service_provider_id = $id;
+            $service_providers = ServiceProvider::Operational()
+                ->where('id', $id)
+                ->pluck('company_name', 'id');
         } else {
             $service_provider_id = ServiceProvider::Operational()->pluck('company_name', 'id');
             $service_providers = null;
@@ -89,8 +91,7 @@ class EmployeeInfoController extends Controller
      */
     public function store(EmployeeInfoRequest $request)
     {
-
-        $data = $request->only(['service_provider_id', 'name', 'gender', 'contact_number', 'dob', 'address', 'employee_type', 'year_of_experience', 'wage', 'license_number', 'license_issue_date', 'training_status', 'employment_start', 'status', 'employment_end']);
+        $data = $request->validated();
         $employeeInfos = $this->employeeInfoService->storeOrUpdate($id = null, $data);
 
         return redirect('fsm/employee-infos')->with('success', __('Employee Information created successfully.'));
@@ -130,7 +131,13 @@ class EmployeeInfoController extends Controller
             $start = Carbon::parse($employeeInfos->employment_start)->format('Y-m-d'); // Use 'Y-m-d'
             $end = Carbon::parse($employeeInfos->employment_end)->format('Y-m-d'); // Use 'Y-m-d'
             $page_title = __("Edit Employee Information");
-            $service_provider_id = ServiceProvider::Operational()->pluck('company_name', 'id');
+            $service_provider_id = ServiceProvider::Operational();
+
+            if (Auth::user()->service_provider_id) {
+                $service_provider_id->where('id', Auth::user()->service_provider_id);
+            }
+
+            $service_provider_id = $service_provider_id->pluck('company_name', 'id');
             $status = EmployeeStatus::asSelectArray();
             return view('fsm/employee-infos.edit', compact('page_title', 'employeeInfos', 'service_provider_id', 'status', 'start', 'end'));
         } else {
@@ -151,7 +158,7 @@ class EmployeeInfoController extends Controller
         $employeeInfos = EmployeeInfo::find($employeeInfo->id);
 
         if ($employeeInfos) {
-            $data = $request->all();
+            $data = $request->validated();
 
             $employeeInfos = $this->employeeInfoService->storeOrUpdate($employeeInfo->id, $data);
 
@@ -172,8 +179,12 @@ class EmployeeInfoController extends Controller
         $employeeInfos = EmployeeInfo::find($id);
 
         if ($employeeInfos) {
-            if ($employeeInfos->emptyings1()->exists() || $employeeInfos->emptyings2()->exists()) {
-                return redirect('fsm/employee-infos')->with('error', __('Cannont delete Employee Information that has associated Applicaiton Information.'));
+            if (
+                $employeeInfos->driverEmptyings()->exists()
+                || $employeeInfos->emptyings1()->exists()
+                || $employeeInfos->emptyings2()->exists()
+            ) {
+                return redirect('fsm/employee-infos')->with('error', __('Cannot delete Employee Information that has associated Emptying Information. Please make the employee inactive instead.'));
             }
             $employeeInfos->delete();
             return redirect('fsm/employee-infos')->with('success', __('Employee Information deleted successfully.'));

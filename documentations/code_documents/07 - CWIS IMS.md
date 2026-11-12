@@ -94,8 +94,89 @@ CwisMneController follow CRUD operations, which usually have the same pattern. Y
 | **Remarks**     | App\\Exports\\MneCsvExport                                                                             |
 
 ### Data Calculation
-The system revolves around calculating and managing data using 22 distinct CWIS indicators, each handled by its own function stored in a GitHub repository for version control and maintenance. For each year, the workflow begins by processing the data, with each indicator function performing its calculations independently. A key component of this workflow is a master function that categorizes each building as safely managed or not. This function is crucial as it is widely used by most indicator functions to ensure accurate categorization before calculations proceed. When 'Add CWIS' button is clicked, the 22 indicators are fetched from lookup table 'data_sources',  the results are computed and finally stored into the main table 'data_cwis' by the update query. Function 'insert_data_into_cwis_table(\$year)' handles the insert or generation process of new cwis data.
+The classic CWIS baseline contained 22 indicators, with individual database functions calculating annual values from operational IMIS data. Shared helper functions classify sanitation systems for the indicator calculations. The indicator catalogue is stored in cwis.data_source, and calculated results are stored in cwis.data_cwis. The upgraded generation chain retains public.insert_data_into_cwis_table(year) within the outcome-aware wrapper functions and adds the new indicator calculations described below.
 
+
+### Equity Indicator Data
+
+The Equity extension retains EQ-1 and adds EQ-2 to EQ-6.5. EQ-1 and EQ-2 use operational IMIS data. The separate Indicator Data form supplies annual subsidy, workforce, leadership, salary and worker-policy inputs for EQ-3 onward. These are source values, not calculated results in `cwis.data_cwis`.
+
+#### Tables
+
+- cwis.equity_submissions: reporting year, country, draft/submitted/approved status and user/date audit.
+- cwis.equity_subsidies: annual NSS and SS subsidy totals for a submission.
+- cwis.sanitation_personnel_snapshot: employee/leadership counts and annual average salaries.
+- cwis.sanitation_worker_policy: nullable policy answers and evidence-document references.
+- cwis.equity_documents: uploaded-file disk, path, original filename and uploader metadata.
+- cwis.form_fields: database-driven field definitions linked to cwis.data_source; not submitted answers.
+- cwis.indicator_country: indicator-to-country applicability, linked through data_source_id.
+- cwis.generation_runs: saved annual country context and approved Equity source reference.
+
+#### Data Entry and Approval
+
+Controller: app\\Http\\Controllers\\Cwis\\CwisGeneratorDataController.php. Request validation: app\\Http\\Requests\\Cwis\\CwisIndicatorDataRequest.php. CwisFormService resolves enabled field definitions for the selected country. CwisEquityWorkflowService checks the approved source before calculation. Views are stored in resources\\views\\cwis\\generator-data.
+
+Save as Draft permits incomplete source data while validating supplied values. Submit for Approval validates applicable required fields but does not approve or calculate results. Review allows corrections before approval. Counts are non-negative whole values and cannot exceed their corresponding totals; monetary inputs follow their field precision and bounds. Evidence inputs are enabled for applicable Yes answers, and saved documents are reused when no replacement is supplied. Parent No answers make the defined dependent Equity questions not applicable. Approved sources are read-only.
+
+#### Calculation Rules
+
+| **Indicator** | **Input fields or source** | **Calculation** |
+| ------------- | -------------------------- | --------------- |
+| EQ-2 | building_info.buildings.population_served, building_info.buildings.lic_id and the derived sanitation classification; cwis.eq_2_population_totals(year) aggregates safe LIC, total LIC, safe city and total city population | (a/b)/(c/d); the safe-system result is derived, not a stored building flag |
+| EQ-3 | cwis.equity_subsidies.total_subsidies_amount_nss; cwis.equity_subsidies.total_subsidies_amount_ss | NSS total / SS total |
+| EQ-4 | cwis.sanitation_personnel_snapshot.women_employee_count; cwis.sanitation_personnel_snapshot.total_employee_count | women / total employees * 100 |
+| EQ-4a | cwis.sanitation_personnel_snapshot.women_leadership_count; cwis.sanitation_personnel_snapshot.total_leadership_count | women leaders / total leadership positions * 100 |
+| EQ-5 | cwis.sanitation_personnel_snapshot.average_salary_of_women_in_sanitation; cwis.sanitation_personnel_snapshot.average_salary_of_men_in_sanitation | (men's average - women's average) / men's average |
+| EQ-6.x | cwis.sanitation_worker_policy policy answers and corresponding document IDs referencing cwis.equity_documents.id | Evidence-backed Yes, explicit No, No data, or Not applicable for defined dependent questions |
+
+The schema-level calculators are named cwis.calculate_eq_*; public.update_data_into_cwis_table_eq_*_newsan(year) writes their results. public.generate_cwis_with_equity(year) records the country/source context, calls the existing insert/master flow and dispatches the new Equity functions. The integrated application uses the outer RPM, Accountability, Responsibility and Sustainability wrappers before this Equity generator; a database-only commit is not the complete application release.
+
+Approval does not generate annual results. Generation checks the approved source for the same year/country. Ordinary generation does not overwrite an existing year. The explicit combined Equity rebuild validates applicable manual-source outcomes, backs up saved results/context and regenerates transactionally. The dashboard and exports read saved results, not input previews. Missing or zero denominators return No data rather than a fabricated zero. Finite numerical values are displayed to three decimals; the result trigger also rounds EQ/SF numeric text on insert/update.
+
+#### Country Context
+
+The active site-wide country is stored in public.site_settings.value where name = active_country and category = cwis_setting. Values are ALL, NP and BD. cwis.indicator_country stores NP/BD assignments; ALL does not require mapping rows. Source submissions retain their own country_code and reporting_year. cwis.data_cwis has no country column: cwis.generation_runs records the saved context for each result year. Switching country changes applicability and visibility, not the identity of previously saved sources or results.
+
+#### Database File Organization and Installation
+
+The nine Equity/shared-foundation migrations are under database/migrations/cwis/equity. AppServiceProvider registers this directory with loadMigrationsFrom, so ordinary php artisan migrate and migrate:status discover it together with the root migrations in timestamp order. Migration basenames are unchanged; moving an already-applied migration does not make it pending again. Other outcomes retain their own migrations.
+
+Canonical SQL is under database/sql/cwis/equity: cwis_equity_calculations.sql, cwis_equity_generation.sql, cwis_indicator_country_checks.sql and cwis_original_equity_submission_guard.sql. The last file supports rollback of the shared-country guard. Migration SQL paths use the new directory.
+
+The seeders use the PSR-4 namespace Database\\Seeders\\Cwis\\Equity and are stored in database/seeders/Cwis/Equity. DatabaseSeeder calls the relocated catalogue seeder. After the required migrations, the explicit seeding commands are:
+
+```powershell
+php artisan migrate:status
+php artisan migrate
+php artisan db:seed --class="Database\Seeders\Cwis\Equity\CwisDataSourceSeeder"
+php artisan db:seed --class="Database\Seeders\Cwis\Equity\CwisFormFieldsSeeder"
+```
+
+Review every pending migration before using the default migrate command. To run only this directory, use --path=database/migrations/cwis/equity; that explicit path excludes other outcome migrations. Existing IMIS schemas and legacy calculation helpers are prerequisites. This reorganization does not modify migration-history rows, delete submissions or regenerate results. Editing an SQL file later does not rerun an already-applied migration; subsequent function changes require an update migration. Namespaced seeder class names must be used in deployment scripts.
+
+### Indicator Generation Data Listing
+
+The shared listing is titled CWIS Indicator Generation Data. Its displayed columns are Year, Service Outcome, Status, Updated At and Actions. Submission IDs remain internal identifiers used for source relationships and View/Approve routes; they are not shown as a shared sequence because separate outcome tables may contain the same ID. The default DataTables order is year descending, followed by updated_at descending.
+
+### Evidence Upload Validation
+
+All five evidence-upload forms accept PDF, DOC and DOCX only, up to 5 MB per new or replacement file (Laravel max:5120 KB). App\\Support\\CwisEvidence provides the shared upload rules and file-picker accept types. Request validation enforces the restriction for draft, submitted and approval-review uploads; file-picker filtering alone is not a security check. Existing saved attachments are retained and reused when no replacement is supplied. Configure PHP and web-server limits for the complete multipart request, including multiple files.
+
+### Safely Managed Sanitation Counts
+
+SF-0a, SF-0b and SF-0c are operational Safety counts, not additional manual form inputs. They use cwis.safety_buildings(year), which filters eligible non-deleted buildings by construction year and returns one row per building after aggregating the existing service-chain classification.
+
+| **Indicator** | **Source fields** | **Calculation** |
+| ------------- | ----------------- | --------------- |
+| SF-0a | building_info.buildings.bin and the derived safe classification | Count distinct safely managed buildings |
+| SF-0b | building_info.buildings.household_with_private_toilet | Sum private-toilet households in safely managed buildings |
+| SF-0c | building_info.buildings.population_with_private_toilet | Sum private-toilet population in safely managed buildings |
+
+Each has a cwis.calculate_sf_0* function and public.update_data_into_cwis_table_sf_0*_newsan(year) updater. The new 2026_11_04_000001_install_cwis_safety_count_indicators.php migration loads database/sql/cwis_safety_counts.sql, saves the old master definition, and adds the three updater calls through cwis.dispatch_safety_counts(year). It registers catalogue entries and inherits current SF-1a country mappings. It does not regenerate saved results.
+
+The All and Safety dashboard views show the mapped counts as three green number cards, not doughnuts. PDF includes saved count cards; catalogue-driven monitoring and Excel include the new entries after generation. Unknown/negative private totals return No data; an empty eligible set returns zero. The catalogue becomes 142 entries, including 25 Safety indicators. The full stated 159 target still needs 17 additional specifications.
+
+The subsequent 2026_11_04_000002_align_cwis_emptying_status_helper.php migration backs up and repairs the legacy classification helper when fsm.applications.emptying_status is an integer. It uses IN (1, 2) rather than IS TRUE and preserves the helper's boolean result column without altering the source table or application records.
 
 ## KPI Dashboard
 

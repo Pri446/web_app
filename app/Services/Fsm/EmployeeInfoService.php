@@ -72,19 +72,19 @@ class EmployeeInfoService {
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['employee-infos.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit Employee Info')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\EmployeeInfoController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\EmployeeInfoController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Employee Info')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\EmployeeInfoController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\EmployeeInfoController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Employee Info History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\EmployeeInfoController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\EmployeeInfoController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Employee Info')) {
-                    $content .= '<a title="' . __("Delete") . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a title="' . e(__("Delete")) . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -166,24 +166,9 @@ class EmployeeInfoService {
         $employee_type = $data['employee_type'] ? $data['employee_type'] : null;
         $service_provider_id = $data['service_provider_id'] ? $data['service_provider_id'] : null;
         $status = $data['status'] ? $data['status'] :null;
-        $columns = [
-            __('Service Provider Name'),
-            __('Employee Name'),
-            __('Employee Gender'),
-            __('Employee Contact Number'),
-            __('Date of Birth'),
-            __('Address'),
-            __('Designation'),
-            __('Working Experience (Years)'),
-            __('Monthly Remuneration'),
-            __('Driving License Number'),
-            __('License Issue Date'),
-            __('Training Received'),
-            __('Status'),
-            __('Job Start Date'),
-            __('Job End Date')
-        ];
-        
+        $columns = ['Service Provider Name', 'Employee Name', 'Employee Gender', 'Employee Contact Number', 'Date of Birth',
+             'Address', 'Desigination', 'Working Experince (Years)', 'Monthly Remuneration', 'Driving License Number', 'License Issue Date','Training Received', 'Status', 'Job Start Date ','Job End Date'];
+
 
         $query =  EmployeeInfo::select('*')->whereNull('deleted_at');
 

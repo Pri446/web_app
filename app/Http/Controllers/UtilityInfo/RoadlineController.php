@@ -201,19 +201,27 @@ class RoadlineController extends Controller
     }
 
     public function getRoadNames(){
-       
-        $query = Roadline::all()->toQuery();
+
+        // Start with an Eloquent query instead of rebuilding one from an
+        // already-loaded collection. Road codes are strings (for example,
+        // R000003); Collection::toQuery() previously cast them to integer
+        // model keys and produced an invalid PostgreSQL `code IN (0, ...)`.
+        $query = Roadline::query();
         if (request()->search){
             $query->where('name', 'ilike', '%'.request()->search.'%')
             ->orWhere('code','ilike','%'.request()->search.'%');
         }
         if (request()->bin){
             $building = Building::where('bin',request()->bin)->first();
-            $query->where('code','=',$building->road_code);
+            if ($building && $building->road_code) {
+                $query->where('code', '=', $building->road_code);
+            }
         }
         if (request()->ward){
             $building = Building::where('ward',request()->ward)->first();
-            $query->where('code','=',$building->road_code);
+            if ($building && $building->road_code) {
+                $query->where('code', '=', $building->road_code);
+            }
         }
         $total = $query->count();
 

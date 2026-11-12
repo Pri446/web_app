@@ -200,5 +200,81 @@ An Edit Layout for all forms
         document.getElementById('applicant_name').addEventListener('input', checkDetailsAndUpdateCheckbox);
         document.getElementById('applicant_gender').addEventListener('input', checkDetailsAndUpdateCheckbox);
         document.getElementById('applicant_contact').addEventListener('input', checkDetailsAndUpdateCheckbox);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sizeSelect = document.getElementById('desludging_vehicle_size');
+            const providerNameInput = document.getElementById('service_provider_name');
+            const providerIdInput = document.getElementById('service_provider_id');
+
+            if (!sizeSelect || !providerNameInput || !providerIdInput) {
+                return;
+            }
+
+            const applicationForm = sizeSelect.closest('form');
+            const submitButton = applicationForm
+                ? applicationForm.querySelector('input[type="submit"], button[type="submit"]')
+                : null;
+            let lookupTimer = null;
+            let lookupRequest = null;
+
+            sizeSelect.addEventListener('change', () => {
+                const capacity = sizeSelect.value;
+
+                clearTimeout(lookupTimer);
+                if (lookupRequest) lookupRequest.abort();
+                providerNameInput.value = '';
+                providerIdInput.value = '';
+
+                if (!capacity) {
+                    if (submitButton) submitButton.disabled = true;
+                    return;
+                }
+
+                if (submitButton) submitButton.disabled = true;
+
+                lookupTimer = setTimeout(async () => {
+                    lookupRequest = new AbortController();
+
+                    try {
+                        const response = await fetch("{{ route('sequence.byCapacity') }}", {
+                            method: 'POST',
+                            signal: lookupRequest.signal,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({ capacity: Number(capacity) })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Unable to load a service provider.');
+                        }
+
+                        const data = await response.json();
+                        providerNameInput.value = data.next_name ?? '';
+                        providerIdInput.value = data.next_id ?? '';
+
+                        if (!providerIdInput.value) {
+                            throw new Error('No service provider is available for this vehicle size.');
+                        }
+
+                        if (submitButton) submitButton.disabled = false;
+                    } catch (error) {
+                        if (error.name === 'AbortError') return;
+
+                        providerNameInput.value = '';
+                        providerIdInput.value = '';
+                        if (submitButton) submitButton.disabled = true;
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: "{{ __('Unable to assign service provider') }}",
+                            text: error.message
+                        });
+                    }
+                }, 250);
+            });
+        });
     </script>
 @endpush

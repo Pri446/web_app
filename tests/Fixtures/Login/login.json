@@ -1,0 +1,168 @@
+[
+  {
+    "id": 1,
+    "test-data-description": "valid web login payload",
+    "payload": {
+      "username": "authorized.user",
+      "password": "Correct-Horse-Battery-Staple",
+      "remember": "1"
+    },
+    "expected": {
+      "credentials": {
+        "username": "authorized.user",
+        "password": "Correct-Horse-Battery-Staple"
+      },
+      "remember": "1"
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 2,
+    "test-data-description": "valid API login payload",
+    "payload": {
+      "email": "API.USER@EXAMPLE.TEST",
+      "password": "Correct-Horse-Battery-Staple"
+    },
+    "expected": {
+      "credentials": {
+        "email": "api.user@example.test",
+        "password": "Correct-Horse-Battery-Staple"
+      }
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 3,
+    "test-data-description": "missing web username",
+    "payload": {
+      "password": "not-secret"
+    },
+    "expected": {},
+    "validation_errors": [
+      "username"
+    ]
+  },
+  {
+    "id": 4,
+    "test-data-description": "missing web password",
+    "payload": {
+      "username": "missing-password"
+    },
+    "expected": {},
+    "validation_errors": [
+      "password"
+    ]
+  },
+  {
+    "id": 5,
+    "test-data-description": "missing API fields",
+    "payload": {},
+    "expected": {
+      "status": false,
+      "message": "Validation Error!"
+    },
+    "validation_errors": [
+      "email",
+      "password"
+    ]
+  },
+  {
+    "id": 6,
+    "test-data-description": "invalid API email type and format",
+    "payload": {
+      "email": "not-an-email",
+      "password": "not-secret"
+    },
+    "expected": {
+      "status": false,
+      "message": "Validation Error!"
+    },
+    "validation_errors": [
+      "email"
+    ]
+  },
+  {
+    "id": 7,
+    "test-data-description": "email whitespace and case normalization",
+    "payload": {
+      "username": "  MIXED.CASE@EXAMPLE.TEST  ",
+      "password": "  password whitespace is preserved  "
+    },
+    "expected": {
+      "credentials": {
+        "email": "mixed.case@example.test",
+        "password": "  password whitespace is preserved  "
+      }
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 8,
+    "test-data-description": "special characters are ordinary username input",
+    "payload": {
+      "username": "user+tag_'()-中文",
+      "password": "not-secret"
+    },
+    "expected": {
+      "credentials": {
+        "username": "user+tag_'()-中文",
+        "password": "not-secret"
+      }
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 9,
+    "test-data-description": "SQL-looking text is ordinary username input",
+    "payload": {
+      "username": "admin' OR '1'='1",
+      "password": "not-secret"
+    },
+    "expected": {
+      "credentials": {
+        "username": "admin' OR '1'='1",
+        "password": "not-secret"
+      }
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 10,
+    "test-data-description": "one-character username boundary",
+    "payload": {
+      "username": "a",
+      "password": "p"
+    },
+    "expected": {
+      "credentials": {
+        "username": "a",
+        "password": "p"
+      }
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 11,
+    "test-data-description": "long username has no application validation maximum",
+    "payload": {
+      "username": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "password": "not-secret"
+    },
+    "expected": {
+      "validation_passes": true
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 12,
+    "test-data-description": "optional remember field omitted",
+    "payload": {
+      "username": "without-remember",
+      "password": "not-secret"
+    },
+    "expected": {
+      "remember": null
+    },
+    "validation_errors": []
+  }
+]

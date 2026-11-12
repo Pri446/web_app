@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
@@ -36,22 +37,19 @@ class AuthController extends Controller
                  ], 401);
              }
      
-             // Normalize email to lowercase
-             $credentials = [
-                 'email' => strtolower($request->input('email')),
-                 'password' => $request->input('password')
-             ];
-     
-             // Attempt authentication
-             if (!Auth::attempt($credentials)) {
+             $email = mb_strtolower(trim($request->input('email')));
+             $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+             if (
+                 !$user
+                 || (int) $user->status !== 1
+                 || !Hash::check($request->input('password'), $user->password)
+             ) {
                  return response()->json([
                      'status' => false,
                      'message' => __('Email & Password do not match our records.'),
                  ], 401);
              }
-     
-             // Get the authenticated user
-             $user = Auth::user();
      
              // Define the roles to check
              $allowedRoles = [

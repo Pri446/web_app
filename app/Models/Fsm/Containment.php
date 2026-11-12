@@ -5,9 +5,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Venturecraft\Revisionable\RevisionableTrait;
 use App\Models\BuildingInfo\Building;
+use App\Models\Concerns\HasPublicId;
 class Containment extends Model
 {
     use SoftDeletes;
+    use HasPublicId;
     use RevisionableTrait;
 
     protected $revisionCreationsEnabled = true;

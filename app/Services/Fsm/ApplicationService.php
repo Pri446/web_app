@@ -1,6 +1,6 @@
 <?php
 // Last Modified Date: 11-04-2024
-// Developed By: Innovative Solution Pvt. Ltd. (ISPL)  
+// Developed By: Innovative Solution Pvt. Ltd. (ISPL)
 namespace App\Services\Fsm;
 
 use App\Classes\FormField;
@@ -26,6 +26,7 @@ use App\Models\UtilityInfo\Roadline;
 use Carbon\Carbon;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Auth;
 use Venturecraft\Revisionable\Revision;
@@ -39,6 +40,8 @@ use App\Models\Fsm\VacutugType;
 use App\Enums\ApplicationStatus;
 use App\Enums\FeedbackStatus;
 use App\Models\Fsm\Emptying;
+use App\Services\ApplicationCustomerPiiPresenter;
+use App\Services\OwnerPiiPresenter;
 
 
 class ApplicationService
@@ -51,14 +54,19 @@ class ApplicationService
     protected $createPartialForm, $createFormFields, $createFormAction;
     protected $showFormFields, $editFormFields, $filterFormFields;
     protected $reportRoute;
+    private ApplicationCustomerPiiPresenter $customerPiiPresenter;
+    private OwnerPiiPresenter $ownerPiiPresenter;
     /**
      * Constructs a new ApplicationService object.
      *
      *
      */
-    public function __construct()
-    {
-
+    public function __construct(
+        ApplicationCustomerPiiPresenter $customerPiiPresenter,
+        OwnerPiiPresenter $ownerPiiPresenter
+    ) {
+        $this->customerPiiPresenter = $customerPiiPresenter;
+        $this->ownerPiiPresenter = $ownerPiiPresenter;
         $this->createPartialForm = 'fsm.application.partial-form';
         $nextSpId = $this->getNextServiceProviderId();
         $nextSpName = $this->getNextServiceProviderName();
@@ -66,7 +74,7 @@ class ApplicationService
             ->whereNotNull('capacity')->distinct()->orderBy('capacity')
             ->pluck('capacity')
             ->map(fn($c) => 0 + $c)
-            ->mapWithKeys(fn($c) => [(string)$c => "$c m³"])
+            ->mapWithKeys(fn($c) => [(string) $c => "$c m³"])
             ->toArray();
 
 
@@ -177,7 +185,7 @@ class ApplicationService
             ],
 
             [
-                "title" =>  __('Service Provider Details'),
+                "title" => __('Service Provider Details'),
                 "fields" => [
                     new FormField(
                         label: __('Desludging Vehicle Size'),
@@ -243,7 +251,6 @@ class ApplicationService
                     inputId: 'applicant_name',
                     placeholder: __('Applicant Name'),
                 ),
-
             ],
             [
                 new FormField(
@@ -343,6 +350,17 @@ class ApplicationService
                     inputId: 'date_to',
                     required: true,
                     placeholder: __('Date To'),
+                ),
+                // Owner Name is conditional on an active PII reveal. Keeping
+                // it in the final group prevents a visible gap between normal
+                // filters when the field is omitted from the locked UI.
+                new FormField(
+                    label: __('Owner Name'),
+                    labelFor: 'customer_name',
+                    labelClass: 'col-md-2 col-form-label ',
+                    inputType: 'text',
+                    inputId: 'customer_name',
+                    placeholder: __('Owner Name'),
                 ),
             ],
         ];
@@ -487,7 +505,8 @@ class ApplicationService
                             inputType: 'date',
                             inputId: 'proposed_emptying_date',
                             required: true,
-                            placeholder: __('Proposed Emptying Date')
+                            placeholder: __('Proposed Emptying Date'),
+                            min: now()->toDateString()
                         ),
                         new FormField(
                             label: __('Service Provider Name'),
@@ -515,7 +534,7 @@ class ApplicationService
      *
      * @return array
      */
-    public function getShowFormFields($application)
+    public function getShowFormFields($application, bool $revealCustomerPii = false)
     {
         $isAnf = (bool) $application->is_anf;
         $address = $isAnf
@@ -587,6 +606,12 @@ class ApplicationService
                 ),
             ];
 
+        // Decryption is explicit and occurs only after the controller has
+        // verified the temporary Application customer-PII grant.
+        $customerPii = $revealCustomerPii
+            ? $this->customerPiiPresenter->presentPlaintext($application)
+            : $this->customerPiiPresenter->presentMasked($application);
+
         $this->showFormFields = [
             [
                 "title" => $isAnf ? __('Address (House Number Unknown)') : __('Address'),
@@ -603,74 +628,73 @@ class ApplicationService
                         labelFor: 'customer_name',
                         inputType: 'label',
                         inputId: 'customer_name',
-                        labelValue: $application->customer_name  ?? __('Owner Name'),
+                        labelValue: $customerPii['customer_name'],
                     ),
                     new FormField(
                         label: __('Owner Gender'),
                         labelFor: 'customer_gender',
                         inputType: 'label',
                         inputId: 'customer_gender',
-                        labelValue: $application->customer_gender  ?? __('Owner Gender'),
+                        labelValue: $customerPii['customer_gender'],
                     ),
                     new FormField(
                         label: __('Owner Contact (Phone)'),
                         labelFor: 'customer_contact',
                         inputType: 'label',
                         inputId: 'customer_contact',
-                        labelValue: $application->customer_contact ?? __('Owner Contact (Phone)'),
-
+                        labelValue: $customerPii['customer_contact'],
                     ),
                 ],
             ];
         }
 
         $this->showFormFields[] = [
-                "title" => __("Applicant Details"),
-                "fields" => [
-                    new FormField(
-                        label: __("Applicant Name"),
-                        labelFor: 'applicant_name',
-                        inputType: 'label',
-                        inputId: 'applicant_name',
-                        labelValue: $application->applicant_name  ?? __('Applicant Name'),
-                    ),
-                    new FormField(
-                        label: __("Applicant Gender"),
-                        labelFor: 'applicant_gender',
-                        inputType: 'label',
-                        inputId: 'applicant_gender',
-                        labelValue: $application->applicant_gender ?? __('Applicant Gender'),
-                    ),
-                    new FormField(
-                        label: __("Applicant Contact (Phone)"),
-                        labelFor: 'applicant_contact',
-                        inputType: 'label',
-                        inputId: 'applicant_contact',
-                        labelValue: $application->applicant_contact ?? __('Applicant Contact (Phone)'),
-                    ),
-                ],
-            ];
+            "title" => __("Applicant Details"),
+            "fields" => [
+                new FormField(
+                    label: __("Applicant Name"),
+                    labelFor: 'applicant_name',
+                    inputType: 'label',
+                    inputId: 'applicant_name',
+                    labelValue: $application->applicant_name ?? __('Applicant Name'),
+                ),
+                new FormField(
+                    label: __("Applicant Gender"),
+                    labelFor: 'applicant_gender',
+                    inputType: 'label',
+                    inputId: 'applicant_gender',
+                    labelValue: $application->applicant_gender ?? __('Applicant Gender'),
+                ),
+                new FormField(
+                    label: __("Applicant Contact (Phone)"),
+                    labelFor: 'applicant_contact',
+                    inputType: 'label',
+                    inputId: 'applicant_contact',
+                    labelValue: $application->applicant_contact ?? __('Applicant Contact (Phone)'),
+                ),
+            ],
+        ];
 
         $this->showFormFields[] = [
-                "title" => __("Service Provider Details"),
-                "fields" => [
-                    new FormField(
-                        label: __('Desludging Vehicle Size'),
-                        labelFor: 'desludging_vehicle_size',
-                        inputType: 'label',
-                        inputId: 'desludging_vehicle_size',
-                        labelValue: $application->desludging_vehicle_size . ' m³' ?? __('Desludging Vehicle Size'),
-                    ),
+            "title" => __("Service Provider Details"),
+            "fields" => [
+                new FormField(
+                    label: __('Desludging Vehicle Size'),
+                    labelFor: 'desludging_vehicle_size',
+                    inputType: 'label',
+                    inputId: 'desludging_vehicle_size',
+                    labelValue: $application->desludging_vehicle_size . ' m³' ?? __('Desludging Vehicle Size'),
+                ),
 
-                    new FormField(
-                        label: __('Service Provider Name'),
-                        labelFor: 'service_provider_id',
-                        inputType: 'label',
-                        inputId: 'service_provider_id',
-                        labelValue: $application->service_provider ? $application->service_provider()->withTrashed()->first()->company_name : 'Not Assigned',
-                    ),
-                ],
-            ];
+                new FormField(
+                    label: __('Service Provider Name'),
+                    labelFor: 'service_provider_id',
+                    inputType: 'label',
+                    inputId: 'service_provider_id',
+                    labelValue: $application->service_provider ? $application->service_provider()->withTrashed()->first()->company_name : 'Not Assigned',
+                ),
+            ],
+        ];
 
         return $this->showFormFields;
     }
@@ -680,7 +704,7 @@ class ApplicationService
      *
      * @return array
      */
-    public function getEditFormFields($application)
+    public function getEditFormFields($application, bool $revealCustomerPii = false)
     {
         // Load service provider relation if not already loaded
         $application->loadMissing('service_provider');
@@ -698,7 +722,7 @@ class ApplicationService
             ->whereNotNull('capacity')->distinct()->orderBy('capacity')
             ->pluck('capacity')
             ->map(fn($c) => 0 + $c)
-            ->mapWithKeys(fn($c) => [(string)$c => "$c m³"])
+            ->mapWithKeys(fn($c) => [(string) $c => "$c m³"])
             ->toArray();
 
         $address = $isAnf
@@ -740,7 +764,6 @@ class ApplicationService
                     inputId: 'anf_ward',
                     selectValues: Ward::orderBy('ward')->pluck('ward', 'ward')->toArray(),
                     selectedValue: old('anf_ward', $application->ward),
-                    required: true,
                     placeholder: __('Ward Number')
                 ),
                 new FormField(
@@ -749,7 +772,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_locality',
                     inputValue: old('anf_locality', $application->anf_locality),
-                    required: true,
                     placeholder: __('Locality Name')
                 ),
                 new FormField(
@@ -758,7 +780,6 @@ class ApplicationService
                     inputType: 'text',
                     inputId: 'anf_nearest_locality',
                     inputValue: old('anf_nearest_locality', $application->anf_nearest_locality),
-                    required: true,
                     placeholder: __('Nearest Landmark')
                 ),
             ]
@@ -803,6 +824,10 @@ class ApplicationService
                 ),
             ];
 
+        $customerPii = $revealCustomerPii
+            ? $this->customerPiiPresenter->presentPlaintext($application)
+            : $this->customerPiiPresenter->presentMasked($application);
+
         $this->editFormFields = [
             [
                 "title" => $isAnf ? __('Address (House Number Unknown)') : __('Address'),
@@ -819,9 +844,9 @@ class ApplicationService
                         labelFor: 'customer_name',
                         inputType: 'text',
                         inputId: 'customer_name',
-                        inputValue: $application->customer_name,
+                        inputValue: $customerPii['customer_name'],
                         placeholder: __('Owner Name'),
-                        disabled: true
+                        disabled: !$revealCustomerPii
                     ),
                     new FormField(
                         label: __('Owner Gender'),
@@ -829,99 +854,99 @@ class ApplicationService
                         inputType: 'select',
                         inputId: 'customer_gender',
                         selectValues: ["Male" => "Male", "Female" => "Female", "Others" => "Others"],
-                        selectedValue: $application->customer_gender,
+                        selectedValue: $customerPii['customer_gender'],
                         placeholder: __('Owner Gender'),
-                        disabled: true
+                        disabled: !$revealCustomerPii
                     ),
                     new FormField(
                         label: __('Owner Contact (Phone)'),
                         labelFor: 'customer_contact',
-                        inputType: 'number',
+                        inputType: 'text',
                         inputId: 'customer_contact',
-                        inputValue: $application->customer_contact,
+                        inputValue: $customerPii['customer_contact'],
                         placeholder: __('Owner Contact (Phone)'),
-                        disabled: true,
+                        disabled: !$revealCustomerPii,
                     ),
                 ],
             ];
         }
 
         $this->editFormFields[] = [
-                "title" => __("Applicant Details"),
-                "copyDetails" => !$isAnf,
-                "fields" => [
-                    new FormField(
-                        label: __("Applicant Name"),
-                        labelFor: 'applicant_name',
-                        inputType: 'text',
-                        inputId: 'applicant_name',
-                        inputValue: $application->applicant_name,
-                        required: true,
-                        placeholder: __('Applicant Name'),
-                    ),
-                    new FormField(
-                        label: __("Applicant Gender"),
-                        labelFor: 'applicant_gender',
-                        inputType: 'select',
-                        inputId: 'applicant_gender',
-                        selectValues: ["Male" => "Male", "Female" => "Female", "Others" => "Others"],
-                        selectedValue: $application->applicant_gender,
-                        required: true,
-                        placeholder: __('Applicant Gender'),
-                    ),
-                    new FormField(
-                        label: __("Applicant Contact (Phone)"),
-                        labelFor: 'applicant_contact',
-                        inputType: 'number',
-                        inputId: 'applicant_contact',
-                        inputValue: $application->applicant_contact,
-                        required: true,
-                        placeholder: __('Applicant Contact (Phone)'),
-                        oninput: "validateOwnerContactInput(this)",
-                    ),
-                ],
-            ];
+            "title" => __("Applicant Details"),
+            "copyDetails" => !$isAnf,
+            "fields" => [
+                new FormField(
+                    label: __("Applicant Name"),
+                    labelFor: 'applicant_name',
+                    inputType: 'text',
+                    inputId: 'applicant_name',
+                    inputValue: $application->applicant_name,
+                    required: true,
+                    placeholder: __('Applicant Name'),
+                ),
+                new FormField(
+                    label: __("Applicant Gender"),
+                    labelFor: 'applicant_gender',
+                    inputType: 'select',
+                    inputId: 'applicant_gender',
+                    selectValues: ["Male" => "Male", "Female" => "Female", "Others" => "Others"],
+                    selectedValue: $application->applicant_gender,
+                    required: true,
+                    placeholder: __('Applicant Gender'),
+                ),
+                new FormField(
+                    label: __("Applicant Contact (Phone)"),
+                    labelFor: 'applicant_contact',
+                    inputType: 'number',
+                    inputId: 'applicant_contact',
+                    inputValue: $application->applicant_contact,
+                    required: true,
+                    placeholder: __('Applicant Contact (Phone)'),
+                    oninput: "validateOwnerContactInput(this)",
+                ),
+            ],
+        ];
 
         $this->editFormFields[] = [
-                "title" => __("Service Provider Details"),
-                "fields" => [
-                    new FormField(
-                        label: __('Desludging Vehicle Size'),
-                        labelFor: 'desludging_vehicle_size',
-                        inputType: 'select',
-                        inputId: 'desludging_vehicle_size',
-                        required: true,
-                        placeholder: __('Desludging Vehicle Size'),
-                        selectValues: $selectValues,
-                        selectedValue: old('desludging_vehicle_size', $application->desludging_vehicle_size),
-                    ),
+            "title" => __("Service Provider Details"),
+            "fields" => [
+                new FormField(
+                    label: __('Desludging Vehicle Size'),
+                    labelFor: 'desludging_vehicle_size',
+                    inputType: 'select',
+                    inputId: 'desludging_vehicle_size',
+                    required: true,
+                    placeholder: __('Desludging Vehicle Size'),
+                    selectValues: $selectValues,
+                    selectedValue: old('desludging_vehicle_size', $application->desludging_vehicle_size),
+                ),
 
-                    new FormField(
-                        label: __('Service Provider Name'),
-                        labelFor: 'service_provider_name',
-                        inputType: 'text',
-                        inputId: 'service_provider_name',
-                        required: false,
-                        placeholder: __('Service Provider Name'),
-                        disabled: true,
-                        inputValue: old(
-                            'service_provider_name',
-                            optional($application->service_provider)->company_name
-                        ),
+                new FormField(
+                    label: __('Service Provider Name'),
+                    labelFor: 'service_provider_name',
+                    inputType: 'text',
+                    inputId: 'service_provider_name',
+                    required: false,
+                    placeholder: __('Service Provider Name'),
+                    disabled: true,
+                    inputValue: old(
+                        'service_provider_name',
+                        optional($application->service_provider)->company_name
                     ),
+                ),
 
-                    new FormField(
-                        label: __('Service Provider ID'),
-                        labelFor: 'service_provider_id',
-                        inputType: 'number',
-                        inputId: 'service_provider_id',
-                        hidden: true,
-                        inputValue: old('service_provider_id', $application->service_provider_id),
-                        required: true
-                    ),
+                new FormField(
+                    label: __('Service Provider ID'),
+                    labelFor: 'service_provider_id',
+                    inputType: 'number',
+                    inputId: 'service_provider_id',
+                    hidden: true,
+                    inputValue: old('service_provider_id', $application->service_provider_id),
+                    required: true
+                ),
 
-                ],
-            ];
+            ],
+        ];
 
         return $this->editFormFields;
     }
@@ -1001,24 +1026,50 @@ class ApplicationService
      */
     public function getAllApplications(Request $request)
     {
+        // Select only columns consumed by the table. Applicant name/contact
+        // are the operational fields displayed by the v2.0.3 Application
+        // list. Encrypted customer/owner PII is intentionally not included in
+        // the DataTable JSON response, even while owner lookup mode is active.
+        $columns = [
+            'applications.id',
+            'applications.bin',
+            'applications.containment_id',
+            'applications.application_date',
+            'applications.proposed_emptying_date',
+            'applications.road_code',
+            'applications.applicant_name',
+            'applications.applicant_contact',
+            'applications.emptying_status',
+            'applications.sludge_collection_status',
+            'applications.feedback_status',
+            'applications.trip_count',
+            'applications.ward',
+            'applications.service_provider_id',
+            'building_info.buildings.house_number AS house_address',
+        ];
 
         if (Auth::user()->hasRole('Service Provider - Admin') || Auth::user()->hasRole('Service Provider - Help Desk')) {
-            return  Application::select('applications.*', 'building_info.buildings.house_number AS house_address')
+            return Application::select($columns)
+                ->setEagerLoads([])
                 ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')
                 ->whereNull('applications.deleted_at')
                 ->where('applications.service_provider_id', Auth::user()->service_provider_id);
         } else if (Auth::user()->hasRole('Treatment Plant - Admin')) {
-            return Application::select('applications.*', 'building_info.buildings.house_number AS house_address')
+            return Application::select($columns)
+                ->setEagerLoads([])
                 ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')->whereHas("emptying", function ($q) use ($request) {
                     $q->where("treatment_plant_id", "=", Auth::user()->treatment_plant_id)
                         ->whereIn('emptying_status', [1, 2])
                         ->whereNull('deleted_at');
                 });
         } else {
-            return Application::select('applications.*', 'building_info.buildings.house_number AS house_address')
+            return Application::select($columns)
+                ->setEagerLoads([])
                 ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')
                 ->whereNull('applications.deleted_at');
         }
+
+        return OperationalDataAccessService::scopeApplicationQuery($query);
     }
 
     /**
@@ -1027,12 +1078,39 @@ class ApplicationService
      * @return DataTables
      * @throws Exception
      */
-    public function getDatatable(Request $request)
-    {
+    public function getDatatable(
+        Request $request,
+        bool $revealCustomerPii = false
+    ) {
+        $matchingApplicationIds = null;
+        $customerNameSearch = mb_substr(
+            trim((string) $request->input('customer_name', '')),
+            0,
+            100
+        );
+
+        if ($revealCustomerPii && $customerNameSearch !== '') {
+            $matchingApplicationIds = [];
+
+            // Randomized AES-GCM cannot support SQL LIKE. The temporary
+            // compatibility search decrypts names in PHP only when unlocked.
+            foreach (Application::select(['id', 'customer_name'])->cursor() as $application) {
+                $ciphertext = $application->getAttributes()['customer_name'] ?? null;
+
+                if (
+                    $this->customerPiiPresenter->customerNameContains(
+                        $ciphertext,
+                        $customerNameSearch
+                    )
+                ) {
+                    $matchingApplicationIds[] = $application->id;
+                }
+            }
+        }
 
         return DataTables::of($this->getAllApplications($request))
 
-            ->filter(function ($query) use ($request) {
+            ->filter(function ($query) use ($request, $matchingApplicationIds) {
                 if ($request->bin) {
                     $query->whereHas('buildings', function ($query) use ($request) {
                         $query->where('bin', 'ILIKE', '%' . $request->bin . '%');
@@ -1044,6 +1122,9 @@ class ApplicationService
                 }
                 if ($request->applicant_name) {
                     $query->where('applicant_name', 'ILIKE', '%' . $request->applicant_name . '%');
+                }
+                if ($matchingApplicationIds !== null) {
+                    $query->whereIn('applications.id', $matchingApplicationIds);
                 }
                 if ($request->ward) {
                     $query->where('applications.ward', $request->ward);
@@ -1080,18 +1161,18 @@ class ApplicationService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['application.destroy', $model->id]]);
                 $content .= '<div class="">';
                 if (Auth::user()->can('Edit Application')) {
-                    $content .= '<a title="' . __('Edit  Application Details') . '" href="' . route('application.edit', [$model->id]) . '" class="btn btn btn-info btn-sm mb-1 mb-1 ' . (($model->emptying_status == 1 || $model->emptying_status == 2) ? ' anchor-disabled' : '') . '"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__('Edit  Application Details')) . '" href="' . route('application.edit', [$model->id]) . '" class="btn btn btn-info btn-sm mb-1 mb-1 ' . (($model->emptying_status == 1 || $model->emptying_status == 2) ? ' anchor-disabled' : '') . '"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Application')) {
-                    $content .= '<a title="' . __('View Application Details') . '" href="' . route('application.show', [$model->id]) . '" class="btn btn btn-info btn-sm mb-1 mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__('View Application Details')) . '" href="' . route('application.show', [$model->id]) . '" class="btn btn btn-info btn-sm mb-1 mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('Edit Emptying')) {
                     $emptyingId = optional($model->emptying)->id;
                     if ($emptyingId) {
-                        $content .= '<a title="' . __('Edit Emptying Service Details') . '" href="'
+                        $content .= '<a title="' . e(__('Edit Emptying Service Details')) . '" href="'
                             . route('emptying.edit', $emptyingId)
                             . '" class="btn btn-info btn-sm mb-1'
-                            . ($emptyingTripNo == $collectionTripNo  ? ' anchor-disabled' : '')
+                            . ($emptyingTripNo == $collectionTripNo ? ' anchor-disabled' : '')
                             . '"><i class="fa fa-recycle"></i></a> ';
                     }
                 }
@@ -1099,7 +1180,7 @@ class ApplicationService
                     $sludgeId = optional($model->sludge_collection_log()->latest()->first())->id;
 
                     if ($sludgeId) {
-                        $content .= '<a title="' . __('Edit Sludge Collection Details') . '" '
+                        $content .= '<a title="' . e(__('Edit Sludge Collection Details')) . '" '
                             . ($emptyingTripNo > $collectionTripNo ? '' : 'href="' . route('sludge-collection.edit', $sludgeId) . '"')
                             . ' class="btn btn-info btn-sm mb-1 '
                             . ($model->feedback_status == 1 || $emptyingTripNo > $collectionTripNo ? 'anchor-disabled' : '')
@@ -1107,20 +1188,30 @@ class ApplicationService
                     }
                 }
 
+                if (Auth::user()->can('Proposed Emptying Date')) {
+                    $content .= '<a title="' . e(__('Emptying Scheduling Form')) . '" href="'
+                        . route("emptying-scheduling", [$model->id])
+                        . '" class="btn btn btn-info btn-sm mb-1 mb-1'
+                        . (($model->emptying_status == 1 || $model->emptying_status == 2)
+                            ? ' anchor-disabled'
+                            : '')
+                        . '"><i class="fa fa-calendar-plus"></i></a>';
+                }
+
                 if (Auth::user()->can('View Application History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . route('application.history', $model->id) . '" class="btn btn btn-info btn-sm mb-1 mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . route('application.history', $model->id) . '" class="btn btn btn-info btn-sm mb-1 mb-1"><i class="fa fa-history"></i></a> ';
                     if (Auth::user()->can('Delete Application')) {
-                        $content .= '<a title="' . __("Delete") . '"   class="delete btn btn-danger  btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                        $content .= '<a title="' . e(__("Delete")) . '"   class="delete btn btn-danger  btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                     }
                 }
 
-                 if($model->bin != '' && Auth::user()->can('View Application History')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-map-marker"></i></a> ';
-                 }
+                if ($model->bin != '' && Auth::user()->can('View Application History')) {
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'buildings_layer', 'field' => 'bin', 'val' => $model->bin]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-map-marker"></i></a> ';
+                }
 
                 if (Auth::user()->can('Generate Application Report')) {
                     if ($model->emptying_status == 2) {
-                        $content .= '<a title="' . __("Generate Report") . '" href="' . route('application.report', [$model->id]) . '" class="btn btn btn-info btn-sm mb-1 mb-1"><i class="fa-regular fa-file-pdf"></i></a> ';
+                        $content .= '<a title="' . e(__("Generate Report")) . '" href="' . route('application.report', [$model->id]) . '" class="btn btn btn-info btn-sm mb-1 mb-1"><i class="fa-regular fa-file-pdf"></i></a> ';
                     }
                 }
 
@@ -1142,30 +1233,30 @@ class ApplicationService
 
                 if ($model->proposed_emptying_date == null) {
                     if (Auth::user()->can('Add Emptying')) {
-                        $content .= '<a title="' . __("Add Emptying Service Details") . '" class="btn btn-info btn-sm mb-1 anchor-disabled"><i class="fa fa-recycle"></i></a> ';
+                        $content .= '<a title="' . e(__("Add Emptying Service Details")) . '" class="btn btn-info btn-sm mb-1 anchor-disabled"><i class="fa fa-recycle"></i></a> ';
                     }
                 } else if ($model->emptying_status == 0 && $model->proposed_emptying_date != '') {
                     if (Auth::user()->can('Add Emptying')) {
-                        $content .= '<a title="' . __("Add Emptying Service Details") . '" href="' . route("emptying.create-id", [$model->id]) . '" class="btn btn-success btn-sm mb-1 "><i class="fa fa-recycle"></i></a> ';
+                        $content .= '<a title="' . e(__("Add Emptying Service Details")) . '" href="' . route("emptying.create-id", [$model->id]) . '" class="btn btn-success btn-sm mb-1 "><i class="fa fa-recycle"></i></a> ';
                     }
                 } else if (
                     $model->emptying_status == 1 &&
                     $model->sludge_collection_status == 1 &&
-                    $emptyingTripNo != $model->trip_count  && $emptyingTripNo  == $collectionTripNo
+                    $emptyingTripNo != $model->trip_count && $emptyingTripNo == $collectionTripNo
 
                 ) {
                     if (Auth::user()->can('Add Emptying')) {
-                        $content .= '<a title="' . __("Add Next Emptying Service Details") . '" href="'
+                        $content .= '<a title="' . e(__("Add Next Emptying Service Details")) . '" href="'
                             . route("emptying.create-id", [$model->id, 'mode' => 'next'])
                             . '" class="btn btn-success btn-sm mb-1"><i class="fa fa-recycle"></i></a> ';
                     }
                 } else if (($model->emptying_status == 1 && $model->sludge_collection_status == 0) && ($emptyingTripNo > $collectionTripNo)) {
                     if (Auth::user()->can('View Emptying')) {
-                        $content .= '<a title="' . __("View Emptying Service Details") . '" href="' . route("emptying.show", [$model->with('emptying')->where('id', $model->id)->get()->first()->emptying->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-recycle"></i></a> ';
+                        $content .= '<a title="' . e(__("View Emptying Service Details")) . '" href="' . route("emptying.show", [$model->with('emptying')->where('id', $model->id)->get()->first()->emptying->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-recycle"></i></a> ';
                     }
                 } else {
                     if (Auth::user()->can('View Emptying')) {
-                        $content .= '<a title="' . __("View Emptying Service Details") . '" href="' . route("emptying.show", [$model->with('emptying')->where('id', $model->id)->get()->first()->emptying->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-recycle"></i></a> ';
+                        $content .= '<a title="' . e(__("View Emptying Service Details")) . '" href="' . route("emptying.show", [$model->with('emptying')->where('id', $model->id)->get()->first()->emptying->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-recycle"></i></a> ';
                     }
                 }
 
@@ -1184,7 +1275,7 @@ class ApplicationService
 
                 if (($model->emptying_status == 1 || $model->emptying_status == 2) && $model->sludge_collection_status == 0) {
                     if (Auth::user()->can('Add Sludge Collection')) {
-                        $content .= '<a title="' . __("Add Sludge Collection Details") . '" href="' .
+                        $content .= '<a title="' . e(__("Add Sludge Collection Details")) . '" href="' .
                             route("sludge-collection.create-log-id", [$model->id]) .
                             '" class="btn btn-success btn-sm mb-1' .
                             ($model->emptying_status == 1 || $model->emptying_status == 2 ? '' : ' anchor-disabled') .
@@ -1192,23 +1283,23 @@ class ApplicationService
                     }
                 } else if ($model->sludge_collection_status == 0) {
                     if (Auth::user()->can('Add Sludge Collection')) {
-                        $content .= '<a title="' . __("Add Sludge Collection Details") . '" href="' .
+                        $content .= '<a title="' . e(__("Add Sludge Collection Details")) . '" href="' .
                             route("sludge-collection.create-log-id", [$model->id]) .
                             '" class="btn btn-info btn-sm mb-1' .
                             ($model->emptying_status == 1 || $model->emptying_status == 2 ? '' : ' anchor-disabled') .
                             '"><i class="fa fa-truck-moving"></i></a> ';
                     }
-                } else if ($model->emptying_status == 1 &&  $model->sludge_collection_status == 1 && $model->emptying->trip_no  != $model->sludge_collection->trip_no) {
+                } else if ($model->emptying_status == 1 && $model->sludge_collection_status == 1 && $model->emptying->trip_no != $model->sludge_collection->trip_no) {
                     if (Auth::user()->can('Add Sludge Collection')) {
-                        $content .= '<a title="' . __("Add Next Sludge Collection Details") . '" href="' .
+                        $content .= '<a title="' . e(__("Add Next Sludge Collection Details")) . '" href="' .
                             route("sludge-collection.create-log-id", [$model->id]) .
                             '" class="btn btn-success btn-sm mb-1' .
                             ($model->emptying_status == 1 || $model->emptying_status == 2 ? '' : ' anchor-disabled') .
                             '"><i class="fa fa-truck-moving"></i></a> ';
                     }
-                } else if ($model->emptying_status == 2 &&  $model->sludge_collection_status == 1 && $model->emptying->trip_no  != $model->sludge_collection->trip_no) {
+                } else if ($model->emptying_status == 2 && $model->sludge_collection_status == 1 && $model->emptying->trip_no != $model->sludge_collection->trip_no) {
                     if (Auth::user()->can('Add Sludge Collection')) {
-                        $content .= '<a title="' . __("Add Next Sludge Collection Details") . '" href="' .
+                        $content .= '<a title="' . e(__("Add Next Sludge Collection Details")) . '" href="' .
                             route("sludge-collection.create-log-id", [$model->id]) .
                             '" class="btn btn-success btn-sm mb-1' .
                             ($model->emptying_status == 1 || $model->emptying_status == 2 ? '' : ' anchor-disabled') .
@@ -1216,12 +1307,13 @@ class ApplicationService
                     }
                 } else {
                     if (Auth::user()->can('View Sludge Collection')) {
-                        $content .= '<a title="' . __("View Sludge Collection Details") . '" href="' . route("sludge-collection.show-details", [$model->sludge_collection->id]) . '" class="btn btn-info btn-sm mb-1' . ($model->emptying_status ? '' : ' anchor-disabled') . '"><i class="fa fa-truck-moving"></i></a> ';
+                        $content .= '<a title="' . e(__("View Sludge Collection Details")) . '" href="' . route("sludge-collection.show-details", [$model->sludge_collection->id]) . '" class="btn btn-info btn-sm mb-1' . ($model->emptying_status ? '' : ' anchor-disabled') . '"><i class="fa fa-truck-moving"></i></a> ';
                     }
                 }
                 $content .= '</div>';
                 return $content;
             })
+
             ->editColumn('feedback_status', function ($model) {
                 $content = '<div class="application-quick__actions">';
                 $content .= ($model->feedback_status == 0) ? '<i class="fa fa-times"></i>' : (($model->feedback_status == 1) ? '<i class="fa fa-check"></i>' : '');
@@ -1235,11 +1327,11 @@ class ApplicationService
                 ) {
                     if (Auth::user()->can('Add Feedback')) {
 
-                        $content .= '<a title="' . __("Add Feedback Details") . '"href="' . route("feedback.create-Feedback", [$model->id]) . '" class="btn btn-success btn-sm mb-1"><i class="fa fa-pencil"></i></a> ';
+                        $content .= '<a title="' . e(__("Add Feedback Details")) . '"href="' . route("feedback.create-Feedback", [$model->id]) . '" class="btn btn-success btn-sm mb-1"><i class="fa fa-pencil"></i></a> ';
                     }
                 } else if ($model->feedback_status == 1) {
                     if (Auth::user()->can('View Feedback')) {
-                        $content .= '<a title="' . __("Feedback Details") . '" href="'
+                        $content .= '<a title="' . e(__("Feedback Details")) . '" href="'
                             . action("Fsm\FeedbackController@show", [$model->feedback->id])
                             . '" class="btn btn-info btn-sm mb-1'
                             . (($model->sludge_collection_status == 1 || $model->sludge_collection_status == 2) ? '' : ' anchor-disabled')
@@ -1248,25 +1340,21 @@ class ApplicationService
                 } else {
                     if (Auth::user()->can('Add Feedback')) {
                         // disable the feedback button
-                        $content .= '<a title="' . __("Feedback Disabled") . '" href="#" class="btn btn-info btn-sm mb-1 anchor-disabled " tabindex="-1" aria-disabled="true"><i class="fa fa-pencil"></i></a> ';
+                        $content .= '<a title="' . e(__("Feedback Disabled")) . '" href="#" class="btn btn-info btn-sm mb-1 anchor-disabled " tabindex="-1" aria-disabled="true"><i class="fa fa-pencil"></i></a> ';
                     }
                 }
-
                 $content .= '</div>';
                 return $content;
             })
 
-
             ->editColumn('proposed_emptying_date', function ($model) {
-
-
                 if (!empty($model->proposed_emptying_date) && strtotime($model->proposed_emptying_date)) {
                     return Carbon::parse($model->proposed_emptying_date)->format('l, F jS Y');
                 } else {
                     if (Auth::user()->can('Proposed Emptying Date')) {
-                       return '<div class="d-flex align-items-center justify-content-between w-100">
+                        return '<div class="d-flex align-items-center justify-content-between w-100">
                             <i class="fa fa-times"></i>
-                            <a href="' . route("emptying-scheduling", [$model->id]) . '" class="btn btn-success btn-sm" title="' . __("Proposed Emptying Date") . '">
+                            <a href="' . route("emptying-scheduling", [$model->id]) . '" class="btn btn-success btn-sm" title="' . e(__("Proposed Emptying Date")) . '">
                                 <i class="fa fa-calendar-plus"></i>
                             </a>
                         </div>';
@@ -1307,8 +1395,11 @@ class ApplicationService
         if ($request->validated()) {
             try {
                 DB::transaction(function () use ($request, $isAnf) {
-
                     $appData = $request->all();
+                    $customerName = $request->input('customer_name');
+                    $customerContact = $request->input('customer_contact');
+                    $customerGender = $request->input('customer_gender');
+
                     if ($isAnf) {
                         $appData['road_code'] = null;
                         $appData['bin'] = null;
@@ -1318,52 +1409,72 @@ class ApplicationService
                     } else {
                         $appData['anf_locality'] = null;
                         $appData['anf_nearest_locality'] = null;
+                        $sourceBuilding = Building::where('bin', '=', $request->bin)->firstOrFail();
+                        $sourceOwner = $sourceBuilding->owners;
+                        $ownerPii = $sourceOwner
+                            ? $this->ownerPiiPresenter->presentPlaintext($sourceOwner)
+                            : [];
+                        $customerName = $request->filled('customer_name')
+                            ? $request->input('customer_name')
+                            : ($ownerPii['owner_name'] ?? null);
+                        $customerContact = $request->filled('customer_contact')
+                            ? $request->input('customer_contact')
+                            : ($ownerPii['owner_contact'] ?? null);
+                        $customerGender = $request->filled('customer_gender')
+                            ? $request->input('customer_gender')
+                            : ($ownerPii['owner_gender'] ?? null);
                     }
+
+                    $appData['customer_name'] = $customerName;
+                    $appData['customer_contact'] = $customerContact;
+                    $appData['customer_gender'] = $customerGender;
 
                     // ✅ Single create call
                     $application = Application::create($appData);
 
                     // ✅ Always set these
-                    $application->application_date          = now()->format('Y-m-d H:i:s');
-                    $application->user_id                   = Auth::user()->id;
-                    $application->emptying_status           = 0;
-                    $application->sludge_collection_status  = 0;
-                    $application->feedback_status           = 0;
-                    $application->desludging_vehicle_size   = $request->desludging_vehicle_size;
-                    $application->service_provider_id       = $request->service_provider_id;
+                    $application->application_date = now()->format('Y-m-d H:i:s');
+                    $application->user_id = Auth::user()->id;
+                    $application->emptying_status = 0;
+                    $application->sludge_collection_status = 0;
+                    $application->feedback_status = 0;
+                    $application->desludging_vehicle_size = $request->desludging_vehicle_size;
+                    $application->service_provider_id = $request->service_provider_id;
 
                     if ($isAnf) {
                         // ---- ANF PATH: no BIN/building lookup ----
-                        $application->road_code        = null;
-                        $application->bin              = null;
-                        $application->containment_id   = null;
-                        $application->ward             = $request->anf_ward;
-                        $application->anf_locality     = $request->anf_locality;
+                        $application->road_code = null;
+                        $application->bin = null;
+                        $application->containment_id = null;
+                        $application->ward = $request->anf_ward;
+                        $application->anf_locality = $request->anf_locality;
                         $application->anf_nearest_locality = $request->anf_nearest_locality;
-                        $application->customer_name    = $request->customer_name ?? null;
-                        $application->customer_contact = $request->customer_contact ?? null;
-                        $application->customer_gender  = $request->customer_gender ?? null;
+                        $application->customer_name = $customerName;
+                        $application->customer_contact = $customerContact;
+                        $application->customer_gender = $customerGender;
                     } else {
                         // ---- NORMAL PATH: existing BIN/building logic ----
-                        $application->anf_locality     = null;
+                        $application->anf_locality = null;
                         $application->anf_nearest_locality = null;
 
                         $building = Building::where('bin', '=', $application->bin)->firstOrFail();
-                        $owner    = $building->owners;
+                        $owner = $building->owners;
 
-                        $application->containment_id   = $request->containment_id;
-                        $application->customer_name    = $request->customer_name    ?? $owner->owner_name;
-                        $application->customer_contact = $request->customer_contact ?? $owner->owner_contact;
-                        $application->customer_gender  = $request->customer_gender  ?? $owner->owner_gender;
+                        $application->containment_id = $request->containment_id;
+                        $application->customer_name = $customerName;
+                        $application->customer_contact = $customerContact;
+                        $application->customer_gender = $customerGender;
 
-                        $owner->fill([
-                            "owner_name"    => $request->customer_name    ?? $owner->owner_name,
-                            "owner_gender"  => $request->customer_gender  ?? $owner->owner_gender,
-                            "owner_contact" => $request->customer_contact ?? $owner->owner_contact,
-                        ])->save();
+                        if ($owner) {
+                            $owner->fill([
+                                "owner_name" => $customerName,
+                                "owner_gender" => $customerGender,
+                                "owner_contact" => $customerContact,
+                            ])->save();
+                        }
 
                         $building->fill([
-                            "ward"      => $request->ward ?? $building->ward,
+                            "ward" => $request->ward ?? $building->ward,
                             "road_code" => $request->road_code,
                         ])->save();
 
@@ -1384,13 +1495,13 @@ class ApplicationService
 
                     // ✅ Applicant autofill — works correctly for both paths
                     if ($request->autofill === 'on') {
-                        $application->applicant_name    = $application->customer_name    ?? null;
-                        $application->applicant_contact = $application->customer_contact ?? null;
-                        $application->applicant_gender  = $application->customer_gender  ?? null;
+                        $application->applicant_name = $customerName;
+                        $application->applicant_contact = $customerContact;
+                        $application->applicant_gender = $customerGender;
                     } else {
-                        $application->applicant_name    = $request->applicant_name;
+                        $application->applicant_name = $request->applicant_name;
                         $application->applicant_contact = $request->applicant_contact;
-                        $application->applicant_gender  = $request->applicant_gender;
+                        $application->applicant_gender = $request->applicant_gender;
                     }
 
                     if (empty($application->desludging_vehicle_size) && !empty($application->service_provider_id)) {
@@ -1418,7 +1529,7 @@ class ApplicationService
                     $this->rotateServiceProviderSequence($capacity);
 
                     // Notifications — unchanged from original
-                    $message       = "New Application (ID: {$application->id}) has been assigned to you.";
+                    $message = "New Application (ID: {$application->id}) has been assigned to you.";
                     $webRecipients = User::where('service_provider_id', $application->service_provider_id)->get();
 
                     if (!empty($request->employee_id)) {
@@ -1441,10 +1552,10 @@ class ApplicationService
                     $webRecipients = $webRecipients->unique('id')->values();
                     foreach ($webRecipients as $user) {
                         Notification::create([
-                            'user_id'        => $user->id,
-                            'mode'           => 'web',
-                            'message'        => $message,
-                            'status'         => false,
+                            'user_id' => $user->id,
+                            'mode' => 'web',
+                            'message' => $message,
+                            'status' => false,
                             'application_id' => $application->id,
                         ]);
                     }
@@ -1475,16 +1586,16 @@ class ApplicationService
 
                         if ($assigned) {
                             $etoUserIds[] = (string) $assigned;
-                            $etoUserIds   = array_values(array_unique($etoUserIds));
+                            $etoUserIds = array_values(array_unique($etoUserIds));
                         }
                     }
-                   
+
                 });
             } catch (\Illuminate\Database\QueryException $e) {
                 \Log::error('Database error in application creation: ' . $e->getMessage());
                 return redirect()->back()->withInput()
                     ->with('error', __('Database error occurred. Please try again.'));
-                    
+
             } catch (\Throwable $e) {
                 \Log::error('Application creation failed: ' . $e->getMessage() . ' line ' . $e->getLine() . ' file ' . $e->getFile());
                 return redirect()->back()->withInput()
@@ -1518,7 +1629,7 @@ class ApplicationService
             ]);
         }
 
-        return redirect(route('application.index'))->with('success',  __('Application created successfully.'));
+        return redirect(route('application.index'))->with('success', __('Application created successfully.'));
     }
 
     /**
@@ -1532,6 +1643,7 @@ class ApplicationService
 
         try {
             $application = Application::findOrFail($id);
+            OperationalDataAccessService::authorizeApplication($application);
             $isAnf = (bool) $application->is_anf;
 
             // The saved address state controls which fields may be updated.
@@ -1542,26 +1654,20 @@ class ApplicationService
                 'bin',
                 'ward',
                 'containment_id',
-                'customer_name',
-                'customer_gender',
-                'customer_contact',
             ]));
+
+            // This attribute is intentionally assigned explicitly because it
+            // is not mass assignable on the Application model. Without this,
+            // the edit form appeared to accept a new capacity but the saved
+            // application retained its previous vehicle size.
+            $application->desludging_vehicle_size = $request->input('desludging_vehicle_size');
 
             if (!$isAnf) {
                 $building = Building::where('bin', '=', $application->bin)->firstOrFail();
-                $owner = $building->owners;
                 $application->containment_id = $request->containment_id ?? $application->containment_id;
-                $application->customer_name = $request->customer_name ?? $owner->owner_name;
-                $application->customer_contact = $request->customer_contact ?? $owner->owner_contact;
-                $application->customer_gender = $request->customer_gender ?? $owner->owner_gender;
-                $owner->fill(
-                    [
-                        "owner_name" => $request->customer_name ?? $owner->owner_name,
-                        "owner_gender" => $request->customer_gender ?? $owner->owner_gender,
-                        "owner_contact" => $request->customer_contact ?? $owner->owner_contact,
-                        "containment_id" => $request->containment_id ?? $application->containment_id
-                    ]
-                )->save();
+                // Customer snapshot and Building owner are independent after
+                // creation. Normal Application edits must not silently rewrite
+                // either identity from the other record.
                 $building->fill([
                     "ward" => $request->ward ?? $building->ward,
                     "road_code" => $request->road_code ?? $building->road_code
@@ -1592,6 +1698,7 @@ class ApplicationService
     {
         try {
             $application = Application::findOrFail($id);
+            OperationalDataAccessService::authorizeApplication($application);
             $revisions = Revision::all()
                 ->where('revisionable_type', get_class($application))
                 ->where('revisionable_id', $id)
@@ -1613,12 +1720,11 @@ class ApplicationService
      */
     // Ensure you have imported the Application model if not already imported
 
-    public function export(Request $request)
+    public function export(Request $request, bool $includeCustomerPii = false)
     {
         // Retrieve request parameters
         $house_number = $request->bin;
         $house_address = $request->house_address;
-        $customer_name = $request->customer_name;
         $ward = $request->ward;
         $application_id = $request->application_id;
         $emptying_status = $request->emptying_status;
@@ -1636,9 +1742,6 @@ class ApplicationService
             __('BIN'),
             __('House Number'),
             __('Ward Number'),
-            __('Owner Name'),
-            __('Owner Gender'),
-            __('Owner Contact (Phone)'),
             __('Application Date'),
             __('Applicant Name'),
             __('Applicant Gender'),
@@ -1653,19 +1756,28 @@ class ApplicationService
             __('Feedback Status'),
         ];
 
+        // These columns are appended only after Application PII has been
+        // revealed. A locked export keeps its original non-PII structure.
+        if ($includeCustomerPii) {
+            $columns[] = __('Customer Name');
+            $columns[] = __('Customer Contact');
+            $columns[] = __('Customer Gender');
+        }
+
 
         // Build the base query
         $query = DB::table('fsm.applications as a')
             ->leftJoin('building_info.buildings as b', 'b.bin', '=', 'a.bin')
             ->leftJoin('fsm.service_providers as s', 's.id', '=', 'a.service_provider_id')
+            ->leftJoin('fsm.emptyings as e', function ($join) {
+                $join->on('e.application_id', '=', 'a.id')
+                    ->whereNull('e.deleted_at');
+            })
             ->select(
                 'a.bin',
                 'b.house_number as house_address',
                 'a.road_code',
                 'a.ward',
-                'a.customer_name',
-                'a.customer_gender',
-                'a.customer_contact',
                 'a.application_date',
                 'a.applicant_name',
                 'a.applicant_gender',
@@ -1680,15 +1792,28 @@ class ApplicationService
                 'a.feedback_status'
             )
             ->whereNull('a.deleted_at')
+            ->distinct()
             ->orderBy('a.bin');
+
+        if ($includeCustomerPii) {
+            // Select ciphertext from the database. It is decrypted only while
+            // each CSV row is being written and is never persisted elsewhere.
+            $query->addSelect([
+                'a.customer_name',
+                'a.customer_contact',
+                'a.customer_gender',
+            ]);
+        }
 
         // Apply additional conditions based on user roles and request parameters
         if (Auth::user()->hasRole('Service Provider - Admin') || Auth::user()->hasRole('Service Provider - Help Desk')) {
             $query->where('a.service_provider_id', Auth::user()->service_provider_id);
-        } elseif (Auth::user()->hasRole('Treatment Plant - Admin')) {
-            $query->whereHas('emptying', function ($q) {
-                $q->where('treatment_plant_id', Auth::user()->treatment_plant_id);
-            });
+        } else {
+            OperationalDataAccessService::scopeQuery(
+                $query,
+                'a.service_provider_id',
+                'e.treatment_plant_id'
+            );
         }
 
         // Apply filters based on request parameters
@@ -1700,10 +1825,6 @@ class ApplicationService
         }
         if (!empty($house_address)) {
             $query->where('b.house_number', 'ILIKE', '%' . $house_address . '%');
-        }
-
-        if (!empty($customer_name)) {
-            $query->where('a.customer_name', 'ILIKE', '%' . $customer_name . '%');
         }
         if (!empty($ward)) {
             $query->where('a.ward', $ward);
@@ -1742,7 +1863,7 @@ class ApplicationService
         $writer = WriterFactory::create(Type::CSV);
         $writer->openToBrowser('Applications.csv')
             ->addRowWithStyle($columns, $style);
-        $query->chunk(5000, function ($applications) use ($writer) {
+        $query->chunk(5000, function ($applications) use ($writer, $includeCustomerPii) {
             // Add data rows to CSV
             foreach ($applications as $application) {
 
@@ -1752,9 +1873,6 @@ class ApplicationService
                     $application->bin,
                     $application->house_address,
                     $application->ward,
-                    $application->customer_name,
-                    $application->customer_gender,
-                    $application->customer_contact,
                     $application->application_date,
                     $application->applicant_name,
                     $application->applicant_gender,
@@ -1769,13 +1887,48 @@ class ApplicationService
                     FeedbackStatus::toEnumArray()[$application->feedback_status] ?? '',
                 ];
 
+                if ($includeCustomerPii) {
+                    // Plaintext exists only in memory long enough to stream the
+                    // authorized CSV row. Formula-leading values are escaped so
+                    // spreadsheet software cannot execute them as formulas.
+                    $values[] = $this->escapeSpreadsheetValue(
+                        $this->customerPiiPresenter->presentPlaintextValue(
+                            $application->customer_name
+                        )
+                    );
+                    $values[] = $this->escapeSpreadsheetValue(
+                        $this->customerPiiPresenter->presentPlaintextValue(
+                            $application->customer_contact
+                        )
+                    );
+                    $values[] = $this->escapeSpreadsheetValue(
+                        $this->customerPiiPresenter->presentPlaintextValue(
+                            $application->customer_gender
+                        )
+                    );
+                }
+
                 // Add row to CSV
                 $writer->addRow($values);
             }
         });
-
         // Close the CSV file
         $writer->close();
+    }
+
+    /**
+     * Prevent CSV values from being interpreted as formulas by spreadsheet
+     * programs while preserving the readable decrypted value.
+     */
+    private function escapeSpreadsheetValue(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        return preg_match('/^[=+\-@]/', $value) === 1
+            ? "'" . $value
+            : $value;
     }
 
     /**
@@ -1852,7 +2005,7 @@ class ApplicationService
 
             // converts month number to mont name
             $wardData = DB::Select($wardMonthlyquery);
-            $dateObj   = DateTime::createFromFormat('!m', $month);
+            $dateObj = DateTime::createFromFormat('!m', $month);
             $monthName = $dateObj->format('F');
 
             // return view('fsm.applications.monthly_report', compact('year', 'monthName','monthWisecount','yearCount','wardData'));
@@ -1935,7 +2088,7 @@ class ApplicationService
 
             $wardData = DB::Select($wardMonthlyquery);
             // converts month number to mont name
-            $dateObj   = DateTime::createFromFormat('!m', $month);
+            $dateObj = DateTime::createFromFormat('!m', $month);
             $monthName = $dateObj->format('F');
 
             return PDF::loadView('fsm.applications.monthly_report', compact('year', 'monthName', 'monthWisecount', 'yearCount', 'wardData'))->inline('Monthly Report.pdf');
@@ -1960,7 +2113,7 @@ class ApplicationService
 
         return PDF::View('fsm.applications.application_report', compact('application', 'containment'))->inline('Application Report.pdf');
     }
-    public function getBuildingDetails(Request $request)
+    public function getBuildingDetails(Request $request, bool $revealOwnerPii = false)
     {
         try {
             // Fetch building by BIN
@@ -1969,12 +2122,21 @@ class ApplicationService
 
             // Use the `getContainmentIds` function to fetch filtered containment IDs
             $containmentIds = $building->containments->pluck('id');
-            $containment_size = Containment::where('id', $building->containments->first()->id)->pluck('size')->first();
-    
+            $firstContainment = $building->containments->first();
+            $containmentSize = $firstContainment
+                ? Containment::where('id', $firstContainment->id)->value('size')
+                : null;
+
             // Fetch additional related data
             $owner = $building->owners;
             $road = $building->roadlines;
             $application = Application::orderBy('id', 'DESC')->where('bin', $request->bin)->first();
+
+            // Only a password-confirmed, authorized controller request can
+            // enable this flag. Never serialize the Owner model itself.
+            $ownerPii = $revealOwnerPii && $owner
+                ? $this->ownerPiiPresenter->presentPlaintext($owner)
+                : null;
 
             // Check if containments are empty
 
@@ -1985,9 +2147,11 @@ class ApplicationService
             // Return the response
             return JsonResponse::fromJsonString(json_encode([
                 'test' => $road,
-                "customer_name" => $owner->owner_name ?? null,
-                "customer_gender" => $owner->owner_gender ?? null,
-                "customer_contact" => $owner->owner_contact ?? null,
+                "customer_name" => $ownerPii['owner_name'] ?? null,
+                "customer_gender" => $ownerPii['owner_gender'] ?? null,
+                "customer_contact" => $ownerPii['owner_contact'] ?? null,
+                "owner_pii_locked" => !$revealOwnerPii,
+                "customer_pii_locked" => !$revealOwnerPii,
                 "road" => $road->code ?? null,
                 "building_accessible" => $building->desludging_vehicle_accessible ?? null,
                 "ward" => $building->ward ?? null,
@@ -1996,7 +2160,7 @@ class ApplicationService
                 "population_served" => $building->population_served ?? null,
                 "toilet_count" => $building->toilet_count ?? null,
                 "status" => !empty($containmentIds),
-                "containment_size" => $containment_size
+                "containment_size" => $containmentSize
 
             ]), 200);
         } catch (Throwable $e) {
@@ -2011,7 +2175,7 @@ class ApplicationService
     public function ServiceProviderOrder(?int $capacity = null): array
     {
         $capInput = $capacity ?? request()->input('capacity', null);
-        $desiredCapacity = ($capInput !== null && $capInput !== '') ? (int)$capInput : null;
+        $desiredCapacity = ($capInput !== null && $capInput !== '') ? (int) $capInput : null;
         $useCapacity = $desiredCapacity !== null;
 
         $query = ServiceProviderSequence::query()
@@ -2028,9 +2192,10 @@ class ApplicationService
 
     public function getNextServiceProviderId(?int $capacity = null): ?int
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true);
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order');
 
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
@@ -2041,9 +2206,11 @@ class ApplicationService
 
     public function getNextServiceProviderName(?string $capacity = null): ?string
     {
-        $capInput = request()->input('capacity', null);
+        $capInput = $capacity ?? request()->input('capacity', null);
 
-        $query = ServiceProviderSequence::where('current_sequence', true)->with('service_provider');
+        $query = ServiceProviderSequence::where('current_sequence', true)
+            ->orderBy('sequence_order')
+            ->with('service_provider');
         if (!empty($capInput)) {
             $query->where('desludging_vehicle_size', (int) $capInput);
         }
@@ -2094,8 +2261,10 @@ class ApplicationService
             throw new \Exception(__('This application is not an Address Not Found (ANF) application or has already been resolved.'));
         }
 
-        // Find containment by code field
-        $containment = Containment::where('id', $containmentCode)->firstOrFail();
+        // Find containment by id or public_id
+        $containment = Str::isUuid($containmentCode)
+            ? Containment::where('public_id', $containmentCode)->firstOrFail()
+            : Containment::where('id', $containmentCode)->firstOrFail();
 
         // Check no duplicate containment in applications table (covers both not started and in-progress multi-trip)
         $alreadyExists = Application::where('containment_id', $containment->id)
@@ -2108,23 +2277,25 @@ class ApplicationService
             throw new \Exception(__('Error! This containment already has a running application.'));
         }
 
-        $building = Building::where('bin', $bin)->firstOrFail();
+        $building = Str::isUuid($bin)
+            ? Building::where('public_id', $bin)->firstOrFail()
+            : Building::where('bin', $bin)->firstOrFail();
 
         // Ensure the containment belongs to the selected building
         if (!$building->containments()->where('containments.id', $containment->id)->exists()) {
             throw new \Exception(__('The selected containment does not belong to this building.'));
         }
 
-        $owner    = $building->owners;
+        $owner = $building->owners;
 
-        $application->bin              = $building->bin;
-        $application->road_code        = $building->road_code;
-        $application->ward             = $building->ward;
-        $application->containment_id   = $containment->id;
-        $application->customer_name    = $owner->owner_name    ?? $application->customer_name;
+        $application->bin = $building->bin;
+        $application->road_code = $building->road_code;
+        $application->ward = $building->ward;
+        $application->containment_id = $containment->id;
+        $application->customer_name = $owner->owner_name ?? $application->customer_name;
         $application->customer_contact = $owner->owner_contact ?? $application->customer_contact;
-        $application->customer_gender  = $owner->owner_gender  ?? $application->customer_gender;
-        $application->is_anf           = false;
+        $application->customer_gender = $owner->owner_gender ?? $application->customer_gender;
+        $application->is_anf = false;
 
         $application->save();
     }

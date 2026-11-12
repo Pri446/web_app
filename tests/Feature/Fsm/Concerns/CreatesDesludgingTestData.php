@@ -69,6 +69,7 @@ trait CreatesDesludgingTestData
 
         DB::table('building_info.buildings')->insert([
             'bin' => $bin,
+            'public_id' => (string) Str::uuid(),
             'ward' => $ward,
             'road_code' => $roadCode,
             'house_number' => 'TEST-HOUSE',
@@ -88,6 +89,7 @@ trait CreatesDesludgingTestData
 
         DB::table('fsm.containments')->insert([
             'id' => $containmentId,
+            'public_id' => (string) Str::uuid(),
             'status' => $containmentStatus,
             'emptied_status' => false,
             'priority' => 1,
@@ -120,9 +122,6 @@ trait CreatesDesludgingTestData
             'priority' => 1,
             'sequence' => 1,
             'status' => $containmentStatus,
-            'owner_name' => 'Test Owner',
-            'owner_gender' => 'Male',
-            'owner_contact' => '9800000000',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

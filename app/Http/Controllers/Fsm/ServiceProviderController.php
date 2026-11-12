@@ -211,6 +211,21 @@ class ServiceProviderController extends Controller
     {
         $serviceProvider = ServiceProvider::findOrFail($id);
         $data = $request->validated();
+        $wasOperational = (bool) $serviceProvider->status;
+        $willBeOperational = (bool) $data['status'];
+        $oldDocumentPath = $serviceProvider->contract_document_pdf;
+        $newDocumentPath = null;
+
+        if (
+            $wasOperational
+            && !$willBeOperational
+            && $this->serviceProviderService->hasActiveApplications($serviceProvider->id)
+        ) {
+            return redirect('fsm/service-providers')->with(
+                'error',
+                __('The Service Provider cannot be made inactive while it has active or ongoing applications.')
+            );
+        }
 
         if ($request->hasFile('contract_document_pdf')) {
             $file = $request->file('contract_document_pdf');
@@ -223,43 +238,49 @@ class ServiceProviderController extends Controller
 
             $filename = $companyName . '_' . time() . '.pdf';
 
-            $newPath = $file->storeAs(
+            $newDocumentPath = $file->storeAs(
                 'contract_documents',
                 $filename,
                 'public'
             );
-
-            /*
-            * Delete the old document only after the new document
-            * has been stored successfully.
-            */
-            if (
-                !empty($serviceProvider->contract_document_pdf) &&
-                Storage::disk('public')->exists(
-                    $serviceProvider->contract_document_pdf
-                )
-            ) {
-                Storage::disk('public')->delete(
-                    $serviceProvider->contract_document_pdf
-                );
-            }
-
-            $data['contract_document_pdf'] = $newPath;
+            $data['contract_document_pdf'] = $newDocumentPath;
         } else {
             $data['contract_document_pdf'] =
                 $serviceProvider->contract_document_pdf;
         }
 
-        $this->serviceProviderService->storeOrUpdate(
-            $serviceProvider->id,
-            $data
+        try {
+            $this->serviceProviderService->storeOrUpdate(
+                $serviceProvider->id,
+                $data
+            );
+        } catch (\DomainException $exception) {
+            if ($newDocumentPath) {
+                Storage::disk('public')->delete($newDocumentPath);
+            }
+
+            return redirect('fsm/service-providers')
+                ->with('error', $exception->getMessage());
+        }
+
+        if (
+            $newDocumentPath
+            && $oldDocumentPath
+            && Storage::disk('public')->exists($oldDocumentPath)
+        ) {
+            Storage::disk('public')->delete($oldDocumentPath);
+        }
+
+        $redirect = redirect('fsm/service-providers')->with(
+            'success',
+            __('Service Provider updated successfully.')
         );
 
-        return redirect('fsm/service-providers')
-            ->with(
-                'success',
-                __('Service Provider updated successfully.')
-            );
+        if (!$wasOperational && $willBeOperational) {
+            $redirect->with('activation_review', true);
+        }
+
+        return $redirect;
     }
 
     /**
@@ -278,17 +299,17 @@ class ServiceProviderController extends Controller
                 $applicationsCount =  $serviceProvider->applications()->count();
                 if($applicationsCount > 0)
                     {
-                        return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated Applicaiton Information.'));
+                        return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated Application Information. Please make the provider inactive instead.'));
                     }
             }
             if($serviceProvider->users()->exists()){
-                return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated User Information.'));
+                return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated User Information. Please make the provider inactive instead.'));
             }
             if($serviceProvider->vacutugTypes()->exists()){
-                return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated Desludging Vehicle Information.'));
+                return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated Desludging Vehicle Information. Please make the provider inactive instead.'));
             }
             if($serviceProvider->employees()->exists()){
-                return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated Employee Information.'));
+                return redirect('fsm/service-providers')->with('error',__('Cannot delete Service Provider that has associated Employee Information. Please make the provider inactive instead.'));
             }
             $serviceProvider->delete();
             

@@ -51,16 +51,16 @@ class WaterborneService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['waterborne.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit Yearly Waterborne Cases')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("PublicHealth\YearlyWaterborneController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("PublicHealth\YearlyWaterborneController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Yearly Waterborne Cases')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("PublicHealth\YearlyWaterborneController@show", [$model->id]) . '"class="btn btn-info btn-sm mb-1"  ><i class="fas fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("PublicHealth\YearlyWaterborneController@show", [$model->id]) . '"class="btn btn-info btn-sm mb-1"  ><i class="fas fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View Yearly Waterborne Case History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("PublicHealth\YearlyWaterborneController@history", [$model->id]) .'" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("PublicHealth\YearlyWaterborneController@history", [$model->id]) .'" class="btn btn-info btn-sm mb-1"  ><i class="fas fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete Yearly Waterborne Cases')) {
-                    $content .= '<a href="#" title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1 "  ><i class="fas fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1 "  ><i class="fas fa-trash"></i></a> ';
                 }
                 $content .= \Form::close();
                 return $content;

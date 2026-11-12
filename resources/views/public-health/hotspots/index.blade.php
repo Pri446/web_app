@@ -149,20 +149,7 @@
 
                         var form = $(this).closest("form");
                         event.preventDefault();
-                        Swal.fire({
-                            title: "{{__('Are you sure?')}}",
-                    text: "{!! __('You won\'t be able to revert this!') !!}",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: "{{ __('Yes, delete it!') }}",
-                    cancelButtonText: '{{ __('Cancel') }}',
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                form.submit();
-                            }
-                        })
+                        deleteAction(form || this);
                     });
                 });
 
@@ -199,8 +186,8 @@
     //     var cql_param = getCQLParams();
     //     window.location.href = "{{ Config::get("
     //     constants
-    //         .GEOSERVER_URL ") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("
-    //     constants.AUTH_KEY ") }}&typeName={{ Config::get("
+    //         legacy export URL removed; use the authenticated GIS export route.
+    //     legacy credential removed
     //     constants.GEOSERVER_WORKSPACE ") }}:waterborne_hotspots_layer+&CQL_FILTER=" + cql_param +
     //         " &outputFormat=SHAPE-ZIP";
 
@@ -211,8 +198,8 @@
     //     var cql_param = getCQLParams();
     //     window.location.href = "{{ Config::get("
     //     constants
-    //         .GEOSERVER_URL ") }}wfs?service=WFS&version=1.0.0&request=GetFeature&authkey={{ Config::get("
-    //     constants.AUTH_KEY ") }}&typeName={{ Config::get("
+    //         legacy export URL removed; use the authenticated GIS export route.
+    //     legacy credential removed
     //     constants.GEOSERVER_WORKSPACE ") }}:waterborne_hotspots_layer+&CQL_FILTER=" + cql_param +
     //         " &outputFormat=KML";
     // });

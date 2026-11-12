@@ -34,7 +34,13 @@ class GuestSeeder extends Seeder
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Building Surveys'])->whereIn('type', ['List']));
 
                     //For FSM Module
-                    $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Containments', 'Service Providers', 'Employee Infos','Desludging Vehicles', 'Treatment Plants','Treatment Plant Efficiency Tests', 'Applications', 'Emptyings', 'Sludge Collections', 'Feedbacks', 'Treatment Plant Efficiency Standards','Help Desks'])->whereIn('type', ['List', 'View']));
+                    $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Containments', 'Service Providers', 'Employee Infos','Desludging Vehicles', 'Treatment Plants','Treatment Plant Efficiency Tests', 'Applications', 'Sludge Collections', 'Feedbacks', 'Treatment Plant Efficiency Standards','Help Desks'])->whereIn('type', ['List', 'View']));
+
+                    // Emptying records contain customer and operational data and
+                    // must never be exposed to the read-only Guest role.
+                    foreach (Permission::all()->where('group', 'Emptyings') as $permission) {
+                        $createdRole->revokePermissionTo($permission);
+                    }
 
                     //For PT/CT Module
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['PT/CT Toilets'])->whereIn('type', ['List', 'View', 'View on map']));

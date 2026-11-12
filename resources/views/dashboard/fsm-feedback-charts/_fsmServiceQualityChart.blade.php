@@ -11,13 +11,13 @@ var ctx = document.getElementById("fsmSrvcQltyChart");
 var myChart = new Chart(ctx, {
   type: 'doughnut',
   data: {
-    labels: [<?php echo implode(',', $fsmSrvcQltyChart['labels']); ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($fsmSrvcQltyChart['labels'] ?? [])))),
     datasets: [
         {
             label: "Building Structures by building use",
-            backgroundColor: [<?php echo implode(',', $fsmSrvcQltyChart['colors']); ?>],
-            hoverBackgroundColor: [<?php echo implode(',', $fsmSrvcQltyChart['hoverBackgroundColor']); ?>],
-            data: [<?php echo implode(',', $fsmSrvcQltyChart['values']); ?>],
+            backgroundColor: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($fsmSrvcQltyChart['colors'] ?? [])))),
+            hoverBackgroundColor: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($fsmSrvcQltyChart['hoverBackgroundColor'] ?? [])))),
+            data: @json(array_values($fsmSrvcQltyChart['values'] ?? [])),
         }
     ]
 },

@@ -134,7 +134,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         <a href="#" id="wms_layer" class="btn btn-default map-control"
                            data-toggle="tooltip" data-placement="bottom" title="{{ __('Import from WMS') }}"  ><i class="fas fa-layer-group"></i></a>
                         <a href="#" id="get_location" class="btn btn-default map-control"data-toggle="tooltip" data-placement="bottom" title="{{ __('Locate Me') }}" ><img src="{{ asset('img/locate_me.png')}}" style="height:17px;"alt="Location Icon"> </a>
-                        <a href="#" id="kml_drag_drop" class="btn btn-default map-control"data-toggle="tooltip" data-placement="bottom" title="{{ __('KML Drag and Drop') }}" ><img src="{{ asset('img/kml_icon.png')}}" style="height:22px;"alt="Location Icon"> </a>
+<a href="#" id="kml_viewer" class="btn btn-default map-control" data-toggle="tooltip" data-placement="bottom" title="{{ __('KML Viewer') }}">
+                            <img src="{{ asset('img/kml_icon.png') }}" style="height:22px;" alt="KML Upload">
+                        </a>
+                        <input type="file" id="fileInput" style="display:none;" accept=".kml">
                         <a href="#" id="removemarkers_control" class="btn btn-default map-control" data-toggle="tooltip"
                            data-placement="bottom" title="{{ __('Remove Markers') }}"><i class="fa fa-trash fa-fw"></i></a>
                           
@@ -2062,17 +2065,17 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             // Geoserver workspace name from constants
             var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
             // URL of GeoServer
-            var gurl = "<?php echo Config::get("constants.GEOSERVER_URL"); ?>/";
+            var gurl = "{{ url('/gis') }}/";
             // URL of WMS
-            var gurl_wms = gurl + 'wms';
+            var gurl_wms = "{{ route('gis.wms') }}";
             // URL of WFS
-            var gurl_wfs = gurl + 'wfs';
+            var gurl_wfs = "{{ route('gis.wfs') }}";
             // Authentication Keys
-            var authkey = '<?php echo Config::get("constants.AUTH_KEY"); ?>';
+            var gurl_print = "{{ route('gis.print') }}";
             // BBOX Values
             var bboxstring = @json($bboxstring);
             // URL of GeoServer Legends
-            var gurl_legend = gurl_wms + "?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&BBOX="+@json($bboxstring)+"&LAYER=";
+            var gurl_legend = gurl_wms + "?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&BBOX="+@json($bboxstring)+"&LAYER=";
 
             // Get center from bbox string
             // Split the string into an array of numbers
@@ -2090,15 +2093,6 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             var coord = [centerX, centerY];  //[latitude,longitude]
             //Modifying these values will affect functions like zoomToCity(), setInitialZoom(), and tools like Hard to Reach Building,Buildings Close to Water Bodies.
 
-            var dragAndDropInteraction = new ol.interaction.DragAndDrop({
-                formatConstructors: [
-                    ol.format.GPX,
-                    ol.format.GeoJSON,
-                    ol.format.IGC,
-                    ol.format.KML,
-                    ol.format.TopoJSON
-                ]
-            });
             // OpenLayers Map
             var map = new ol.Map({
                 controls: ol.control.defaults().extend([new ol.control.ScaleLine()]),
@@ -2108,7 +2102,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     rotate: false,
                     // mouseWheelZoom: false,
                     doubleClickZoom: false
-                }).extend([new ol.interaction.DragPan({kinetic: null}), dragAndDropInteraction]),
+                }).extend([new ol.interaction.DragPan({kinetic: null})]),
                 target: 'olmap',
                 view: new ol.View({
                     minZoom: 13,
@@ -2117,8 +2111,152 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 })
             });
 
-            //KML Drag and drop
-            dragAndDropInteraction.on('addfeatures', function (event) {
+            // Shared KML Viewer workflow for file-picker uploads.
+            function handleKmlFeatures(features) {
+                if (!features || !features.length) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '{{ __("No Features Found") }}',
+                        text: '{{ __("The uploaded KML does not contain any features.") }}'
+                    });
+                    return;
+                }
+
+                if (features.length > 1000) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '{{ __("Too Many Features!") }}',
+                        text: '{{ __("Upload a KML file with 1000 features or less") }}',
+                        confirmButtonColor: '#d33'
+                    });
+                    return;
+                }
+
+                displayAjaxLoader();
+                var wktFormat = new ol.format.WKT();
+                var geometries = features.map(function (feature) {
+                    var wkt = wktFormat.writeGeometry(feature.getGeometry().clone().transform('EPSG:3857', 'EPSG:4326'));
+                    var name = feature.get('name') || 'Unnamed Feature';
+                    feature.set('name', name);
+                    feature.set('kmlViewerWkt', wkt);
+                    return { name: name, wkt: wkt };
+                });
+
+                $.ajax({
+                    url: '{{ url("maps/check-geometry") }}',
+                    type: 'POST',
+                    data: { geometries: geometries },
+                    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                    success: function (data) {
+                        var details = Array.isArray(data.details) ? data.details : [];
+                        var intersecting = details.filter(function (item) { return item.intersects === true; });
+                        var outside = details.filter(function (item) { return item.intersects === false; });
+
+                        if (outside.length) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: '{{ __("Some Features do not Intersect") }}',
+                                text: '{{ __("These features do not intersect: ") }}' + outside.map(function (item) { return item.name; }).join(', '),
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+
+                        if (!intersecting.length) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '{{ __("No Features Intersect") }}',
+                                text: '{{ __("None of the Features Intersect with the Municipality") }}',
+                                confirmButtonColor: '#d33'
+                            });
+                            removeAjaxLoader();
+                            return;
+                        }
+
+                        if (eLayer.kml_features) {
+                            eLayer.kml_features.layer.getSource().clear();
+                        } else {
+                            addExtraLayer('kml_features', 'KML Features', new ol.layer.Vector({ source: new ol.source.Vector() }));
+                        }
+
+                        features.forEach(function (feature) {
+                            var detail = intersecting.find(function (item) { return item.wkt === feature.get('kmlViewerWkt'); });
+                            if (!detail) return;
+                            var geometry = feature.getGeometry();
+                            var isPoint = geometry.getType() === 'Point';
+                            feature.setStyle(new ol.style.Style({
+                                image: isPoint ? new ol.style.Icon({ anchor: [0.5, 1], src: '{{ url("/") }}/img/marker-green.png' }) : undefined,
+                                stroke: isPoint ? undefined : new ol.style.Stroke({ color: '#FF0000', width: 1 }),
+                                fill: isPoint ? undefined : new ol.style.Fill({ color: 'rgba(255, 255, 0, 0.3)' }),
+                                text: new ol.style.Text({
+                                    text: feature.get('name'),
+                                    font: '20px Calibri,sans-serif',
+                                    fill: new ol.style.Fill({ color: '#000' }),
+                                    stroke: new ol.style.Stroke({ color: '#fff', width: 3 }),
+                                    overflow: true,
+                                    offsetY: isPoint ? -20 : 0
+                                })
+                            }));
+                            eLayer.kml_features.layer.getSource().addFeature(feature);
+                        });
+
+                        var source = eLayer.kml_features.layer.getSource();
+                        var extent = source.getExtent();
+                        if (ol.extent.isEmpty(extent)) {
+                            removeAjaxLoader();
+                            return;
+                        }
+                        map.getView().fit(extent, map.getSize());
+                        var center = ol.extent.getCenter(extent);
+                        var polygons = intersecting.filter(function (item) { return /^POLYGON(?: Z)?/.test(item.wkt); });
+                        $('#kml_dragdrop_geom').val(JSON.stringify(polygons.map(function (item) {
+                            return { name: item.name, geom: item.wkt };
+                        })));
+
+                        if (eLayer.kmlbuildings) {
+                            eLayer.kmlbuildings.layer.getSource().clear();
+                        } else {
+                            addExtraLayer('kmlbuildings', 'KML Buildings', new ol.layer.Vector({
+                                source: new ol.source.Vector(),
+                                style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#0000FF', width: 1 }) })
+                            }));
+                        }
+
+                        $.ajax({
+                            url: '{{ url("maps/get-kml-summary-info") }}',
+                            type: 'POST',
+                            data: { geometries: polygons.map(function (item) { return item.wkt; }) },
+                            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                            success: function (response) {
+                                if (response.success === false) {
+                                    displayAjaxErrorModal(response.responseText);
+                                } else {
+                                    kmlDragDropPopupContent.innerHTML = response.popContentsHtml || '';
+                                    kmlDragDropPopupOverlay.setPosition(center);
+                                    (response.buildings || []).forEach(function (building) {
+                                        var buildingFeature = wktFormat.readFeature(building.geom, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+                                        buildingFeature.setStyle(styleFunction(building.id));
+                                        eLayer.kmlbuildings.layer.getSource().addFeature(buildingFeature);
+                                    });
+                                }
+                                removeAjaxLoader();
+                            },
+                            error: function (xhr) {
+                                displayAjaxErrorModal(xhr.statusText || '{{ __("Unable to load KML summary information.") }}');
+                                removeAjaxLoader();
+                            }
+                        });
+                    },
+                    error: function (xhr) {
+                        displayAjaxErrorModal(xhr.statusText || '{{ __("Unable to validate the KML file.") }}');
+                        removeAjaxLoader();
+                    }
+                });
+            }
+
+            /* Legacy drag-and-drop handler disabled.
+            Legacy handler body retained only for historical reference; drag-and-drop is disabled.
+                handleKmlFeatures(event.features);
+                return;
                 if (event.features.length > 1000) {
                     Swal.fire({
                         icon: 'warning',
@@ -2202,7 +2340,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     }
 
                     map.getView().fit(
-                        eLayer.kml_features.layer.getSource().getExtent(), /** @type {ol.Size} */ (map.getSize())
+                        eLayer.kml_features.layer.getSource().getExtent(), // @type {ol.Size} (map.getSize())
                     ); 
                     
                     var center = ol.extent.getCenter(eLayer.kml_features.layer.getSource().getExtent());
@@ -2226,12 +2364,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         // Send the geometry to get KML summary information
                         var url1 = '{{ url("maps/get-kml-summary-info") }}';
                         displayAjaxLoader();
-                       var polygonGeometries = geometries.filter(g => g.startsWith("POLYGON Z"));
+                       var polygonGeometries = geometries.filter(g => /^POLYGON(?: Z)?/.test(g));
                         $.ajax({
                             url: url1,
                             type: 'post',
                             data: {
-                                geometries: geometries,
+                                geometries: polygonGeometries,
                             },
                             headers: {
                                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -2266,12 +2404,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             }
                         });
                
-                        $('#kml_dragdrop_geom').val(polygonGeometries.join(','));
-                        document.getElementById('kml-export-form').addEventListener('submit', function (e) {
-                            const sourceGeom = document.getElementById('kml_dragdrop_geom').value;
-                            // Copy the geometry string to the actual form field
-                            document.getElementById('kml_dragdrop_geom_post').value = sourceGeom;
+                        var polygonExportData = polygonGeometries.map(function (geometry) {
+                            var featureIndex = geometries.indexOf(geometry);
+                            return {
+                                name: event.features[featureIndex].get('name') || 'Unnamed Feature',
+                                geom: geometry
+                            };
                         });
+                        $('#kml_dragdrop_geom').val(JSON.stringify(polygonExportData));
+                        // The geometry is already stored in the form's hidden input.
                     }
                 },
 
@@ -2279,7 +2420,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     console.error('Error checking geometry:', error);
                 }
             });
-        });
+            */
             // Base Layers Object
             var bLayer = {
                 osm: {name: 'OpenStreetMap', type: 'osm'},
@@ -3514,17 +3655,55 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     }
            
            
-               $('#kml_drag_drop').click(function (e) {
+               $('#kml_viewer').click(function (e) {
                 e.preventDefault();
                 disableAllControls();
                 currentControl = '';
-                 Swal.fire({
-                    icon: 'info',
-                    title: "{{ __('KML Viewer')}}",
-                    text: "{{ __('To View KML, Please Drag and Drop the KML File Directly onto the Map')}}",
-                    confirmButtonText: "{{ __('OK')}}"
-                });
+                document.getElementById('fileInput').click();
+            });
 
+            // The viewer button supports selecting a KML file from the file picker.
+            document.getElementById('fileInput').addEventListener('change', function (event) {
+                var file = event.target.files[0];
+                if (!file) return;
+
+                if (!/\.kml$/i.test(file.name)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '{{ __("Invalid KML File") }}',
+                        text: '{{ __("Please upload a KML file.") }}'
+                    });
+                    event.target.value = '';
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function (loadEvent) {
+                    try {
+                        var features = new ol.format.KML().readFeatures(loadEvent.target.result, {
+                            dataProjection: 'EPSG:4326',
+                            featureProjection: 'EPSG:3857'
+                        });
+                        if (!features.length) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: '{{ __("No Features Found") }}',
+                                text: '{{ __("The uploaded KML does not contain any features.") }}'
+                            });
+                            return;
+                        }
+                        handleKmlFeatures(features);
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: '{{ __("Invalid KML File") }}',
+                            text: '{{ __("The KML file could not be read.") }}'
+                        });
+                    }
+                };
+                reader.readAsText(file);
+                // Allow selecting the same file again.
+                event.target.value = '';
             });
 
             // Add handler to zoom in button click
@@ -4109,9 +4288,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                             $('#' + toolBoxId).show();
 
                             vectorSource = new ol.source.Vector({
-                                url: '<?php echo Config::get("constants.GEOSERVER_URL"); ?>/ows?service=WFS&' +
+                                url: gurl_wfs + '?service=WFS&' +
                                     'version=1.1.0&request=GetFeature&typeName=<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>:' + geoServerLayer + '&' +
-                                    'CQL_FILTER=deleted_at is null&SRS=EPSG:4326&outputFormat=json&authkey=9499949e-6318-4ffd-8384-ed94c5d84770',
+                                    'CQL_FILTER=deleted_at is null&SRS=EPSG:4326&outputFormat=json',
                                 format: new ol.format.GeoJSON(),
                             });
 
@@ -5192,7 +5371,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         {
                             type: "WMS",
                             layers: alllayers,
-                            baseURL: gurl_wms + "?authkey=" + authkey,
+                            baseURL: gurl_wms,
                             format: "image/jpeg",
                             styles: allstyles,
                         }
@@ -5213,7 +5392,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
                 getDevices = async () => {
                             try {
-                                const fetchResponse = await fetch(encodeURI(`<?php echo Config::get("constants.GEOSERVER"); ?>/pdf/print.pdf?authkey`+ authkey + `&spec=` + JSON.stringify(json), { mode: 'no-cors' }));
+                                const fetchResponse = await fetch(gurl_print, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                    },
+                                    body: JSON.stringify({spec: json})
+                                });
+                                if (!fetchResponse.ok) throw new Error('Print failed.');
                                 const blob = await fetchResponse.blob();
                                 const link = document.createElement('a');
                                 link.href = window.URL.createObjectURL(blob);
@@ -5778,18 +5965,18 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     });
                 if (feature && feature.get('application_id')) {
                     var coordinate = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-                    var innerHTML = 'Application ID : ' + feature.get('application_id');
+                    var innerHTML = 'Application ID : ' + escapeHtml(feature.get('application_id'));
                     if (feature.get('bin')) {
-                        innerHTML += '<br>BIN : ' + feature.get('bin');
+                        innerHTML += '<br>BIN : ' + escapeHtml(feature.get('bin'));
                     }
                     if (feature.get('service_provider')) {
-                        innerHTML += '<br>Service Provider : ' + feature.get('service_provider');
+                        innerHTML += '<br>Service Provider : ' + escapeHtml(feature.get('service_provider'));
                     }
                     if (feature.get('application_date')) {
-                        innerHTML += '<br>Application Date : ' + feature.get('application_date');
+                        innerHTML += '<br>Application Date : ' + escapeHtml(feature.get('application_date'));
                     }
                     if (feature.get('emptying_date')) {
-                        innerHTML += '<br>Emptying Date : ' + feature.get('emptying_date');
+                        innerHTML += '<br>Emptying Date : ' + escapeHtml(feature.get('emptying_date'));
                     }
                     popupMarkerContent.innerHTML = innerHTML;
                     popupMarkerOverlay.setPosition(evt.coordinate);
@@ -6902,7 +7089,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 var format = new ol.format.WKT();
                 var geom = format.writeGeometry(geometry.clone().transform('EPSG:3857', 'EPSG:4326'));
 
-                var exportLink = gurl_wfs + '?request=GetFeature&service=WFS&version=1.0.0&authkey=' + authkey + '&typeName=' + workspace + ':' + selectedLayer + '&CQL_FILTER=deleted_at is null AND WITHIN(geom, ' + geom + ')';
+                var exportLink = gurl_wfs + '?request=GetFeature&service=WFS&version=1.0.0&typeName=' + workspace + ':' + selectedLayer + '&CQL_FILTER=deleted_at is null AND WITHIN(geom, ' + geom + ')';
 
                 csvdata(outputFormat, selectedLayer, exportLink);
             }
@@ -9029,7 +9216,8 @@ $.ajax({
                 }
                 if (layer == 'buildings_tax_status_layer')
                 {
-                    params.PROPERTYNAME = 'tax_code,bin,ward,owner_name,owner_contact,due_year';
+                    // Property Tax map requests must never receive owner PII.
+                    params.PROPERTYNAME = 'tax_code,bin,ward,due_year';
                 }
                 if (layer == 'buildings_water_payment_status_layer')
                 {
@@ -10811,7 +10999,7 @@ $.ajax({
                 });
 
                 var outputFormat, propertyName;
-                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":" + selectedLayer + "&CQL_FILTER=deleted_at is null AND INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))";
+                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":" + selectedLayer + "&CQL_FILTER=deleted_at is null AND INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))";
 
                 csvdata(outputFormat, selectedLayer, exportLink);
 
@@ -10859,7 +11047,7 @@ $.ajax({
                     'roadlines_layer': 'code,name,carrying_width,hierarchy,surface_type,length,right_of_way',
                     'sewerlines_layer': 'code,diameter,location,length,road_code,treatmentplant_type',
                     'waterborne_hotspots_layer': 'hotspot_location,ward,disease_type,no_of_cases,male_cases,female_cases,other_cases,no_of_fatalities,male_fatalities,female_fatalities,other_fatalities,notes',
-                    'buildings_tax_status_layer': 'tax_code,bin,ward,owner_name,owner_contact,due_year',
+                    'buildings_tax_status_layer': 'tax_code,bin,ward,due_year',
                     'buildings_water_payment_status_layer': 'water_customer_id,bin,ward,customer_name,customer_contact,due_year',
                     'watersupply_network_layer': 'code,diameter,length,project_name,type,material_type',
                     'buildings_swm_payment_status_layer' : 'swm_customer_id,bin,ward,customer_name,customer_contact,due_year',
@@ -11180,7 +11368,7 @@ $.ajax({
 
             var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,owner_name,owner_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,owner_name,owner_contact,due_year,geom&outputFormat=" + outputFormat;
 
             if (format === 'csv') {
                 fetch(exportLink)
@@ -11251,7 +11439,7 @@ $.ajax({
 
                 var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_water_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=water_customer_id,bin,tax_code,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_water_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=water_customer_id,bin,tax_code,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
 
                 if (format === 'csv') {
                     fetch(exportLink)
@@ -11317,7 +11505,7 @@ $.ajax({
 
                 var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-                var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey=" + authkey + "&typeName=" + workspace + ":buildings_swm_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=swm_customer_id,bin,tax_code,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_swm_payment_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=swm_customer_id,bin,ward,customer_name,customer_contact,due_year,geom&outputFormat=" + outputFormat;
 
                 if (format === 'csv') {
                     fetch(exportLink)

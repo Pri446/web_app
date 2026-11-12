@@ -11,6 +11,7 @@ use App\Models\Fsm\Emptying;
 use App\Models\Fsm\SludgeCollection;
 use App\Models\Fsm\TreatmentPlant;
 use App\Services\Fsm\EmptyingService;
+use App\Services\Fsm\OperationalDataAccessService;
 use DateTimeZone;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,14 @@ class EmptyingController extends Controller
 
     public function __construct(EmptyingService $emptyingService)
     {
+        $this->middleware('auth');
+        $this->middleware('permission:List Emptyings', ['only' => ['index', 'getData']]);
+        $this->middleware('permission:View Emptying', ['only' => ['show']]);
+        $this->middleware('permission:Add Emptying', ['only' => ['create', 'store']]);
+        $this->middleware('permission:Edit Emptying', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:Delete Emptying', ['only' => ['destroy']]);
+        $this->middleware('permission:View Emptyings History', ['only' => ['history']]);
+        $this->middleware('permission:Export Emptyings', ['only' => ['export']]);
         $this->emptyingService = $emptyingService;
     }
 
@@ -42,7 +51,15 @@ class EmptyingController extends Controller
     public function index(Request $request)
     {
         $filterFormFields = $this->emptyingService->getFilterFormFields();
-        $containment_code = $request->containment_code ? $request->containment_code : '';
+        $containment_code = '';
+        if ($request->filled('containment_public_id')) {
+            $containment_code = Containment::where('public_id', $request->containment_public_id)
+                ->firstOrFail()
+                ->id;
+        } elseif ($request->filled('containment_code')) {
+            // Temporary compatibility for existing bookmarks.
+            $containment_code = $request->containment_code;
+        }
         $exportBtnLink = Auth::user()->can('Export Emptyings')?$this->emptyingService->getExportRoute():null;
         return view('fsm.emptying.index',compact('filterFormFields','exportBtnLink','containment_code'));
     }
@@ -68,6 +85,7 @@ class EmptyingController extends Controller
     {
         $exists = Emptying::where('application_id', $id)->exists();
         $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         
         return view('fsm.emptying.create',[
             'formAction' => $this->emptyingService->getCreateFormAction(),
@@ -98,17 +116,16 @@ class EmptyingController extends Controller
      */
     public function show($id)
     {
-       
-        $emptying = Emptying::find($id);
-       
-        if ($emptying) {
-            $page_title = __("Emptying Details");
-            $formFields = $this->emptyingService->getShowFormFields($emptying);
-            $indexAction = url()->previous();
-            return view('layouts.show',compact('page_title','formFields','emptying','indexAction'));
-        } else {
-            abort(404);
-        }
+        $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
+
+        $page_title = __("Emptying Details");
+        $formFields = $this->emptyingService->getShowFormFields($emptying);
+        $indexAction = url()->previous();
+        return view('layouts.show',compact('page_title','formFields','emptying','indexAction'));
     }
 
     /**
@@ -120,8 +137,13 @@ class EmptyingController extends Controller
     public function edit($id)
     {
         $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
         $application = Application::with('emptying')
             ->findOrFail($emptying->application_id);
+        $application_id = $application->id;
         $is_anf = (bool) $application->is_anf;
 
         if( !(Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('Municipality - Sanitation Department')) )
@@ -143,6 +165,7 @@ class EmptyingController extends Controller
             'indexAction',
             'emptying',
             'application',
+            'application_id',
             'is_anf'
         ));
     }
@@ -180,6 +203,10 @@ public function destroy($id)
 {
     try {
         $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
 
         if ($emptying->feedback()->exists()) {
             return redirect(route('emptying.index'))

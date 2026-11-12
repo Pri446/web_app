@@ -10,14 +10,14 @@ var ctx = document.getElementById("fscrCharts");
 var myChart = new Chart(ctx, {
   type: 'bar',
   data: {
-    labels: [<?php echo "'" . implode("', '", $fscrCharts['labels']) . "'"; ?>],
+    labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, $fscrCharts['labels'] ?? []))),
     datasets: [
         {
           type: "bar",
             label: "Targets",
             backgroundColor: "rgba(251, 176, 64,0.8)",
             hoverBackgroundColor: "rgba(251, 176, 64,0.9)",
-            data: [<?php echo implode(',', $fscrCharts['target_values']); ?>],
+            data: @json(array_values($fscrCharts['target_values'] ?? [])),
         },
         {
           type: "bar",
@@ -25,7 +25,7 @@ var myChart = new Chart(ctx, {
             backgroundColor: "rgba(153, 202, 60,0.8)",
             hoverBackgroundColor: "rgba(153, 202, 60,0.9)",
             fill: false,
-            data: [<?php echo implode(',', $fscrCharts['achievement_values']); ?>],
+            data: @json(array_values($fscrCharts['achievement_values'] ?? [])),
         }
     ]
     

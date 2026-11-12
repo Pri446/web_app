@@ -15,7 +15,7 @@
 
                 {!! Form::label('owner_name', __('Owner Name'), ['class' => 'col-sm-2 control-label ']) !!}
                 <div class="col-sm-3">
-                    {!! Form::text('owner_name', $building->Owners->owner_name ?? '', [
+                    {!! Form::text('owner_name', $ownerPii['owner_name'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -25,7 +25,7 @@
             <div class="form-group row ">
                 {!! Form::label('nid',__('Owner NID') , ['class' => 'col-sm-2 control-label ']) !!}
                 <div class="col-sm-3">
-                    {!! Form::text('nid', $building->Owners->nid ?? '', [
+                    {!! Form::text('nid', $ownerPii['nid'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -34,7 +34,7 @@
             <div class="form-group row">
                 {!! Form::label('gender', __('Owner Gender'), ['class' => 'col-sm-2 control-label']) !!}
                 <div class="col-sm-3">
-                    {!! Form::text('gender', $building->Owners->owner_gender ?? '', [
+                    {!! Form::text('gender', $ownerPii['owner_gender'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -44,7 +44,7 @@
             <div class="form-group row">
                 {!! Form::label('contact_no', __('Owner Contact Number'), ['class' => 'col-sm-2 control-label']) !!}
                 <div class="col-sm-3">
-                    {!! Form::number('contact_no', $building->Owners->owner_contact ?? '', [
+                    {!! Form::text('contact_no', $ownerPii['owner_contact'] ?? '', [
                         'class' => 'form-control col-sm-10 font-weight-bold',
                         'readonly' => 'readonly',
                     ]) !!}
@@ -54,6 +54,25 @@
 
 
             <h3 class="mt-3"> {{ __('Building Information') }}</h3>
+
+            <div class="form-group row">
+                {!! Form::label(
+                    'house_image',
+                    $imageSrc ? __('House Image') : __('No Building Image'),
+                    ['class' => 'col-sm-2 control-label']
+                ) !!}
+
+                <div class="col-sm-3">
+                    <a href="{{ $imageSrc ?: '#' }}" target="_blank">
+                        <button
+                            type="button"
+                            class="btn btn-info"
+                            {{ $imageSrc ? '' : 'disabled' }}>
+                            <i class="fa-solid fa-eye"></i> {{ __('View Image') }}
+                        </button>
+                    </a>
+                </div>
+            </div>
 
             <div class="form-group row" id="building_associated">
                 {!! Form::label('is_main_building', __('Main Building'), ['class' => 'col-sm-2 control-label']) !!}
@@ -153,7 +172,7 @@
             </div>
             <div class="form-group row">
                 {!! Form::label('estimated_area',  __('Estimated Area of the Building (m²)'), [
-                                                      
+
                     'class' => 'col-sm-2 control-label',
                 ]) !!}
                 <div class="col-sm-3">
@@ -521,25 +540,6 @@
                     ) !!}
                 </div>
             </div>
-            <div class="form-group row">
-                {!! Form::label(
-                    'house_image',
-                    $imageSrc ? __('House Image') : __('No Building Image'),
-                    ['class' => 'col-sm-2 control-label']
-                ) !!}
-
-                <div class="col-sm-3">
-                    <a href="{{ $imageSrc ?: '#' }}" target="_blank">
-                        <button
-                            type="button"
-                            class="btn btn-info"
-                            {{ $imageSrc ? '' : 'disabled' }}>
-                            <i class="fa-solid fa-eye"></i> {{ __('View Image') }}
-                        </button>
-                    </a>
-                </div>
-            </div>
-
 
         </div><!-- /.card-body -->
     </div>

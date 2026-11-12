@@ -23,7 +23,8 @@ class FormField
         $fileUrl,
         $required,
         $oninput,
-        $autoComplete;
+        $autoComplete,
+        $min;
 
     public function __construct(
         String $label = 'Label',
@@ -42,7 +43,8 @@ class FormField
         bool $hidden = false,
         String $fileUrl = '',
         bool $required = false,
-        String $autoComplete = "on")
+        String $autoComplete = "on",
+        String $min = null)
     {
         $this->label = $label;
         $this->labelFor = $labelFor;
@@ -61,6 +63,7 @@ class FormField
         $this->fileUrl = $fileUrl;
         $this->required = $required;
         $this->autoComplete = $autoComplete;
+        $this->min = $min;
     }
 
 }

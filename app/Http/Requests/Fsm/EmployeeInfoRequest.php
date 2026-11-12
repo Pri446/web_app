@@ -6,6 +6,7 @@ namespace App\Http\Requests\Fsm;
 use App\Models\Fsm\EmployeeInfo;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class EmployeeInfoRequest extends FormRequest
@@ -29,6 +30,16 @@ class EmployeeInfoRequest extends FormRequest
     public function authorize()
     {
         return true;
+    }
+
+    /** Prevent service-provider users from assigning employees to another provider. */
+    protected function prepareForValidation()
+    {
+        if (Auth::check() && Auth::user()->service_provider_id) {
+            $this->merge([
+                'service_provider_id' => (int) Auth::user()->service_provider_id,
+            ]);
+        }
     }
 
     /**
@@ -63,6 +74,8 @@ class EmployeeInfoRequest extends FormRequest
             'employment_end.after' => __('The Job End Date must be a date after Job Start Date.'),
             'employment_end.after' => __('The Job End Date must be a date after Job Start Date.'),
             'license_number.unique'=>__('The license plate number has already been taken.'),
+            'service_provider_id.required' => __('The Service Provider field is required.'),
+            'service_provider_id.exists' => __('The selected service provider is invalid or not operational.'),
 
         ];
     }
@@ -70,6 +83,13 @@ class EmployeeInfoRequest extends FormRequest
     public function store()
     {
         return [
+            'service_provider_id' => [
+                'required',
+                'integer',
+                Rule::exists('pgsql.fsm.service_providers', 'id')->where(function ($query) {
+                    return $query->where('status', 1)->whereNull('deleted_at');
+                }),
+            ],
             'name' => 'required|string',
             'gender' => 'required|string',
             'contact_number' => 'required|integer',
@@ -102,6 +122,13 @@ class EmployeeInfoRequest extends FormRequest
     {
             $id = $this->route()->employee_info;
         return [
+            'service_provider_id' => [
+                'required',
+                'integer',
+                Rule::exists('pgsql.fsm.service_providers', 'id')->where(function ($query) {
+                    return $query->where('status', 1)->whereNull('deleted_at');
+                }),
+            ],
             'name' => 'required|string',
             'gender' => 'required|string',
             'contact_number' => 'required|integer',

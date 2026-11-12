@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 
 class LoginController extends Controller
@@ -32,14 +34,18 @@ class LoginController extends Controller
      */
     public function login(LoginRequest $request)
     {
-        $credentials = $request->getCredentials();
-        
-        if (!Auth::validate($credentials)) {
+        $login = trim($request->input('username'));
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $user = User::whereRaw('LOWER(' . $field . ') = ?', [mb_strtolower($login)])->first();
+
+        if (
+            !$user
+            || (int) $user->status !== 1
+            || !Hash::check($request->input('password'), $user->password)
+        ) {
             return redirect()->back()
                 ->withErrors(trans('auth.failed'));
         }
-    
-        $user = Auth::getProvider()->retrieveByCredentials($credentials);
     
         // Check for not allowed roles
         $notallowedRoles = [
@@ -49,7 +55,6 @@ class LoginController extends Controller
         ];
     
         if ($user->roles()->whereIn('name', $notallowedRoles)->exists()) {
-            Auth::logout();
             return redirect()->back()
                 ->withErrors(['login' => 'You are not allowed to log in with your current role.']);
         }

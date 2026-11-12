@@ -8,10 +8,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Fsm\ApplicationController;
 use App\Http\Controllers\Api\ApiServiceController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MapsController;
 use App\Http\Controllers\Proxy\WMSProxyController;
 use App\Http\Controllers\PlacesController;
 use App\Models\Places;
+use App\Http\Controllers\Security\PiiKeyBackupController;
+use App\Http\Controllers\GISProxyController;
+use App\Http\Controllers\GISExportController;
+use App\Http\Controllers\GISPrintController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,10 +48,17 @@ Route::middleware('fixed_token_auth')->get('redirect-to-map/{ebps_id}', [ApiServ
 Route::get('/files', 'FileController@index')->name('files.index');
 Route::post('/files/upload', 'FileController@upload')->name('files.upload');
 
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'fetch']); // fetch notifications
+    Route::post('/notification/read', [NotificationController::class, 'markAsRead']); // single read
+    Route::post('/notification/read-all', [NotificationController::class, 'markAllAsRead']); // mark all as read
+    Route::post('/notification/clear-all', [NotificationController::class, 'clearAll']); // clear all
+}); 
 
 
-
-Route::post('/contact/send', [ContactController::class, 'send'])->name('contact.send');
+Route::post('/contact/send', [ContactController::class, 'send'])
+    ->middleware('throttle:contact')
+    ->name('contact.send');
 
 
 Route::group(['middleware' => ['guest']], function () {
@@ -60,11 +72,15 @@ Route::group(['middleware' => ['guest']], function () {
      * Login Routes
      */
     Route::get('/login', 'Auth\LoginController@show')->name('login.show');
-    Route::post('/login', 'Auth\LoginController@login')->name('login.perform');
+    Route::post('/login', 'Auth\LoginController@login')
+        ->middleware('throttle:web-login')
+        ->name('login.perform');
 
     // Password Reset Routes...
     Route::get('password/reset', 'Auth\ForgotPasswordController@showLinkRequestForm')->name('password.request');
-    Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')->name('password.email');
+    Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')
+        ->middleware('throttle:password-reset')
+        ->name('password.email');
     Route::get('password/reset/{token}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
     Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('password.update');
 });
@@ -73,6 +89,16 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard/content', [App\Http\Controllers\HomeController::class, 'content'])
+        ->name('dashboard.content');
+});
+
+Route::middleware('auth')->prefix('gis')->group(function () {
+    Route::get('/wms', [GISProxyController::class, 'wms'])->name('gis.wms');
+    Route::get('/wfs', [GISProxyController::class, 'wfs'])->name('gis.wfs');
+    Route::get('/export/{format}', [GISExportController::class, 'export'])
+        ->where('format', 'csv|kml|shp')->name('gis.export');
+    Route::post('/print', [GISPrintController::class, 'print'])->name('gis.print');
 });
 
 /**
@@ -86,6 +112,7 @@ Route::group([
     // building structure routes
     Route::get('get-use-categories/{functionalUseId}', 'BuildingController@getUseCategories')->name('functionaluse.getusecat');
     Route::get('buildings/buildingdashboard', 'BuildingDashboardController@index')->name('buildingdashboard');
+    Route::get('buildings/buildingdashboard/content', 'BuildingDashboardController@content')->name('buildingdashboard.content');
     Route::get('buildings/check-house', 'BuildingController@checkHouse')->name('buildings.check-house');
     Route::get('buildings/data', 'BuildingController@getData')->name('building.getData');
     Route::get('buildings/get-house-numbers', 'BuildingController@getHouseNumbers')->name('building.get-house-numbers-containments');
@@ -95,10 +122,18 @@ Route::group([
     //replace this later when passed
     Route::get('buildings/get-containment-septic', 'BuildingController@getContainmentTypes')->name('building.get-containment-septic');
     Route::get('buildings/get-test', 'BuildingController@testFunc');
-    Route::get('buildings/{id}/history', 'BuildingController@history');
+    Route::post('buildings/map-lookup', 'BuildingController@mapLookup')->name('buildings.map-lookup');
+    Route::get('buildings/{building:public_id}/history', 'BuildingController@history');
     Route::get('buildings/export', 'BuildingController@export');
-    Route::get('buildings/{id}/listContainments', 'BuildingController@listContainments')->name('buildings.listContainments');
-    Route::resource('buildings', 'BuildingController');
+    Route::post('owner-pii/unlock-list', 'OwnerPiiAccessController@unlockList')
+        ->middleware('throttle:5,1')
+        ->name('owner-pii.unlock-list');
+    Route::post('owner-pii/export', 'OwnerPiiExportController@export')
+        ->middleware('throttle:5,1')
+        ->name('owner-pii.export');
+    Route::post('owner-pii/lock', 'OwnerPiiAccessController@lock')->name('owner-pii.lock');
+    Route::get('buildings/{building:public_id}/listContainments', 'BuildingController@listContainments')->name('buildings.listContainments');
+    Route::resource('buildings', 'BuildingController')->parameters(['buildings' => 'building']);
 
     // building survey routes
     Route::get('building-surveys/data', 'BuildingSurveyController@getData')->name('building.getData');
@@ -151,6 +186,14 @@ Route::group([
     'namespace' => 'TaxPaymentInfo',
     'middleware' => 'auth'
 ], function () {
+    Route::post('tax-payment/owner-pii/unlock', 'PropertyTaxPiiAccessController@unlock')
+        ->middleware('throttle:5,1')
+        ->name('tax-payment-pii.unlock');
+    Route::post('tax-payment/owner-pii/lock', 'PropertyTaxPiiAccessController@lock')
+        ->name('tax-payment-pii.lock');
+    Route::post('tax-payment/owner-pii/export', 'PropertyTaxPiiExportController@export')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
+        ->name('tax-payment-pii.export');
     Route::get('tax-payment/data', 'TaxPaymentController@getData')->name('tax-payment.getData');
     Route::get('tax-payment/export', 'TaxPaymentController@export')->name('tax-payment.export');
     Route::get('tax-payment/exportunmatched', 'TaxPaymentController@exportunmatched')->name('tax-payment.exportunmatched');
@@ -207,6 +250,7 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::get('utilitydashboard', 'UtilityDashboardController@index')->name('utilitydashboard');
+    Route::get('utilitydashboard/content', 'UtilityDashboardController@content')->name('utilitydashboard.content');
     Route::get('roadlines/export', 'RoadlineController@export');
     Route::get('roadlines/data', 'RoadlineController@getData');
     Route::get('roadlines/{code}/geometry', 'RoadlineController@getGeometry');
@@ -363,19 +407,22 @@ Route::group([
     Route::get('containments/data', 'ContainmentController@getData');
     Route::get('containments/get-id', 'ContainmentController@getContainmentID')->name('containment.get-id');
 
+    Route::get('containments/building/{id}/containmentData', 'ContainmentController@getContainment');
     Route::get('containments/{id}/containmentData', 'ContainmentController@getContainment');
-    Route::get('containments/{id}/listBuildings', 'ContainmentController@listBuildings');
-    Route::delete('containments/{id}/buildings/{buidlingId}', 'ContainmentController@deleteBuilding');
+    Route::get('containments/{containment:public_id}/listBuildings', 'ContainmentController@listBuildings');
+    Route::delete('containments/{containment:public_id}/buildings/{building:public_id}', 'ContainmentController@deleteBuilding');
 
+    Route::get('containments/building/{id}/create', 'ContainmentController@createContainment');
+    Route::post('containments/building/{id}/store', 'ContainmentController@storeContainment');
     Route::get('containments/{id}/create', 'ContainmentController@createContainment');
     Route::post('containments/{id}/store', 'ContainmentController@storeContainment');
 
     Route::get('containments/export', 'ContainmentController@export');
     Route::get('containments/export-building-containment','ContainmentController@exportBuildingContainment');
 
-    Route::get('containments/{id}/history', 'ContainmentController@history');
-    Route::get('containments/{id}/type-change-history', 'ContainmentController@typeChangeHistory');
-    Route::resource('containments', 'ContainmentController');
+    Route::get('containments/{containment:public_id}/history', 'ContainmentController@history');
+    Route::get('containments/{containment:public_id}/type-change-history', 'ContainmentController@typeChangeHistory');
+    Route::resource('containments', 'ContainmentController')->parameters(['containments' => 'containment']);
 
 
     /**
@@ -450,7 +497,15 @@ Route::group([
      * Application Routes
      *
      */
-        Route::get('application/getData', 'ApplicationController@getData')->name('application.get-data');
+    Route::get('application/getData', 'ApplicationController@getData')->name('application.get-data');
+    Route::post('application/customer-pii/unlock-list', 'ApplicationPiiAccessController@unlockList')
+        ->middleware('throttle:5,1')
+        ->name('application-pii.unlock-list');
+    Route::post('application/customer-pii/lock', 'ApplicationPiiAccessController@lock')
+        ->name('application-pii.lock');
+    Route::post('application/customer-pii/export', 'ApplicationCustomerPiiExportController@export')
+        ->middleware('throttle:5,1')
+        ->name('application-pii.export');
     Route::get('application/export', 'ApplicationController@export')->name('application.export');
     Route::get('application/{id}/history', 'ApplicationController@history')->name('application.history');
     Route::get('application/getBuildingDetails', 'ApplicationController@buildingDetails')->name('application.get-building-details');
@@ -521,6 +576,62 @@ Route::group([
     /**
      * CWIS Routes
      */
+    Route::get('rpm-data/create', 'CwisRpmDataController@create')->name('cwis.rpm.create');
+    Route::post('rpm-data', 'CwisRpmDataController@store')->name('cwis.rpm.store');
+    Route::get('rpm-data/{submission}/edit', 'CwisRpmDataController@edit')->whereNumber('submission')->name('cwis.rpm.edit');
+    Route::get('rpm-data/{submission}', 'CwisRpmDataController@show')->whereNumber('submission')->name('cwis.rpm.show');
+    Route::get('rpm-data/{submission}/review', 'CwisRpmDataController@review')->whereNumber('submission')->name('cwis.rpm.review');
+    Route::post('rpm-data/{submission}/approve', 'CwisRpmDataController@approve')->whereNumber('submission')->name('cwis.rpm.approve');
+    Route::post('rpm-data/{submission}/calculate', 'CwisRpmDataController@calculate')->whereNumber('submission')->name('cwis.rpm.calculate');
+    Route::put('rpm-data/{submission}', 'CwisRpmDataController@update')->whereNumber('submission')->name('cwis.rpm.update');
+    Route::get('rpm-data/{submission}/documents/{document}', 'CwisRpmDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.rpm.document');
+    Route::get('accountability-data/create', 'CwisAccountabilityDataController@create')->name('cwis.accountability.create');
+    Route::post('accountability-data', 'CwisAccountabilityDataController@store')->name('cwis.accountability.store');
+    Route::get('accountability-data/{submission}/edit', 'CwisAccountabilityDataController@edit')->whereNumber('submission')->name('cwis.accountability.edit');
+    Route::get('accountability-data/{submission}', 'CwisAccountabilityDataController@show')->whereNumber('submission')->name('cwis.accountability.show');
+    Route::get('accountability-data/{submission}/review', 'CwisAccountabilityDataController@review')->whereNumber('submission')->name('cwis.accountability.review');
+    Route::post('accountability-data/{submission}/approve', 'CwisAccountabilityDataController@approve')->whereNumber('submission')->name('cwis.accountability.approve');
+    Route::post('accountability-data/{submission}/calculate', 'CwisAccountabilityDataController@calculate')->whereNumber('submission')->name('cwis.accountability.calculate');
+    Route::put('accountability-data/{submission}', 'CwisAccountabilityDataController@update')->whereNumber('submission')->name('cwis.accountability.update');
+    Route::get('accountability-data/{submission}/documents/{document}', 'CwisAccountabilityDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.accountability.document');
+    Route::get('responsibility-data/create', 'CwisResponsibilityDataController@create')->name('cwis.responsibility.create');
+    Route::post('responsibility-data', 'CwisResponsibilityDataController@store')->name('cwis.responsibility.store');
+    Route::get('responsibility-data/{submission}/edit', 'CwisResponsibilityDataController@edit')->whereNumber('submission')->name('cwis.responsibility.edit');
+    Route::get('responsibility-data/{submission}', 'CwisResponsibilityDataController@show')->whereNumber('submission')->name('cwis.responsibility.show');
+    Route::get('responsibility-data/{submission}/review', 'CwisResponsibilityDataController@review')->whereNumber('submission')->name('cwis.responsibility.review');
+    Route::post('responsibility-data/{submission}/approve', 'CwisResponsibilityDataController@approve')->whereNumber('submission')->name('cwis.responsibility.approve');
+    Route::post('responsibility-data/{submission}/calculate', 'CwisResponsibilityDataController@calculate')->whereNumber('submission')->name('cwis.responsibility.calculate');
+    Route::put('responsibility-data/{submission}', 'CwisResponsibilityDataController@update')->whereNumber('submission')->name('cwis.responsibility.update');
+    Route::get('responsibility-data/{submission}/documents/{document}', 'CwisResponsibilityDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.responsibility.document');
+    Route::get('sustainability-data/create', 'CwisSustainabilityDataController@create')->name('cwis.sustainability.create');
+    Route::post('sustainability-data', 'CwisSustainabilityDataController@store')->name('cwis.sustainability.store');
+    Route::get('sustainability-data/{submission}/edit', 'CwisSustainabilityDataController@edit')->whereNumber('submission')->name('cwis.sustainability.edit');
+    Route::get('sustainability-data/{submission}', 'CwisSustainabilityDataController@show')->whereNumber('submission')->name('cwis.sustainability.show');
+    Route::get('sustainability-data/{submission}/review', 'CwisSustainabilityDataController@review')->whereNumber('submission')->name('cwis.sustainability.review');
+    Route::post('sustainability-data/{submission}/approve', 'CwisSustainabilityDataController@approve')->whereNumber('submission')->name('cwis.sustainability.approve');
+    Route::post('sustainability-data/{submission}/calculate', 'CwisSustainabilityDataController@calculate')->whereNumber('submission')->name('cwis.sustainability.calculate');
+    Route::put('sustainability-data/{submission}', 'CwisSustainabilityDataController@update')->whereNumber('submission')->name('cwis.sustainability.update');
+    Route::get('sustainability-data/{submission}/documents/{document}', 'CwisSustainabilityDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.sustainability.document');
+    Route::get('safety-data/create', 'CwisSafetyDataController@create')->name('cwis.safety.create');
+    Route::post('safety-data', 'CwisSafetyDataController@store')->name('cwis.safety.store');
+    Route::get('safety-data/{submission}', 'CwisSafetyDataController@show')->whereNumber('submission')->name('cwis.safety.show');
+    Route::get('safety-data/{submission}/edit', 'CwisSafetyDataController@edit')->whereNumber('submission')->name('cwis.safety.edit');
+    Route::get('safety-data/{submission}/review', 'CwisSafetyDataController@review')->whereNumber('submission')->name('cwis.safety.review');
+    Route::put('safety-data/{submission}', 'CwisSafetyDataController@update')->whereNumber('submission')->name('cwis.safety.update');
+    Route::post('safety-data/{submission}/approve', 'CwisSafetyDataController@approve')->whereNumber('submission')->name('cwis.safety.approve');
+    Route::post('safety-data/{submission}/calculate', 'CwisSafetyDataController@calculate')->whereNumber('submission')->name('cwis.safety.calculate');
+    Route::get('safety-data/{submission}/documents/{document}', 'CwisSafetyDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.safety.document');
+    Route::get('generator-data', 'CwisGeneratorDataController@index')->name('cwis.generator-data.index');
+    Route::get('generator-data/create', 'CwisGeneratorDataController@create')->name('cwis.generator-data.create');
+    Route::post('generator-data', 'CwisGeneratorDataController@store')->name('cwis.generator-data.store');
+    Route::get('generator-data/data', 'CwisGeneratorDataController@getData')->name('cwis.generator-data.data');
+    Route::get('generator-data/{submission}/documents/{document}', 'CwisGeneratorDataController@document')->whereNumber('submission')->whereNumber('document')->name('cwis.generator-data.document');
+    Route::get('generator-data/{submission}', 'CwisGeneratorDataController@show')->whereNumber('submission')->name('cwis.generator-data.show');
+    Route::get('generator-data/{submission}/edit', 'CwisGeneratorDataController@edit')->whereNumber('submission')->name('cwis.generator-data.edit');
+    Route::get('generator-data/{submission}/review', 'CwisGeneratorDataController@review')->whereNumber('submission')->name('cwis.generator-data.review');
+    Route::put('generator-data/{submission}', 'CwisGeneratorDataController@update')->whereNumber('submission')->name('cwis.generator-data.update');
+    Route::post('generator-data/{submission}/approve', 'CwisGeneratorDataController@approve')->whereNumber('submission')->name('cwis.generator-data.approve');
+    Route::post('generator-data/{submission}/calculate', 'CwisGeneratorDataController@calculate')->whereNumber('submission')->name('cwis.generator-data.calculate');
     Route::get('cwis-df-mne/newsurvey', 'CwisMneController@createIndex');
     Route::post('cwis-df-mne/newsurvey', 'CwisMneController@createStore');
     Route::get('cwis-df-mne/export-mne-csv', 'CwisMneController@exportMneCsv');
@@ -656,6 +767,10 @@ Route::group([
     Route::resource('setup', 'LanguageController');
 });
 Route::group(['middleware' => ['auth']], function () {
+    Route::post('/security/pii-key-backup', [PiiKeyBackupController::class, 'download'])
+        ->middleware(['throttle:3,60', 'pii.no-cache'])
+        ->name('pii-key-backup.download');
+
     /**
      * Logout Routes
      */

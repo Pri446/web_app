@@ -18,7 +18,7 @@
         }
 
         .schedule-table-container table {
-            min-width: 1400px;
+            min-width: 1100px;
         }
 
         .schedule-action {
@@ -144,24 +144,6 @@
                             </div>
                         </div>
 
-                        <div class="form-group row">
-                            <label
-                                for="owner_name"
-                                class="col-md-2 col-form-label"
-                            >
-                                {{ __('Owner Name') }}
-                            </label>
-
-                            <div class="col-md-2">
-                                <input
-                                    type="text"
-                                    id="owner_name"
-                                    class="form-control"
-                                    placeholder="{{ __('Owner Name') }}"
-                                >
-                            </div>
-                        </div>
-
                         <div class="card-footer text-right">
                             <button
                                 type="submit"
@@ -205,14 +187,6 @@
                             <th>{{ __('Next Emptying Date') }}</th>
                             <th>{{ __('House Locality') }}</th>
                             <th>{{ __('Road Number') }}</th>
-
-                            <th>
-                                {{ __('Owner Name') }}
-                            </th>
-
-                            <th>
-                                {{ __('Owner Contact') }}
-                            </th>
 
                             <th>{{ __('Actions') }}</th>
                         </tr>
@@ -298,20 +272,6 @@
                     defaultContent: '-'
                 },
                 {
-                    data: 'display_name',
-                    name: 'display_name',
-                    orderable: false,
-                    searchable: false,
-                    defaultContent: '-'
-                },
-                {
-                    data: 'display_contact',
-                    name: 'display_contact',
-                    orderable: false,
-                    searchable: false,
-                    defaultContent: '-'
-                },
-                {
                     data: 'action',
                     name: 'action',
                     orderable: false,
@@ -329,7 +289,6 @@
                         data.bin = $('#bin').val();
                         data.containment_id = $('#containment_id').val();
                         data.holding_num = $('#holding_num').val();
-                        data.owner_name = $('#owner_name').val();
                     }
                 },
                 columns: columns,
@@ -429,7 +388,6 @@
                     $('#bin').val('');
                     $('#containment_id').val('');
                     $('#holding_num').val('');
-                    $('#owner_name').val('');
 
                     scheduleTable.draw();
                 }

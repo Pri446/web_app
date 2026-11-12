@@ -60,23 +60,23 @@ class DrainService {
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['drains.destroy', $model->code]]);
 
                 if (Auth::user()->can('Edit Drain')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("UtilityInfo\DrainController@edit", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("UtilityInfo\DrainController@edit", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Drain')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("UtilityInfo\DrainController@show", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("UtilityInfo\DrainController@show", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Drain History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("UtilityInfo\DrainController@history", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("UtilityInfo\DrainController@history", [$model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Drain')) {
-                    $content .= '<a href="#" title="' . __("Delete") . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="' . e(__("Delete")) . '"  class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Drain On Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'drains_layer', 'field' => 'code', 'val' => $model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'drains_layer', 'field' => 'code', 'val' => $model->code]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -103,13 +103,13 @@ class DrainService {
     public function storeOrUpdate($code = null,$data)
     {
         if(empty($code)){
-            // $drainTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM drain_temp");
-            // $geom = ($drainTemp[0]->geom);
+            $drainTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM drain_temp");
+            $geom = ($drainTemp[0]->geom);
 
             $maxcode = Drain::withTrashed()->max('code');
             $maxcode = str_replace('D', '', $maxcode);
             $drain = new Drain();
-            $drain->code = 'D' . sprintf('%06d', $maxcode + 1);
+            $drain->code = 'D' . sprintf('%04d', $maxcode + 1);
             $drain->user_id = Auth::id();
             $drain->road_code = $data['road_code'] ? $data['road_code'] : null;
             $drain->surface_type = $data['surface_type'] ? $data['surface_type'] : null;
@@ -117,8 +117,7 @@ class DrainService {
             $drain->treatment_plant_id = $data['treatment_plant_id'] ? $data['treatment_plant_id'] : null;
             $drain->size = $data['size'] ? $data['size'] : null;
             $drain->length = $data['length'] ? $data['length'] : null;
-            $drain->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $data['geom'] . "', 4326))") : null;
-
+            $drain->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $geom . "', 4326))") : null;
             $drain->save();
         }
         else{
@@ -146,15 +145,7 @@ class DrainService {
         $searchData = $data['searchData'] ? $data['searchData'] : null;
         $code = $data['code'] ? $data['code'] : null;
         $cover_type = $data['cover_type'] ? $data['cover_type'] : null;
-        $columns = [
-            __('Code'),
-            __('Road Code'),
-            __('Cover Type'),
-            __('Surface Type'),
-            __('Width (mm)'),
-            __('Length (m)'),
-            __('Treatment Plant'),
-        ];
+        $columns = ['Code','Road Code', 'Cover Type', 'Surface Type', 'Width (mm)', 'Length (m)','Treatment Plant'];
         $query = Drain::select('drains.code', 'drains.road_code', 'drains.cover_type', 'drains.surface_type', 'drains.size', 'drains.length', 'fsm.treatment_plants.name as Treatment Plant')
         ->leftJoin('fsm.treatment_plants', 'drains.treatment_plant_id', '=', 'fsm.treatment_plants.id')
         ->whereNull('drains.deleted_at');

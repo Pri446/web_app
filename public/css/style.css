@@ -286,6 +286,25 @@ Disable anchor tags
   margin-left: 0.45rem;
 }
 
+.global-loader-input-wrapper {
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+}
+
+.global-loader-input-wrapper .global-loader-control {
+  padding-right: 2rem;
+}
+
+.global-loader-input-wrapper .global-loader-spinner {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  margin: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .main-sidebar .global-loader-spinner {
   float: right;
   margin-top: 0.25rem;

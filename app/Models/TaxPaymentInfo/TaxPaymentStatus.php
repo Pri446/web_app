@@ -13,6 +13,6 @@ class TaxPaymentStatus extends Model
     protected $primaryKey = 'tax_code';
 
     public static function selectAll(){
-        return TaxPaymentStatus::select('tax_code', 'owner_name', 'owner_contact', 'last_payment_date');
+        return TaxPaymentStatus::select('tax_code', 'last_payment_date');
     }
 }

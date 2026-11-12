@@ -92,7 +92,7 @@ The existing application, emptying, sludge-collection and feedback modules remai
 
 ### Scheduled Desludging
 
-**Tables:** `fsm.containments` supplies status, priority, FSTP distance and dates; `fsm.desludging_schedule_temp` is the regenerated queue snapshot; `fsm.service_provider_wards` and `fsm.service_providers.service_area` provide ward coverage; `public.site_settings` supplies scheduling settings. Building BIN, ward, address and owner come from `building_info` tables.
+**Tables:** `fsm.containments` supplies status, priority, FSTP distance and dates; `fsm.desludging_schedule_temp` is the regenerated non-PII queue snapshot; `fsm.service_provider_wards` and `fsm.service_providers.service_area` provide ward coverage; `public.site_settings` supplies scheduling settings. Only building BIN, ward and address data is read from `building_info` for this queue. Owner PII is not joined, copied, searched or returned.
 
 **View/model:** `resources/views/fsm/desludging-schedule/index.blade.php`; `app/Models/Fsm/DesludgingSchedule.php`.
 

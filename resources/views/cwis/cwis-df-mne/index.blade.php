@@ -3,6 +3,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
 @extends('layouts.dashboard')
 @section('title', $page_title)
 @section('content')
+@include('cwis.generator-data.success-toast')
+<style>
+    #cwis-equity-review-link, #cwis-equity-review-link:visited { color: #0056b3 !important; text-decoration: underline; }
+    #cwis-equity-review-link:hover, #cwis-equity-review-link:focus { color: #003d80 !important; }
+</style>
 @php
         $currentYear = date('Y');
         $nextYear = $currentYear + 1;
@@ -48,19 +53,32 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
 </script>
 @endif
 <div class="card card-info">
+    @if($resultCountryMismatch)
+        <div class="alert alert-info" role="status">{{ __('Saved results for this year belong to another country selection. No values are shown for the selected country until its results are generated.') }}</div>
+    @endif
+    @if($equityApprovalMissing ?? false)
+        <div class="alert alert-warning" role="status">
+            {{ __('Equity inputs for :year (:country) must be approved before generating CWIS results.', ['year' => $generationYear, 'country' => $countryLabel]) }}
+            @if($equitySource)
+                <a id="cwis-equity-review-link" href="{{ route('cwis.generator-data.show', ['submission' => $equitySource->id, 'country_code' => $country]) }}">{{ __('Review Equity Submission') }}</a>
+            @endif
+        </div>
+    @endif
     <div class="card-header bg-white">
+        <p class="mb-2">{{ __('Country') }}: <strong>{{ $countryLabel }}</strong></p>
         <form method="GET" action="{{ url('cwis/cwis-df-mne/export-mne-csv')}}" class="form-inline ml-auto">
 
             @if($show_add_cwis_button)
-            <a href="{{ action('Cwis\CwisMneController@createIndex', ['year' =>  $minyear, 'placeholder' => __('Enter value in percent.'),'displayText' => __('quantitative') ]) }}" 
+            <a href="{{ action('Cwis\CwisMneController@createIndex', ['year' => $generationYear, 'placeholder' => __('Enter value in percent.'),'displayText' => __('quantitative') ]) }}"
             class="btn btn-info ml-2" id="addCwisData">{{__('Add CWIS Data')}}</a>
             @else
             @if($pickyear[0] == $currentYear && !Auth::user()->hasRole('Municipality - Executive'))
                 {{-- No action needed, nothing will be shown --}}
             @elseif($pickyear[0] < $lastYear && !Auth::user()->hasRole('Municipality - Executive'))
-             <a href="{{ action('Cwis\CwisMneController@createIndex', ['year' => $slugyear[0], 'placeholder' => __('Enter value in percent.'),'displayText' => __('quantitative') ]) }}" class="btn btn-info ml-2" id="addCwisData">{{__('Add CWIS Data')}}</a>
+             <a href="{{ action('Cwis\CwisMneController@createIndex', ['year' => $generationYear, 'placeholder' => __('Enter value in percent.'),'displayText' => __('quantitative') ]) }}" class="btn btn-info ml-2" id="addCwisData">{{__('Add CWIS Data')}}</a>
             @elseif($pickyear[0] ==  $lastYear && !Auth::user()->hasRole('Municipality - Executive'))
-                <a href="#" class="btn  ml-2" id="addCwisData" style="background-color:#C9D7EA" data-toggle="tooltip" title="{{ __('This will be enabled in January') . $nextYear }}">{{__('Add CWIS Data')}}</a>
+                {{-- Temporarily enabled for testing before the January release window. --}}
+                <a href="{{ action('Cwis\CwisMneController@createIndex', ['year' => $generationYear, 'placeholder' => __('Enter value in percent.'), 'displayText' => __('quantitative')]) }}" class="btn btn-info ml-2" id="addCwisData">{{ __('Add CWIS Data') }}</a>
             @endif
             @can('Export CWIS')
             <button type="submit" id="export" class="btn btn-info" style="margin-left: 1%" >{{__('Export to Excel')}}</button>
@@ -81,12 +99,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)  (© ISPL, 2024) -->
     @elseif(!Auth::user()->hasRole('Municipality - Executive'))
         @include('errors.list')
         {!! Form::open(['url' => 'cwis/cwis/cwis-df-mne', 'class' => 'form-horizontal']) !!}
-            @include('cwis/cwis-df-mne.partial-form', ['submitButtonText' => __('Save')])
+            @include('cwis.cwis-df-mne.country-results')
         {!! Form::close() !!}
     @else
         @include('errors.list')
         {!! Form::open(['url' => 'cwis/cwis/cwis-df-mne', 'class' => 'form-horizontal']) !!}
-            @include('cwis/cwis-df-mne.partial-form', ['submitButtonText' => __('Save')])
+            @include('cwis.cwis-df-mne.country-results')
         {!! Form::close() !!}
     @endif
 

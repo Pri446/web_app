@@ -22,8 +22,6 @@
                             <th>{{ __('House Number') }}</th>
                             <th>{{ __('House Locality') }}</th>
                             <th>{{ __('Road Number') }}</th>
-                            <th>{{ __('Owner Name') }}</th>
-                            <th>{{ __('Owner Contact') }}</th>
                             <th>{{ __('Actions') }}</th>
                         </tr>
                     </thead>
@@ -66,20 +64,6 @@
                 { data: 'house_number', name: 'house_number', defaultContent: '-' },
                 { data: 'house_locality', name: 'house_locality', defaultContent: '-' },
                 { data: 'road_code', name: 'road_code', defaultContent: '-' },
-                {
-                    data: 'display_name',
-                    name: 'display_name',
-                    orderable: false,
-                    searchable: false,
-                    defaultContent: '-'
-                },
-                {
-                    data: 'display_contact',
-                    name: 'display_contact',
-                    orderable: false,
-                    searchable: false,
-                    defaultContent: '-'
-                },
                 {
                     data: 'action',
                     name: 'action',

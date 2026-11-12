@@ -81,8 +81,8 @@ class TreatmentPlantController extends Controller
     public function store(TreatmentPlantRequest $request)
     {
         $data = $request->all();
-        $this->treatmentPlantService->storeOrUpdate($id = null,$data);
-        $data['treatment_plant_id'] =  TreatmentPlant::where('name',$data['name'])->pluck('id')->first();
+        $plant = $this->treatmentPlantService->storeOrUpdate($id = null,$data);
+        $data['treatment_plant_id'] = $plant->id;
         $data['user_type'] = "Treatment Plant";
         $data['roles']= "Treatment Plant - Admin";
         $data['gender']= null;
@@ -106,7 +106,7 @@ class TreatmentPlantController extends Controller
      */
     public function show($id)
     {
-        $treatmentPlant = TreatmentPlant::find($id);
+        $treatmentPlant = TreatmentPlant::with('annualSustainability')->findOrFail($id);
         $status = TreatmentPlantStatus::getDescription($treatmentPlant->status);
         $enumValue = (int)$treatmentPlant->type;
         $typeValue = TreatmentPlantType::getDescription($enumValue);
@@ -140,7 +140,7 @@ class TreatmentPlantController extends Controller
      */
     public function edit($id)
     {
-        $treatmentPlant = TreatmentPlant::find($id);
+        $treatmentPlant = TreatmentPlant::with('annualSustainability')->find($id);
         $status = TreatmentPlantStatus::asSelectArray();
         $tpType = TreatmentPlantType::toEnumArray();
         if ($treatmentPlant) {

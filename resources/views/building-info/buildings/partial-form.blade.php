@@ -17,54 +17,142 @@
     @endif
 
     <h3 class="mt-4"> {{ __('Owner Information') }}</h3>
+    @php($editingOwner = isset($ownerPii))
+
+    @if ($editingOwner)
+        @if ($piiUnlocked)
+            <div class="alert alert-success col-sm-8">
+                {{ __('Owner PII is temporarily unlocked. You may view and edit it for five minutes.') }}
+                <button type="button" class="btn btn-sm btn-warning ml-2"
+                    onclick="document.getElementById('pii-lock-form').submit();">
+                    {{ __('Lock Owner PII') }}
+                </button>
+            </div>
+        @else
+            <div class="alert alert-info col-sm-8">
+                {{ __('Owner information is masked and locked. Activate View PII Information from the Buildings page to view or edit it.') }}
+            </div>
+        @endif
+    @endif
+
     <!-- Building Owner Information -->
-    <div class="form-group row required">
-        {!! Form::label('owner_name', __('Owner Name'), ['class' => 'col-sm-3 control-label ']) !!}
-        <div class="col-sm-5">
-            {!! Form::text('owner_name', null, [
-                'class' => 'form-control col-sm-10',
-                'placeholder' => __('Owner Name'),
-                'autocomplete' => 'off',
-            ]) !!}
+    @if (!$editingOwner || $piiUnlocked)
+        <div class="form-group row {{ $editingOwner ? '' : 'required' }}">
+            {!! Form::label('owner_name', __('Owner Name'), ['class' => 'col-sm-3 control-label ']) !!}
+            <div class="col-sm-5">
+                {!! Form::text('owner_name', null, [
+                    'class' => 'form-control col-sm-10',
+                    'placeholder' => __('Owner Name'),
+                    'autocomplete' => 'off',
+                ]) !!}
+            </div>
         </div>
-    </div>
 
-
-    <div class="form-group row">
-        {!! Form::label('nid', __('Owner NID'), ['class' => 'col-sm-3 control-label ']) !!}
-        <div class="col-sm-5">
-            {!! Form::text('nid', null, [
-                'class' => 'form-control col-sm-10',
-                'placeholder' => __('Owner NID'),
-                'autocomplete' => 'off',
-            ]) !!}
+        <div class="form-group row">
+            {!! Form::label('nid', __('Owner NID'), ['class' => 'col-sm-3 control-label ']) !!}
+            <div class="col-sm-5">
+                {!! Form::text('nid', null, [
+                    'class' => 'form-control col-sm-10',
+                    'placeholder' => __('Owner NID'),
+                    'autocomplete' => 'off',
+                ]) !!}
+            </div>
         </div>
-    </div>
 
-    <div class="form-group row required">
-        {!! Form::label('owner_gender', __('Owner Gender'), ['class' => 'col-sm-3 control-label']) !!}
-        <div class="col-sm-5">
-            {!! Form::select('owner_gender', ['Male' => 'Male', 'Female' => 'Female', 'Others' => 'Others'], null, [
-                'class' => 'form-control col-sm-10',
-                'placeholder' => __('Owner Gender'),
-                'autocomplete' => 'off',
-            ]) !!}
+        <div class="form-group row {{ $editingOwner ? '' : 'required' }}">
+            {!! Form::label('owner_gender', __('Owner Gender'), ['class' => 'col-sm-3 control-label']) !!}
+            <div class="col-sm-5">
+                {!! Form::select('owner_gender', ['Male' => 'Male', 'Female' => 'Female', 'Others' => 'Others'], null, [
+                    'class' => 'form-control col-sm-10',
+                    'placeholder' => __('Owner Gender'),
+                    'autocomplete' => 'off',
+                ]) !!}
+            </div>
         </div>
-    </div>
 
-    <div class="form-group row required">
-        {!! Form::label('owner_contact', __('Owner Contact Number'), ['class' => 'col-sm-3 control-label']) !!}
-        <div class="col-sm-5">
-            {!! Form::text('owner_contact', null, [
-                'class' => 'form-control col-sm-10',
-                'placeholder' => __('Owner Contact Number'),
-                'autocomplete' => 'off',
-                'oninput' => 'validateOwnerContactInput(this)',
-            ]) !!}
+        <div class="form-group row {{ $editingOwner ? '' : 'required' }}">
+            {!! Form::label('owner_contact', __('Owner Contact Number'), ['class' => 'col-sm-3 control-label']) !!}
+            <div class="col-sm-5">
+                {!! Form::text('owner_contact', null, [
+                    'class' => 'form-control col-sm-10',
+                    'placeholder' => __('Owner Contact Number'),
+                    'autocomplete' => 'off',
+                    'oninput' => 'validateOwnerContactInput(this)',
+                ]) !!}
+            </div>
         </div>
-    </div>
+    @else
+        @foreach ([
+            'owner_name' => __('Owner Name'),
+            'nid' => __('Owner NID'),
+            'owner_gender' => __('Owner Gender'),
+            'owner_contact' => __('Owner Contact Number'),
+        ] as $field => $label)
+            <div class="form-group row">
+                <label class="col-sm-3 control-label">{{ $label }}</label>
+                <div class="col-sm-5">
+                    <input type="text" class="form-control col-sm-10"
+                        value="********" disabled>
+                </div>
+            </div>
+        @endforeach
+    @endif
 
     <h3 class="mt-3">{{ __('Building Information') }}  </h3>
+
+    @if (empty($building))
+        <div class="form-group row required">
+    @else
+        <div class="form-group row">
+    @endif
+        {!! Form::label('geom', __('Building Footprint (KML File)'), ['class' => 'col-sm-3 control-label']) !!}
+        <div class="col-sm-5">
+            @if (!empty($buildingSurvey))
+                {!! Form::text('kml_display', $buildingSurvey->kml, [
+                    'class' => 'form-control col-sm-10',
+                    'readonly' => true,
+                ]) !!}
+                {!! Form::hidden('kml', $buildingSurvey->kml) !!}
+                {!! Form::hidden('survey_id', $buildingSurvey->id) !!}
+                <small class="form-text text-success">
+                    {{ __('The approved survey KML will be used.') }}
+                </small>
+            @else
+                {!! Form::hidden('kml', null) !!}
+                {!! Form::file('geom', [
+                    'class' => 'form-control col-sm-10',
+                    'accept' => '.kml,application/vnd.google-earth.kml+xml,application/xml,text/xml',
+                    'aria-describedby' => 'fileSizeHintKML kmlFileFeedback',
+                    'required' => empty($building),
+                ]) !!}
+                <small class="form-text text-muted" id="fileSizeHintKML">
+                    {{ __('Select a valid polygon KML file. Maximum size: 1 MB.') }}
+                </small>
+                <div id="kmlFileFeedback" class="file-feedback mt-1" role="status" aria-live="polite"></div>
+            @endif
+        </div>
+    </div>
+
+    <div class="form-group row">
+        {!! Form::label('house_image', __('House Image'), ['class' => 'col-sm-3 control-label']) !!}
+        <div class="col-sm-5">
+            {!! Form::file('house_image', [
+                'class' => 'form-control col-sm-10',
+                'accept' => '.jpg,.jpeg,image/jpeg',
+                'aria-describedby' => 'fileSizeHintImg imageFileFeedback',
+            ]) !!}
+            <small class="form-text text-muted" id="fileSizeHintImg">
+                {{ __('Image (JPG, JPEG) size should not be more than 5MB.') }}
+            </small>
+            <div id="imageFileFeedback" class="file-feedback mt-1" role="status" aria-live="polite"></div>
+            <img
+                id="houseImagePreview"
+                class="img-thumbnail mt-2 d-none"
+                style="max-width: 320px; max-height: 240px; object-fit: contain;"
+                alt="{{ __('Selected house image preview') }}"
+            >
+        </div>
+    </div>
 
     <!-- Main Building Identifier -->
     <div class="form-group row required" id="main-building">
@@ -589,41 +677,6 @@
             ]) !!}
         </div>
     </div>
-
-
-    @if (empty($building))
-        <div class="form-group row required">
-        @else
-            <div class="form-group row ">
-    @endif
-    {!! Form::label('geom', __('Building Footprint (KML File)'), ['class' => 'col-sm-3 control-label']) !!}
-    <div class="col-sm-5">
-        <!-- if building approved, kml file is preloaded -->
-        @if ($buildingSurvey)
-            {!! Form::text('kml', $buildingSurvey->kml, [
-                'class' => 'col-sm-10 control-label',
-                'style' => 'overflow:hidden;color:grey !important',
-                'readonly' => 'readonly',
-            ]) !!}
-            {!! Form::text('kml', $buildingSurvey->kml, ['hidden' => 'true']) !!}
-            {!! Form::text('survey_id', $buildingSurvey->id, ['hidden' => 'true']) !!}
-        @else
-            {!! Form::text('kml', null, ['hidden' => 'true']) !!}
-
-            {!! Form::file('geom', null, ['class' => 'form-control col-sm-10', 'placeholder' => 'KML File']) !!}
-            <small class="form-text" id="fileSizeHintKML">(KML File size should not be more than 1MB)</small>
-
-        @endif
-
-    </div>
-</div>
-<div class="form-group row">
-    {!! Form::label('house_image', __('House Image'), ['class' => 'col-sm-3 control-label']) !!}
-    <div class="col-sm-5">
-        {!! Form::file('house_image', null, [ 'class' => 'form-control col-sm-10']) !!}
-        <small class="form-text" id="fileSizeHintImg">(Image (JPG,JPEG) size should not be more than 5MB)</small>
-    </div>
-</div>
 </div><!-- /.card-body -->
 
 <div class="card-footer">
@@ -637,7 +690,7 @@
     <div class="card">
         <h2 class="ml-4 mt-3">{{ __('Containment Information') }} </h2>
         <div class="card-header">
-            <a href="{{ action('Fsm\ContainmentController@createContainment', [$building->bin]) }}"
+            <a href="{{ action('Fsm\ContainmentController@createContainment', [$building->public_id]) }}"
                 class="btn btn-info">{{__('Add Containment to Building')}}</a>
         </div>
         <div class="card-body">
@@ -645,9 +698,12 @@
         </div>
     </div>
 @endif
+
+@push('scripts')
+    <script src="{{ asset('js/building-file-upload.js') }}?v={{ filemtime(public_path('js/building-file-upload.js')) }}"></script>
+@endpush
 <!-- Last Modified Date: 011-04-2024
 Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 {{-- <script>
     $(document).ready(function() {
         $('.road_code').on('change', function() {

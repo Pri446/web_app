@@ -19,6 +19,10 @@ class VacutugType extends Model
     {
         return $this->hasMany('App\Models\Fsm\SludgeCollection', 'desludging_vehicle_id', 'id');
     }
+    public function emptyings()
+    {
+        return $this->hasMany(Emptying::class, 'desludging_vehicle_id', 'id');
+    }
     public function serviceProvider()
     {
         return $this->belongsTo('App\Models\Fsm\ServiceProvider', 'service_provider_id', 'id');
