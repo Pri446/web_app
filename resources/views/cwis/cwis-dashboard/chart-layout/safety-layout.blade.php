@@ -244,10 +244,13 @@
 
 <body>
 <div class="hi" >
+    @include('cwis.cwis-dashboard.chart-layout.safety-count-cards')
     <div class="safety safety1" >
+        @include('cwis.cwis-dashboard.chart-layout.safety-main-card', ['chartId' => 'sf1Main'])
        
 
-        <div class="sf1">
+@if($allowedIndicatorCodes->contains('SF-1a'))
+<div class="sf1">
             <div class="chart" id="sf1aContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1aCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -265,7 +268,9 @@
             </script>
             <p>{{__('Population with access to safe individual toilets')}}</p>
         </div>
-        <div class="sf1" >
+@endif
+@if($allowedIndicatorCodes->contains('SF-1b'))
+<div class="sf1" >
             <div class="chart" id="sf1bContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1bCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -283,7 +288,9 @@
             </script>
             <p>{{__('Percentage of on-site sanitation that have been desludged')}}</p>
         </div>
-        <div class="sf1" >
+@endif
+@if($allowedIndicatorCodes->contains('SF-1c'))
+<div class="sf1" >
             <div class="chart" id="sf1cContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1cCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -301,9 +308,11 @@
             </script>
             <p>{{__('Percentage of collected FS disposed at a treatment plant or at designated disposal site')}}</p>
         </div>
+@endif
      <h1 style="border-bottom: 1px solid 	#B2BEB5; margin-bottom:1%;"></h1>
 
-        <div class="sf1">
+@if($allowedIndicatorCodes->contains('SF-1d'))
+<div class="sf1">
             <div class="chart" id="sf1dContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1dCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -321,7 +330,9 @@
             </script>
             <p>{{__('FS treatment capacity as a percentage of total FS generated from NSS connections (excluding safely disposed in situ)')}}</p>
         </div>
-        <div class="sf1">
+@endif
+@if($allowedIndicatorCodes->contains('SF-1e'))
+<div class="sf1">
             <div class="chart" id="sf1eContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1eCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -339,7 +350,9 @@
             </script>
             <p>{{__('FS treatment capacity as a percentage of total FS collected from NSS connections')}}</p>
         </div>
-        <div class="sf1">
+@endif
+@if($allowedIndicatorCodes->contains('SF-1f'))
+<div class="sf1">
             <div class="chart" id="sf1fContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1fCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -357,8 +370,10 @@
             </script>
             <p>{{ __('Wastewater treatment capacity as a percentage of total wastewater generated from sewered connections and greywater generated from non-sewered connections')}}</p>
         </div>
+@endif
         <h1 style="border-bottom: 1px solid 	#B2BEB5; margin-bottom:1%;"></h1>
-        <div class="sf1">
+@if($allowedIndicatorCodes->contains('SF-1g'))
+<div class="sf1">
             <div class="chart" id="sf1gContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf1gCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -376,7 +391,9 @@
             </script>
             <p>{{__('Effectiveness of FS/WW treatment in meeting prescribed standards for effluent discharge and biosolids disposal')}}</p>
         </div>
-        <div class="sf2">
+@endif
+@if($allowedIndicatorCodes->contains('SF-2a'))
+<div class="sf2">
             <div class="chart" id="sf2aContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf2aCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -394,7 +411,9 @@
             </script>
             <p>{{__('Percentage LIC population with access to safe individual toilets')}}</p>
         </div>
-        <div class="sf2">
+@endif
+@if($allowedIndicatorCodes->contains('SF-2b'))
+<div class="sf2">
             <div class="chart" id="sf2bContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf2bCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -412,8 +431,10 @@
             </script>
             <p>{{__('Percentage of LIC, NSS, IHHLs that have been desludged')}}</p>
         </div>
+@endif
         <h1 style="border-bottom: 1px solid 	#B2BEB5; margin-bottom:1%;"></h1>
-        <div class="sf2">
+@if($allowedIndicatorCodes->contains('SF-2c'))
+<div class="sf2">
             <div class="chart" id="sf2cContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf2cCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -431,7 +452,9 @@
             </script>
             <p>{{__('Percentage of collected FS (collected from LIC) disposed at treatment plant or designated disposal sites')}}</p>
         </div>
-        <div class="sf3">
+@endif
+@if($allowedIndicatorCodes->contains('SF-3'))
+<div class="sf3">
             <div class="chart" id="sf3aContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf3aCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -449,7 +472,9 @@
             </script>
             <p>{{__('Percentage of dependent population (those without access to a private toilet/latrine) with access to safe shared facilities (CT/PT)')}}</p>
         </div>
-        <div class="sf3">
+@endif
+@if($allowedIndicatorCodes->contains('SF-3b'))
+<div class="sf3">
             <div class="chart" id="sf3bContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf3bCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -466,8 +491,10 @@
             </script>
             <p>{{__('Percentage of CTs that adhere to principles of universal design')}}</p>
         </div>
+@endif
         <h1 style="border-bottom: 1px solid 	#B2BEB5; margin-bottom:1%;"></h1>
-        <div class="sf3">
+@if($allowedIndicatorCodes->contains('SF-3c'))
+<div class="sf3">
 
 <div class="chart" id="sf3cContainer">
     <figure class="chart__figure">
@@ -485,6 +512,8 @@ createDoughnutChart(
 </script>
 <p>{{__('Percentage of users of CTs that are women')}}</p>
 </div>
+@endif
+@if($allowedIndicatorCodes->contains('SF-3e'))
 <div class="sf3" id="sf3e">
     
  @include("cwis.cwis-dashboard.charts.safety.sf-3.sf-3e-chart")
@@ -493,6 +522,8 @@ createDoughnutChart(
 
  <p>{{__('Average distance from the house to the closest CT (in meters)')}}</p>
 </div>
+@endif
+@if($allowedIndicatorCodes->contains('SF-4a'))
 <div class="sf4">
             <div class="chart" id="sf4aContainer">
                 <figure class="chart__figure">
@@ -510,8 +541,10 @@ createDoughnutChart(
             </script>
             <p>{{__('Percentage of PTs where FS and WW generated is safely transported to TP or safely disposed in situ')}}</p>
         </div>
+@endif
         <h1 style="border-bottom: 1px solid 	#B2BEB5; margin-bottom:1%;"></h1>
-        <div class="sf4">
+@if($allowedIndicatorCodes->contains('SF-4b'))
+<div class="sf4">
             <div class="chart" id="sf4bContainer">
                 <figure class="chart__figure">
                     <canvas class="chart__canvas" id="sf4bCanvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -528,7 +561,9 @@ createDoughnutChart(
             </script>
             <p>{{__('Percentage of PTs that adhere to principles of universal design')}}</p>
         </div>
-        <div class="sf4">
+@endif
+@if($allowedIndicatorCodes->contains('SF-4d'))
+<div class="sf4">
 
             <div class="chart" id="sf4dContainer">
                 <figure class="chart__figure">
@@ -546,7 +581,9 @@ createDoughnutChart(
             </script>
             <p>{{__('Percentage of users of PTs that are women')}}</p>
         </div>
-        <div class="sf4">
+@endif
+@if($allowedIndicatorCodes->contains('SF-5'))
+<div class="sf4">
         <div class="chart" id="sf5Container">
             <figure class="chart__figure">
                 <canvas class="chart__canvas" id="sf5Canvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -563,8 +600,10 @@ createDoughnutChart(
         </script>
         <P>{{__('Percentage of educational institutions where FS/WW generated is safely transported to TP or safely disposed in situ')}} </P>
     </div>
+@endif
     <h1 style="border-bottom: 1px solid 	#B2BEB5; margin-bottom:1%;"></h1>
-    <div class="sf4">
+@if($allowedIndicatorCodes->contains('SF-6'))
+<div class="sf4">
         <div class="chart" id="sf6Container">
             <figure class="chart__figure">
                 <canvas class="chart__canvas" id="sf6Canvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -581,7 +620,9 @@ createDoughnutChart(
         </script>
         <P>{{__('Percentage of healthcare facilities where FS/WW generated is safely transported to TP or safely disposed in situ')}}</P>
         </div>
-        <div class="sf4">
+@endif
+@if($allowedIndicatorCodes->contains('SF-7'))
+<div class="sf4">
         <div class="chart" id="sf7Container">
             <figure class="chart__figure">
                 <canvas class="chart__canvas" id="sf7Canvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -598,7 +639,9 @@ createDoughnutChart(
         </script>
 <p>{{__('Percentage of desludging services completed mechanically or semi-mechanically (by a gulper)')}}</p>
     </div>
-        <div class="sf4">
+@endif
+@if($allowedIndicatorCodes->contains('SF-9'))
+<div class="sf4">
         <div class="chart" id="sf9Container">
             <figure class="chart__figure">
                 <canvas class="chart__canvas" id="sf9Canvas" width="160" height="140" aria-label="Example doughnut chart showing data as a percentage" role="img"></canvas>
@@ -615,5 +658,6 @@ createDoughnutChart(
         </script>
 <P>{{__('Percentage of tests which are in compliance with water quality standards for fecal coliform')}}</P>
     </div>
+@endif
     </div>
 </div>

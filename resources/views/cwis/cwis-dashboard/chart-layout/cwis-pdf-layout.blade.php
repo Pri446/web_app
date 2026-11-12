@@ -417,6 +417,7 @@ span {
         <input class="input" name="tabs" type="radio" id="tab-1" checked="checked" />
         <label class="label" for="tab-1"></label>
         <div class="" >
+            @if($pdfAllowedCodes === null || $pdfAllowedCodes->contains('EQ-1'))
             <h1>{{__('Equity')}}</h1>
             <div class="card card1" > 
 
@@ -428,6 +429,8 @@ span {
 
                 <p>{{__('Ratio of LIC access to total population access')}}</p>
         </div>
+            @endif
+            @if($pdfAllowedCodes === null || $pdfAllowedCodes->contains(function ($code) { return strpos($code, 'SF-') === 0; }))
             <h1 >Safety</h1>
             <div class="hi" >
                 <div class="safety safety1" >
@@ -647,5 +650,6 @@ span {
                 </div>
                 </div>
               </div>
+            @endif
         </div>
 </div>

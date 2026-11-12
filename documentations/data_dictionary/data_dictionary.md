@@ -1137,7 +1137,7 @@ Table name: data_cwis
 | -------------- | -------------------------------------------------------------- | ------------------------------------------- |
 | id             | Unique identifier for the record (auto generated)              | Integer pk                                  |
 | outcome        | CWIS outcome                                                   | character varying                           |
-| indicator_code | A unique identifier for the indicator generated                | Integer fk:cwis.data_source(indicator_code) |
+| indicator_code | Indicator code matched to cwis.data_source.indicator_code; not an integer foreign key | character varying |
 | label          | A label to be displayed for the indicator                      | character varying                           |
 | year           | Year of data CWIS data generated                               | integer                                     |
 | data_value     | Actual value of the cwis Indicator of each year                | text                                        |
@@ -1180,6 +1180,177 @@ Table name: data_source
 | 20 | safety  | SF-6           | Percentage of healthcare facilities where FS/WW generated is safely transported to TP or safely disposed in situ                                          |
 | 21 | safety  | SF-7           | Percentage of desludging services completed mechanically or semi-mechanically (by a gulper)                                                               |
 | 22 | safety  | SF-9           | Percentage of tests which are in compliance with water quality standards for fecal coliform                                                               |
+
+### Equity Indicator Source Tables
+
+The following definitions extend the baseline catalogue above. These are annual source and metadata tables; official results remain in cwis.data_cwis. Migration files are located in database/migrations/cwis/equity, SQL files in database/sql/cwis/equity, and namespaced seeders in database/seeders/Cwis/Equity. Existing migration basenames and history are retained.
+
+Table name: **cwis.equity_submissions**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.equity_submissions.id | Auto-generated submission identifier | bigint pk |
+| cwis.equity_submissions.reporting_year | Reporting year selected for the source form | integer |
+| cwis.equity_submissions.country_code | ALL, NP or BD; nullable for legacy records; CHECK limits non-null values | character varying(3), nullable |
+| cwis.equity_submissions.status | Workflow status; default draft; application manages draft, submitted and approved | character varying(20) |
+| cwis.equity_submissions.submitted_by | Submitting user identifier | bigint, nullable |
+| cwis.equity_submissions.submitted_at | Submission date/time | timestamp without time zone, nullable |
+| cwis.equity_submissions.approved_by | Approving user identifier | bigint, nullable |
+| cwis.equity_submissions.approved_at | Approval date/time required for official calculation | timestamp without time zone, nullable |
+| cwis.equity_submissions.remarks | Optional source remarks | text, nullable |
+| cwis.equity_submissions.created_by | Creating user identifier | bigint, nullable |
+| cwis.equity_submissions.updated_by | Last updating user identifier | bigint, nullable |
+| cwis.equity_submissions.created_at | Creation date/time | timestamp without time zone, nullable |
+| cwis.equity_submissions.updated_at | Last update date/time | timestamp without time zone, nullable |
+| cwis.equity_submissions.deleted_at | Soft-deletion date/time | timestamp without time zone, nullable |
+
+Table name: **cwis.equity_subsidies**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.equity_subsidies.id | Auto-generated identifier | bigint pk |
+| cwis.equity_subsidies.submission_id | Unique source-header reference; relationship enforced by application, not a declared FK in this migration | bigint, unique |
+| cwis.equity_subsidies.total_subsidies_amount_nss | EQ-3 total amount actually paid for NSS during the reporting year; same currency as SS | numeric(12,2), nullable |
+| cwis.equity_subsidies.total_subsidies_amount_ss | EQ-3 total amount actually paid for SS; ratio denominator | numeric(12,2), nullable |
+| cwis.equity_subsidies.created_by | Creating user identifier | bigint, nullable |
+| cwis.equity_subsidies.updated_by | Last updating user identifier | bigint, nullable |
+| cwis.equity_subsidies.created_at | Creation date/time | timestamp without time zone, nullable |
+| cwis.equity_subsidies.updated_at | Last update date/time | timestamp without time zone, nullable |
+| cwis.equity_subsidies.deleted_at | Soft-deletion date/time | timestamp without time zone, nullable |
+
+Table name: **cwis.sanitation_personnel_snapshot**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.sanitation_personnel_snapshot.id | Auto-generated identifier | bigint pk |
+| cwis.sanitation_personnel_snapshot.submission_id | Unique application-managed source-header reference | bigint, unique |
+| cwis.sanitation_personnel_snapshot.women_employee_count | EQ-4 numerator; non-negative count, at most total employees | integer, nullable |
+| cwis.sanitation_personnel_snapshot.total_employee_count | EQ-4 denominator; eligible sanitation employees | integer, nullable |
+| cwis.sanitation_personnel_snapshot.women_leadership_count | EQ-4a numerator; at most total leadership positions | integer, nullable |
+| cwis.sanitation_personnel_snapshot.total_leadership_count | EQ-4a denominator; at most total employees | integer, nullable |
+| cwis.sanitation_personnel_snapshot.average_salary_of_women_in_sanitation | Average annualized pay of eligible women | numeric(18,2), nullable |
+| cwis.sanitation_personnel_snapshot.average_salary_of_men_in_sanitation | Average annualized pay of eligible men; EQ-5 denominator | numeric(18,2), nullable |
+| cwis.sanitation_personnel_snapshot.created_by | Creating user identifier | bigint, nullable |
+| cwis.sanitation_personnel_snapshot.updated_by | Last updating user identifier | bigint, nullable |
+| cwis.sanitation_personnel_snapshot.created_at | Creation date/time | timestamp without time zone, nullable |
+| cwis.sanitation_personnel_snapshot.updated_at | Last update date/time | timestamp without time zone, nullable |
+| cwis.sanitation_personnel_snapshot.deleted_at | Soft-deletion date/time | timestamp without time zone, nullable |
+
+Table name: **cwis.sanitation_worker_policy**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.sanitation_worker_policy.id | Auto-generated identifier | bigint pk |
+| cwis.sanitation_worker_policy.submission_id | Unique application-managed source-header reference | bigint, unique |
+| cwis.sanitation_worker_policy.training_certification_required | EQ-6.1 training requirement answer | boolean, nullable |
+| cwis.sanitation_worker_policy.training_requirement_document_id | Training evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.covers_labor_rights_and_recourse | EQ-6.1a; dependent on EQ-6.1 | boolean, nullable |
+| cwis.sanitation_worker_policy.labor_rights_document_id | Labor-rights evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.covers_safety_health_and_sop | EQ-6.1b; dependent on EQ-6.1 | boolean, nullable |
+| cwis.sanitation_worker_policy.safety_health_sop_document_id | Safety/SOP evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.legal_recourse_available_to_all | EQ-6.2 legal recourse answer | boolean, nullable |
+| cwis.sanitation_worker_policy.legal_recourse_document_id | Legal-recourse evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.worker_union_exists | Active EQ-6.3 union answer | boolean, nullable |
+| cwis.sanitation_worker_policy.worker_union_registration_document_id | Union-registration evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.right_to_unionize | Retained field; not the active EQ-6.3 operand | boolean, nullable |
+| cwis.sanitation_worker_policy.right_to_unionize_document_id | Retained evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.worker_union_operational | EQ-6.3a; dependent on EQ-6.3 | boolean, nullable |
+| cwis.sanitation_worker_policy.worker_union_operation_document_id | Operational-union evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.city_supports_worker_union | EQ-6.3b; dependent on EQ-6.3 | boolean, nullable |
+| cwis.sanitation_worker_policy.worker_union_support_document_id | City-support evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.all_workers_social_security_covered | EQ-6.4 coverage answer | boolean, nullable |
+| cwis.sanitation_worker_policy.social_security_coverage_document_id | Social-security evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.all_workers_health_insurance_covered | EQ-6.5 coverage answer | boolean, nullable |
+| cwis.sanitation_worker_policy.health_insurance_coverage_document_id | Health-insurance evidence reference | bigint, nullable, fk:cwis.equity_documents.id |
+| cwis.sanitation_worker_policy.created_by | Creating user identifier | bigint, nullable |
+| cwis.sanitation_worker_policy.updated_by | Last updating user identifier | bigint, nullable |
+| cwis.sanitation_worker_policy.created_at | Creation date/time | timestamp without time zone, nullable |
+| cwis.sanitation_worker_policy.updated_at | Last update date/time | timestamp without time zone, nullable |
+| cwis.sanitation_worker_policy.deleted_at | Soft-deletion date/time | timestamp without time zone, nullable |
+
+Table name: **cwis.equity_documents**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.equity_documents.id | Auto-generated evidence identifier | bigint pk |
+| cwis.equity_documents.disk | Storage disk; default public | character varying(30) |
+| cwis.equity_documents.path | File path on the selected disk, under cwis/equity-documents for uploads | text |
+| cwis.equity_documents.original_name | Original upload filename | text |
+| cwis.equity_documents.created_by | Uploading user identifier | bigint, nullable |
+| cwis.equity_documents.created_at | Creation date/time | timestamp without time zone, nullable |
+| cwis.equity_documents.updated_at | Last update date/time | timestamp without time zone, nullable |
+
+Table name: **cwis.indicator_country**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.indicator_country.id | Auto-generated mapping identifier | bigint pk |
+| cwis.indicator_country.data_source_id | Indicator catalogue reference; unique together with country_code | integer, fk:cwis.data_source.id |
+| cwis.indicator_country.country_code | NP or BD, constrained by CHECK; ALL uses the complete catalogue without mapping rows | character varying(2) |
+
+Table name: **cwis.form_fields**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.form_fields.id | Auto-generated field-definition identifier | bigint pk |
+| cwis.form_fields.data_source_id | Indicator catalogue reference | integer, fk:cwis.data_source.id |
+| cwis.form_fields.input_name | Unique submitted input key | character varying(255), unique |
+| cwis.form_fields.kind | Numerical or policy field definition | character varying(20) |
+| cwis.form_fields.section | Form section title | character varying(255) |
+| cwis.form_fields.label | Field label | character varying(255) |
+| cwis.form_fields.help_text | Input description | text, nullable |
+| cwis.form_fields.html_id | Control identifier | character varying(255) |
+| cwis.form_fields.display_code | Input display code | character varying(30) |
+| cwis.form_fields.validation_type | Validation type, such as integer or numeric | character varying(20), nullable |
+| cwis.form_fields.maximum | Maximum input bound | numeric(20,2), nullable |
+| cwis.form_fields.step | Numeric input increment | character varying(20), nullable |
+| cwis.form_fields.required_on_submit | Whether the applicable input is required on submit; default false | boolean |
+| cwis.form_fields.parent_code | Parent indicator for defined dependencies | character varying(30), nullable |
+| cwis.form_fields.evidence_hint | Evidence guidance | text, nullable |
+| cwis.form_fields.storage_table | Allowed schema-qualified destination table | character varying(255) |
+| cwis.form_fields.storage_column | Destination input column | character varying(255) |
+| cwis.form_fields.document_column | Destination evidence-reference column | character varying(255), nullable |
+| cwis.form_fields.not_greater_than | Related count bounds | jsonb, nullable |
+| cwis.form_fields.sort_order | Display order; default 0 | integer |
+| cwis.form_fields.enabled | Whether the definition is enabled; default true | boolean |
+| cwis.form_fields.created_at | Creation date/time | timestamp without time zone, nullable |
+| cwis.form_fields.updated_at | Last update date/time | timestamp without time zone, nullable |
+
+Table name: **cwis.generation_runs**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.generation_runs.year | Annual result-context identifier | integer pk |
+| cwis.generation_runs.country_code | Country context for that year's saved results | character varying(3) |
+| cwis.generation_runs.equity_submission_id | Approved Equity source; nullable when no manual Equity inputs apply | bigint, nullable, fk:cwis.equity_submissions.id |
+| cwis.generation_runs.generated_at | Generation date/time | timestamp without time zone |
+
+Table name: **cwis.equity_generation_function_backup**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.equity_generation_function_backup.signature | Previous function signature recorded during installation for rollback | text pk |
+| cwis.equity_generation_function_backup.definition | Previous CREATE FUNCTION definition; not submitted indicator data | text |
+
+The Equity catalogue contains EQ-1, EQ-2, EQ-3, EQ-4, EQ-4a, EQ-5, EQ-6.1, EQ-6.1a, EQ-6.1b, EQ-6.2, EQ-6.3, EQ-6.3a, EQ-6.3b, EQ-6.4 and EQ-6.5. Existing catalogue IDs are retained. New labels and input definitions are supplied by Database\\Seeders\\Cwis\\Equity\\CwisDataSourceSeeder and CwisFormFieldsSeeder. Nullable source values support drafts; required/count/evidence rules are also enforced by the application. User audit IDs on these source tables are not declared user-table FKs by these migrations.
+
+### Safely Managed Sanitation Count Indicators
+
+The cwis.data_source catalogue includes SF-0a (building count), SF-0b (private-toilet household count) and SF-0c (private-toilet population count), all under Safety. They use existing building_info.buildings.bin, building_info.buildings.household_with_private_toilet and building_info.buildings.population_with_private_toilet with the derived cwis.safety_buildings(year) classification. No new building or manual-source columns are added. Calculated annual values are written to cwis.data_cwis.data_value.
+
+Table name: **cwis.safety_counts_function_backup**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.safety_counts_function_backup.signature | Master routine signature captured before installing SF-0 dispatch | text pk |
+| cwis.safety_counts_function_backup.definition | Original complete function definition for migration rollback | text, not null |
+
+Table name: **cwis.emptying_status_function_backup**
+
+| **Field Name** | **Description** | **Data type** |
+| -------------- | --------------- | ------------- |
+| cwis.emptying_status_function_backup.signature | Legacy classification helper routine signature before the integer-status compatibility fix | text pk |
+| cwis.emptying_status_function_backup.definition | Original function definition for migration rollback; no application status data is stored here | text, not null |
 
 ## CWIS Setting
 

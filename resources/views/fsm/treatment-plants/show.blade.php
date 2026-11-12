@@ -57,6 +57,19 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     {!! Form::label(null, $status, ['class' => 'form-control']) !!}
                 </div>
             </div>
+            @php($annualDetails = $treatmentPlant->annualSustainability->isEmpty() ? collect([null]) : $treatmentPlant->annualSustainability)
+            @foreach($annualDetails as $annual)
+                <div class="form-group row">
+                    <label class="col-sm-3 control-label">{{ __('Data Year') }}</label>
+                    <div class="col-sm-3"><span class="form-control">{{ $annual->data_year ?? __('No data') }}</span></div>
+                </div>
+                @foreach(\App\Models\Fsm\TreatmentPlantAnnualSustainability::VOLUMES as $column => $label)
+                    <div class="form-group row">
+                        <label class="col-sm-3 control-label">{{ __($label) }}</label>
+                        <div class="col-sm-3"><span class="form-control">{{ $annual->$column ?? __('No data') }}</span></div>
+                    </div>
+                @endforeach
+            @endforeach
         </div><!-- /.box-body -->
     </div>
 </div><!-- /.box -->

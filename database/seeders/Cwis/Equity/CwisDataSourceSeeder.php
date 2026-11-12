@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace Database\Seeders\Cwis\Equity;
 
 use DB;
 use App\Models\Cwis\DataSource;
@@ -53,6 +53,51 @@ class CwisDataSourceSeeder extends Seeder
              'label' => $datasource[3], 
          ] );
          }
+     }
+
+     $equityDatasources = array(
+        ['equity', 'EQ-2', 'Equity of Access to Safely Managed Sanitation'],
+        ['equity', 'EQ-3', 'Equity of Subsidies'],
+        ['equity', 'EQ-4', 'Gender equity in sanitation workforce'],
+        ['equity', 'EQ-4a', 'Gender equity in sanitation leadership'],
+        ['equity', 'EQ-5', 'Gender pay gap in the sanitation workforce'],
+        ['equity', 'EQ-6.1', 'Training/certification is required to be a sanitation worker'],
+        ['equity', 'EQ-6.1a', 'Training covers labor rights and recourse'],
+        ['equity', 'EQ-6.1b', 'Training covers occupational safety, health risks, and Standard Operating Procedures (SOP)'],
+        ['equity', 'EQ-6.2', 'All sanitation workers have a formal channel for legal recourse'],
+        ['equity', 'EQ-6.3', 'Workers have the right to unionize'],
+        ['equity', 'EQ-6.3a', 'Operational worker unions exist'],
+        ['equity', 'EQ-6.3b', 'Support is offered by the city to run the union'],
+        ['equity', 'EQ-6.4', 'All sanitation workers are covered by social security'],
+        ['equity', 'EQ-6.5', 'All sanitation workers are covered by health insurance'],
+     );
+
+     $equityDatasources[] = ['safety', 'SF-1', 'Access to safely managed sanitation'];
+     $equityDatasources[] = ['safety', 'SF-0a', 'Number of buildings with safely managed sanitation'];
+     $equityDatasources[] = ['safety', 'SF-0b', 'Number of households with safely managed sanitation'];
+     $equityDatasources[] = ['safety', 'SF-0c', 'Population with safely managed sanitation'];
+     $nextId = ((int) DB::table('cwis.data_source')->max('id')) + 1;
+
+     foreach ($equityDatasources as $datasource) {
+        $existDataSource = DB::table('cwis.data_source')
+            ->where('indicator_code', $datasource[1])
+            ->first();
+
+        if ($existDataSource) {
+            DB::table('cwis.data_source')
+                ->where('indicator_code', $datasource[1])
+                ->update([
+                    'outcome' => $datasource[0],
+                    'label' => $datasource[2],
+                ]);
+        } else {
+            DataSource::insert([
+                'id' => $nextId++,
+                'outcome' => $datasource[0],
+                'indicator_code' => $datasource[1],
+                'label' => $datasource[2],
+            ]);
+        }
      }
 
     }
