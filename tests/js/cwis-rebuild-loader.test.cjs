@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const blade = fs.readFileSync(path.join(__dirname, '../../resources/views/cwis/generator-data/show.blade.php'), 'utf8');
-const script = blade.match(/<script>([\s\S]*?)<\/script>/)[1];
+const script = blade.match(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/i)[1];
 
 function setup(confirmed) {
     const events = {};
