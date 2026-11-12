@@ -10,7 +10,9 @@ return [
             DROP TABLE IF EXISTS taxpayment_info.tax_payment_status CASCADE;
                 
             CREATE TABLE taxpayment_info.tax_payment_status AS
-            SELECT b.tax_code, b.bin as bin, b.ward, b.building_associated_to, t.owner_name, t.owner_contact, t.last_payment_date, 
+            -- Owner PII stays only in the encrypted source table. The status
+            -- table is published to map services and must remain non-PII.
+            SELECT b.tax_code, b.bin as bin, b.ward, b.building_associated_to, t.last_payment_date,
                 CASE 
                     WHEN t.last_payment_date='1970-01-01' THEN 99    
                     WHEN t.last_payment_date is not NULL THEN 

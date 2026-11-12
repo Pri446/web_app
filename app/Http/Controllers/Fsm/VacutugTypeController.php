@@ -158,9 +158,12 @@ class VacutugTypeController extends Controller
     {
         $VacutugType = VacutugType::find($id);
         if ($VacutugType) {
+            if ($VacutugType->emptyings()->exists()) {
+                return redirect('fsm/desludging-vehicles')->with('error', __('Cannot delete Desludging Vehicle that has associated Emptying Information. Please make the vehicle not operational instead.'));
+            }
             if($VacutugType->sludgeCollections()->exists())
             {
-                return redirect('fsm/desludging-vehicles')->with('error',__('Cannot delete Desludging Vehicle that has associated Sludge Collection Information.'));
+                return redirect('fsm/desludging-vehicles')->with('error',__('Cannot delete Desludging Vehicle that has associated Sludge Collection Information. Please make the vehicle not operational instead.'));
 
             }
             $VacutugType->delete();

@@ -78,43 +78,40 @@ class ContainmentService
                 }
             })
             ->addColumn('action', function ($model) {
-                $content = \Form::open(['method' => 'DELETE', 'route' => ['containments.destroy', $model->id]]);
+                $content = \Form::open(['method' => 'DELETE', 'route' => ['containments.destroy', $model->public_id]]);
 
                 if (Auth::user()->can('List Containment Buildings')) {
-                    $content .= '<a title="' . __("View Building Connected to Containment") . '" href="' . action("Fsm\ContainmentController@listBuildings", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-solid fa-building"></i></a> ';
+                    $content .= '<a title="' . __("View Building Connected to Containment") . '" href="' . action("Fsm\ContainmentController@listBuildings", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-solid fa-building"></i></a> ';
                 }
                 if (Auth::user()->can('Edit Containment')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ContainmentController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ContainmentController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Containment')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ContainmentController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ContainmentController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Containment History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ContainmentController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ContainmentController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Containment History')) {
-                    $content .= '<a title="' . __("Type Change History") . '" href="' . action("Fsm\ContainmentController@typeChangeHistory", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-sharp fa-solid fa-file-pen"></i></a> ';
+                    $content .= '<a title="' . __("Type Change History") . '" href="' . action("Fsm\ContainmentController@typeChangeHistory", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-sharp fa-solid fa-file-pen"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Containment')) {
-                    $content .= '<a href="#" title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Containment On Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'id', 'val' => $model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'public_id', 'val' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
                 }
                 if (Auth::user()->can('Emptying Service History')) {
-                    $content .= '<a title="' . __("Emptying Service History") . '" href="' . action("Fsm\EmptyingController@index", ['containment_code' => $model->id]) . '" class="btn btn-info btn-sm mb-1 ' . (($model->emptyingService()->exists()) ? '"' : 'disabled"') .  '><i class="fa fa-recycle"></i></a> ';
+                    $content .= '<a title="' . __("Emptying Service History") . '" href="' . action("Fsm\EmptyingController@index", ['containment_public_id' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1 ' . (($model->emptyingService()->exists()) ? '"' : 'disabled"') .  '><i class="fa fa-recycle"></i></a> ';
                 }
 
-                // if (Auth::user()->can('Add Application')) {
-                //     $content .= '<a title="Create Application" href="' . action("ApplicationController@add", ['containcd' => $model->containcd]) . '" class="btn btn-info btn-sm mb-1" '. ($this->checkContainment($model->containcd) && $model->buildings()->exists() && ($model->buildings()->orderBy('bin')->first()->taxcd != null) ? '' : 'disabled') .  '><i class="fa fa-file-text"></i></a> ';
-                // }
 
                 if (Auth::user()->can('View Nearest Road To Containment On Map')) {
-                    $content .= '<a title="' . __("Nearest Road") . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'id', 'val' => $model->id, 'action' => 'containment-road']) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-road"></i></a> ';
+                    $content .= '<a title="' . __("Nearest Road") . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'public_id', 'val' => $model->public_id, 'action' => 'containment-road']) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-road"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -134,26 +131,26 @@ class ContainmentService
                 ->leftjoin('building_info.buildings AS b', 'b.bin', '=', 'bc.bin')
                 ->leftjoin('fsm.containments AS c', 'c.id', '=', 'bc.containment_id')
                 ->leftjoin('fsm.containment_types AS ct', 'ct.id', '=', 'c.type_id')
-                ->select('c.id', 'ct.type', 'c.size', 'c.location',)
+                ->select('c.id', 'c.public_id', 'ct.type', 'c.size', 'c.location')
                 ->where('bc.bin', $request->id)
                 ->whereNull('bc.deleted_at')
                 ->get();
-        
+
         return DataTables::of($containmentData)
             ->addColumn('action', function ($model, Request $request) {
 
-                $content = \Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $model->id, $request->id]]);
+                $content = \Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $model->public_id, $request->building_public_id]]);
                 if (Auth::user()->can('Edit Containment')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ContainmentController@edit", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ContainmentController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Containment')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ContainmentController@show", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ContainmentController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View Containment History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ContainmentController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ContainmentController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete Building from Containment')) {
-                    $content .= '<a href="#" title= "'. __("Delete Connection of Containment from Building") .'" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a href="#" title="Delete Connection of Containment from Building" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
                 $content .= \Form::close();
                 return $content;
@@ -181,22 +178,21 @@ class ContainmentService
         $const_date =  $data['const_date'] ? $data['const_date'] : null;
 
         $columns = [
-            __('Containment Code'),
-            __('Containment Type'),
-            __('Tank Length (m)'),
-            __('Tank Width (m)'),
-            __('Depth (m)'),
-            __('Pit Diameter (m)'),
-            __('Containment Volume (m³)'),
-            __('Containment Location'),
-            __('Septic Tank Standard Compliance'),
-            __('Construction Date'),
-            __('Emptied Status'),
-            __('Last Emptied Date'),
-            __('Next Emptying Date'),
-            __('Number of Times Emptied'),
-            __('Responsible BIN')
-
+            'Containment Code',
+            'Containment Type',
+            'Tank Length (m)',
+            'Tank Width (m)',
+            'Depth (m)',
+            'Pit Diameter (m)',
+            'Containment Volume (m³)',
+            'Containment Location',
+            'Septic Tank Standard Compliance',
+            'Construction Date',
+            'Emptied Status',
+            'Last Emptied Date',
+            'Next Emptying Date',
+            'Number of Times Emptied',
+            'Responsible BIN'
         ];
         $query = Containment::select([
             'containments.*',
@@ -300,66 +296,66 @@ class ContainmentService
         $date_to = $data['date_to'] ?? null;
 
         $columns = [
-            __('BIN'),
-            __('Owner Name'),
-            __('Owner NID'),
-            __('Owner Gender'),
-            __('Owner Contact Number'),
-            __('BIN of Main Building'),
-            __('Ward'),
-            __('Road Code'),
-            __('House Number'),
-            __('House Locality/Address'),
-            __('Tax Code/Holding ID'),
-            __('Structure Type'),
-            __('Surveyed Date'),
-            __('Construction Date'),
-            __('Number of Floors'),
-            __('Functional Use of Building'),
-            __('Use Category of Building'),
-            __('Office or Business Name'),
-            __('Number of Households'),
-            __('Male Population'),
-            __('Female Population'),
-            __('Other Population'),
-            __('Population of Building'),
-            __('Differently Abled Male Population'),
-            __('Differently Abled Female Population'),
-            __('Differently Abled Other Population'),
-            __('Is Low Income House'),
-            __('LIC Name'),
-            __('Main Drinking Water Source'),
-            __('Water Supply Customer ID'),
-            __('Water Supply Pipe Line Code'),
-            __('Well in Premises'),
-            __('Distance of Well from Closest Containment (m)'),
-            __('SWM Customer ID'),
-            __('Presence of Toilet'),
-            __('Number of Toilets'),
-            __('Households with Private Toilet'),
-            __('Population with Private Toilet'),
-            __('Toilet Connection'),
-            __('Sewer Code'),
-            __('Drain Code'),
-            __('Building Accessible to Desludging Vehicle'),
-            __('Estimated Area of the Building (m²)'),
-            __('Community Toilet Name'),
-            __('Verification Status'),
-            __('Containment Code'),
-            __('Containment Type'),
-            __('Tank Length (m)'),
-            __('Tank Width (m)'),
-            __('Depth (m)'),
-            __('Pit Diameter (m)'),
-            __('Containment Volume (m³)'),
-            __('Containment Location'),
-            __('Septic Tank Standard Compliance'),
-            __('Construction Date'),
-            __('Emptied Status'),
-            __('Last Emptied Date'),
-            __('Next Emptying Date'),
-            __('Number of Times Emptied'),
-            __('Responsible BIN'),
+            'BIN',
+            'Owner Name',
+            'Owner NID',
+            'Owner Gender',
+            'Owner Contact Number',
+            'BIN of Main Building',
+            'Ward',
+            'Road Code',
+            'House Number',
+            'House Locality/Address',
+            'Tax Code/Holding ID',
+            'Structure Type',
+            'Surveyed Date',
+            'Construction Date',
+            'Number of Floors',
+            'Functional Use of Building',
+            'Use Category of Building',
+            'Office or Business Name',
+            'Number of Households',
+            'Male Population',
+            'Female Population',
+            'Other Population',
+            'Population of Building',
+            'Differently Abled Male Population',
+            'Differently Abled Female Population',
+            'Differently Abled Other Population',
+            'Is Low Income House',
+            'LIC Name',
+            'Main Drinking Water Source',
+            'Water Supply Customer ID',
+            'Water Supply Pipe Line Code',
+            'Well in Premises',
+            'Distance of Well from Closest Containment (m)',
+            'SWM Customer ID',
+            'Presence of Toilet',
+            'Number of Toilets',
+            'Households with Private Toilet',
+            'Population with Private Toilet',
+            'Toilet Connection',
+            'Sewer Code',
+            'Drain Code',
+            'Building Accessible to Desludging Vehicle',
+            'Estimated Area of the Building ( ㎡ )',
+            'Community Toilet Name',
+            'Verification Status',
+            'Containment Code',
+            'Containment Type',
+            'Tank Length (m)',
+            'Tank Width (m)',
+            'Depth (m)',
+            'Pit Diameter (m)',
+            'Containment Volume (m³)',
+            'Containment Location',
+            'Septic Tank Standard Compliance',
+            'Construction Date',
+            'Emptied Status',
+            'Last Emptied Date',
+            'Next Emptying Date',
+            'Number of Times Emptied',
+            'Responsible BIN'
         ];
 
         $query = DB::table('fsm.containments as c')

@@ -27,4 +27,14 @@ trait UiVisibilityTestHelpers
     {
         $response->assertDontSee('data-testid="' . $testId . '"', false);
     }
+
+    protected function assertStableElementIsVisible(\Illuminate\Testing\TestResponse $response, string $id): void
+    {
+        $response->assertSee('id="'.$id.'"', false);
+    }
+
+    protected function assertStableElementIsNotVisible(\Illuminate\Testing\TestResponse $response, string $id): void
+    {
+        $response->assertDontSee('id="'.$id.'"', false);
+    }
 }

@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "test-data-description": "HTML response without existing framing headers",
+    "payload": {
+      "content_type": "text/html; charset=UTF-8",
+      "headers": {}
+    },
+    "expected": {
+      "content_security_policy": "frame-ancestors 'none'",
+      "x_frame_options": "DENY",
+      "headers_apply": true
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 2,
+    "test-data-description": "HTML response with unrelated CSP directives",
+    "payload": {
+      "content_type": "text/html; charset=UTF-8",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; img-src data:"
+      }
+    },
+    "expected": {
+      "content_security_policy": "default-src 'self'; img-src data:; frame-ancestors 'none'",
+      "x_frame_options": "DENY",
+      "headers_apply": true
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 3,
+    "test-data-description": "HTML response with conflicting framing headers",
+    "payload": {
+      "content_type": "text/html; charset=UTF-8",
+      "headers": {
+        "Content-Security-Policy": "frame-ancestors 'self'; default-src 'self'; FRAME-ANCESTORS https://unapproved.example",
+        "X-Frame-Options": "SAMEORIGIN"
+      }
+    },
+    "expected": {
+      "content_security_policy": "default-src 'self'; frame-ancestors 'none'",
+      "x_frame_options": "DENY",
+      "headers_apply": true,
+      "rejected_value": "unapproved.example"
+    },
+    "validation_errors": []
+  },
+  {
+    "id": 4,
+    "test-data-description": "JSON response is outside document framing scope",
+    "payload": {
+      "content_type": "application/json",
+      "headers": {}
+    },
+    "expected": {
+      "headers_apply": false
+    },
+    "validation_errors": []
+  }
+]

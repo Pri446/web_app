@@ -87,16 +87,16 @@ class BuildingSurveyController extends Controller
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['building-surveys.destroy', $model->id]]);
 
                  if (Auth::user()->can('Approve Building Survey')) {
-                     $content .= '<a title="' . __("Approve Building Structure") . '" href="' . action("BuildingInfo\BuildingSurveyController@approve", [$model->id]) . '" class="btn btn-info btn-sm mb-1 '. ( !file_exists(storage_path('app/public/building-survey-kml/' . $model->kml)) ? ' anchor-disabled' : '' ) . '"  ><i class="fas fa-check"></i></a> ';
+                     $content .= '<a title="' . e(__("Approve Building Structure")) . '" href="' . action("BuildingInfo\BuildingSurveyController@approve", [$model->id]) . '" class="btn btn-info btn-sm mb-1 '. ( !file_exists(storage_path('app/public/building-survey-kml/' . $model->kml)) ? ' anchor-disabled' : '' ) . '"  ><i class="fas fa-check"></i></a> ';
                  }
                 if (Auth::user()->can('Preview Building Survey')) {
-                    $content .= '<a title="' . __("Preview Building Location") . '" data-toggle="modal" data-target="#kml-previewer" data-id="'.$model->kml.'" class="btn btn-info btn-sm mb-1" ><i class="fas fa-eye"></i></a> ';
+                    $content .= '<a title="' . e(__("Preview Building Location")) . '" data-toggle="modal" data-target="#kml-previewer" data-id="'.$model->kml.'" class="btn btn-info btn-sm mb-1" ><i class="fas fa-eye"></i></a> ';
                 }
                 if (Auth::user()->can('Download Building Survey')) {
-                    $content .= '<a title="' . __("Download Building KML File") . '" href="' . action("BuildingInfo\BuildingSurveyController@download", [$model->kml]) . '" class="btn btn-info btn-sm mb-1"  download><i class="fas fa-download"></i></a> ';
+                    $content .= '<a title="' . e(__("Download Building KML File")) . '" href="' . action("BuildingInfo\BuildingSurveyController@download", [$model->kml]) . '" class="btn btn-info btn-sm mb-1"  download><i class="fas fa-download"></i></a> ';
                 }
                 if (Auth::user()->can('Delete Building Survey')) {
-                    $content .= '<a title="' . __("Delete") . '" class="delete btn btn-danger btn-sm mb-1" ><i class="fas fa-trash"></i></a> ';
+                    $content .= '<a title="' . e(__("Delete")) . '" class="delete btn btn-danger btn-sm mb-1" ><i class="fas fa-trash"></i></a> ';
                 }
 
                 $content .= \Form::close();

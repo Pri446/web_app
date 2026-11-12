@@ -89,7 +89,7 @@ class BuildingsRoadExport implements FromView, WithTitle, WithEvents
                 $total_community_toilet += $building->community_toilet;
                 $total_open_defacation += $building->open_defacation;
                 $rows[] = array(
-                    'StructureType' => $building->structype,
+                    'Structure Type' => $building->structype,
                     'Buildings' => $building->count,
                     'Sewer Network' => $building->sewer_network,
                     'Drain Network' => $building->drain_network,
@@ -105,7 +105,7 @@ class BuildingsRoadExport implements FromView, WithTitle, WithEvents
                 }
         }
                 $rows[] = array(
-                    'StructureType' => 'Total',
+                    'Structure Type' => 'Total',
                     'Buildings' => $total,
                     'Sewer Network' => $total_sewer_network,
                     'Drain Network' => $total_drain_network,

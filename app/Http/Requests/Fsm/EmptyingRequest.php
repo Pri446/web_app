@@ -62,7 +62,7 @@ class EmptyingRequest extends FormRequest
             'volume_of_sludge' => [
                 'required',
                 'numeric',
-                'min:0',
+                'gt:0',
                 function ($attribute, $value, $fail) use ($containmentSize, $totalSludgeVolume, $isAnf) {
                     // Skip volume check if ANF not yet resolved (no containment linked)
                     if ($isAnf) {
@@ -117,7 +117,7 @@ class EmptyingRequest extends FormRequest
                     'nullable',
                     'file',
                     'mimes:jpeg,jpg',
-                    // 'max:5120',
+                    'max:5120',
                     'required_without:house_image_existing',
                 ],
                 'house_image_existing'   => ['nullable', 'string'],
@@ -125,7 +125,7 @@ class EmptyingRequest extends FormRequest
                     'nullable',
                     'file',
                     'mimes:jpeg,jpg',
-                    // 'max:5120',
+                    'max:5120',
                     'required_without:receipt_image_existing',
                 ],
                 'receipt_image_existing' => ['nullable', 'string'],
@@ -157,7 +157,7 @@ class EmptyingRequest extends FormRequest
             'trip_count.min'                   => __('The No. of Trips must be at least 1.'),
             'volume_of_sludge.required'        => __('The Sludge Volume (m³) is required.'),
             'volume_of_sludge.numeric'         => __('The Sludge Volume (m³) must be numeric.'),
-            'volume_of_sludge.min'             => __('The Sludge Volume (m³) must be at least 0.'),
+            'volume_of_sludge.gt'              => __('The Sludge Volume (m³) must be greater than 0.'),
             'desludging_vehicle_id.required'   => __('The Desludging Vehicle Number Plate is required.'),
             'desludging_vehicle_id.integer'    => __('The Desludging Vehicle Number Plate must be an integer.'),
             'driver.required'                  => __('The Driver Name is required.'),
@@ -177,10 +177,12 @@ class EmptyingRequest extends FormRequest
             'total_cost.numeric'               => __('The Total Cost must be numeric.'),
             'house_image.required'             => __('The House Image is required.'),
             'house_image.file'                 => __('The House Image must be a file.'),
+            'house_image.uploaded'             => __('The House Image could not be uploaded. The server accepts images up to 5 MB.'),
             'house_image.mimes'                => __('The House Image must be a file of type: jpeg, jpg.'),
             'house_image.max'                  => __('The House Image should not be greater than 5 MB.'),
             'receipt_image.required'           => __('The Receipt Image is required.'),
             'receipt_image.file'               => __('The Receipt Image must be a file.'),
+            'receipt_image.uploaded'           => __('The Receipt Image could not be uploaded. The server accepts images up to 5 MB.'),
             'receipt_image.mimes'              => __('The Receipt Image must be a file of type: jpeg, jpg.'),
             'receipt_image.max'                => __('The Receipt Image should not be greater than 5 MB.'),
         ];

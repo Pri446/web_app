@@ -36,6 +36,7 @@ use DataTables;
 use Throwable;
 use App\Models\Notification;
 use App\Models\User;
+use App\Helpers\ImageOptimizationHelper;
 
 class EmptyingService
 {
@@ -313,9 +314,13 @@ class EmptyingService
 
             ];
 
+            // Always render the final-trip fields. The create page controls
+            // their visibility from the current form values, allowing the
+            // operator to change No. of Trips without reloading the page.
+                $hideFinalTripFields = (int) $application->trip_count !== ((int) $emptying->trip_no + 1);
             if ($application->trip_count == $emptying->trip_no + 1) {
                 $folderPathBuildJpg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpg');
-                $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpgeg');
+                $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpeg');
                 $imagePathBuildJpg = 'storage/emptyings/houses/' . $application->bin . '.jpg';
                 $imagePathBuildJpeg = 'storage/emptyings/houses/' . $application->bin . '.jpeg';
                 if (file_exists($folderPathBuildJpg) == true) {
@@ -345,7 +350,7 @@ class EmptyingService
                     inputId: 'receipt_number',
                     required: true,
                     placeholder: __('Receipt Number'),
-                    hidden: false
+                    hidden: $hideFinalTripFields
                 );
 
                 $this->createFormFields[] = new FormField(
@@ -355,7 +360,8 @@ class EmptyingService
                     inputId: 'total_cost',
                     required: true,
                     placeholder: __('Total Cost'),
-                    oninput: "this.value = this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;"
+                    oninput: "this.value = this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;",
+                    hidden: $hideFinalTripFields
                 );
 
                 $this->createFormFields[] = new FormField(
@@ -365,6 +371,7 @@ class EmptyingService
                     inputId: 'house_image',
                     required: true,
                     placeholder: __('House Image'),
+                    hidden: $hideFinalTripFields
                 );
 
                 $this->createFormFields[] = new FormField(
@@ -374,8 +381,8 @@ class EmptyingService
                     inputId: 'receipt_image',
                     required: true,
                     placeholder: __('Receipt Image'),
+                    hidden: $hideFinalTripFields
                 );
-            }
         } else {
 
             $this->createFormFields = [
@@ -551,6 +558,7 @@ class EmptyingService
                     inputId: 'receipt_number',
                     required: true,
                     placeholder: __('Receipt Number'),
+                    hidden: true
 
                 ),
                 new FormField(
@@ -560,7 +568,8 @@ class EmptyingService
                     inputId: 'total_cost',
                     required: true,
                     placeholder: __('Total Cost'),
-                    oninput: "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;"
+                    oninput: "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'); this.value = this.value < 0 || this.value.startsWith('-') ? '' : this.value;",
+                    hidden: true
                 ),
                 new FormField(
                     label: __('House Image'),
@@ -569,6 +578,7 @@ class EmptyingService
                     inputId: 'house_image',
                     required: true,
                     placeholder: __('House Image'),
+                    hidden: true
                 ),
                 new FormField(
                     label: __('Receipt Image'),
@@ -577,6 +587,7 @@ class EmptyingService
                     inputId: 'receipt_image',
                     required: true,
                     placeholder: __('Receipt Image'),
+                    hidden: true
                 ),
                 new FormField(
                     label: __('Comments (if any)'),
@@ -602,7 +613,7 @@ class EmptyingService
         $containment = Containment::findOrFail($application->containment_id);
         // houses
         $folderPathBuildJpg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpg');
-        $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpgeg');
+        $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpeg');
         $imagePathBuildJpg = 'storage/emptyings/houses/' . $application->bin . '.jpg';
         $imagePathBuildJpeg = 'storage/emptyings/houses/' . $application->bin . '.jpeg';
         if (file_exists($folderPathBuildJpg) == true) {
@@ -1331,7 +1342,7 @@ class EmptyingService
      */
     public function getAllEmptyings()
     {
-        if (Auth::user()->hasRole('Service Provider - Admin')) {
+        if (OperationalDataAccessService::isServiceProviderUser(Auth::user())) {
             return Emptying::join('fsm.applications', function ($join) {
                 $join->on('fsm.emptyings.application_id', '=', 'fsm.applications.id')
                     ->whereNull('fsm.applications.deleted_at');
@@ -1339,7 +1350,7 @@ class EmptyingService
                 ->whereNull('fsm.emptyings.deleted_at')
                 ->where('fsm.emptyings.service_provider_id', Auth::user()->service_provider_id)
                 ->select('fsm.emptyings.*');
-        } else if (Auth::user()->hasRole('Treatment Plant - Admin')) {
+        } else if (OperationalDataAccessService::isTreatmentPlantUser(Auth::user())) {
             return Emptying::join('fsm.applications', function ($join) {
                 $join->on('fsm.emptyings.application_id', '=', 'fsm.applications.id')
                     ->whereNull('fsm.applications.deleted_at');
@@ -1437,6 +1448,7 @@ class EmptyingService
             // Extract data
             $data = $request->except('no_of_trips', 'start_time', 'end_time');
             $application = Application::findOrFail($request->application_id);
+            OperationalDataAccessService::authorizeApplication($application);
 
             // ✅ Block saving emptying if ANF is not resolved
             if ($application->is_anf) {
@@ -1549,8 +1561,8 @@ class EmptyingService
                         ->with('error', 'Error! Receipt and house images are required on final trip.');
                 }
 
-                $extension_receipt = $request->receipt_image->getClientOriginalExtension();
-                $extension_house   = $request->house_image->getClientOriginalExtension();
+                $extension_receipt = strtolower($request->receipt_image->getClientOriginalExtension());
+                $extension_house   = strtolower($request->house_image->getClientOriginalExtension());
 
                 $dateTime = now()->setTimezone(new DateTimeZone('Asia/Kathmandu'))->format('Y_m_d');
 
@@ -1588,13 +1600,27 @@ class EmptyingService
                         "/public/emptyings/houses/{$new_archived_filename}"
                     );
                 }
-                $storeHouseImg = Image::make($request->house_image)
-                    ->save(Storage::disk('local')->path("/public/emptyings/houses/{$filename_house}"), 50);
+                $houseImageSaved = ImageOptimizationHelper::optimizeAndSave(
+                    $request->house_image,
+                    Storage::disk('local')->path("/public/emptyings/houses/{$filename_house}"),
+                    1600,
+                    70
+                );
+                if (!$houseImageSaved) {
+                    throw new \RuntimeException(__('Unable to save the house image.'));
+                }
                 $emptying->house_image = $filename_house;
                 $filename_receipt = "{$emptying->id}_{$emptying->application_id}_{$emptying->receipt_number}_{$dateTime}.{$extension_receipt}";
 
-                $storeReceiptImg = Image::make($request->receipt_image)
-                    ->save(Storage::disk('local')->path("/public/emptyings/receipts/{$filename_receipt}"), 50);
+                $receiptImageSaved = ImageOptimizationHelper::optimizeAndSave(
+                    $request->receipt_image,
+                    Storage::disk('local')->path("/public/emptyings/receipts/{$filename_receipt}"),
+                    1600,
+                    70
+                );
+                if (!$receiptImageSaved) {
+                    throw new \RuntimeException(__('Unable to save the receipt image.'));
+                }
                 // Assign image paths to emptying
                 $emptying->receipt_image  = $filename_receipt;
                 $emptying->house_image    = $filename_house;
@@ -1754,7 +1780,12 @@ foreach ($recipientIds as $userId) {
     public function updateEmptying(Request $request, $id)
     {
         $emptying = Emptying::findOrFail($id);
+        OperationalDataAccessService::authorizeRecord(
+            $emptying->service_provider_id,
+            $emptying->treatment_plant_id
+        );
         $application = Application::findOrFail($request->application_id);
+        OperationalDataAccessService::authorizeApplication($application);
         DB::beginTransaction();
         try {
             if ($request->validated()) {
@@ -1765,13 +1796,18 @@ foreach ($recipientIds as $userId) {
                 //check image upload
                 $allowedFileExt = ['jpg', 'jpeg'];
                 if ($request->hasFile('receipt_image')) {
-                    $extension_receipt = $request->receipt_image->getClientOriginalExtension();
+                    $extension_receipt = strtolower($request->receipt_image->getClientOriginalExtension());
                     $check = in_array($extension_receipt, $allowedFileExt);
                     if ($check) {
                         try {
                             $filename_receipt = $emptying->id . '_' . $emptying->application_id . '_' . $emptying->receipt_number . '_' . $dateTime . '.' . $extension_receipt;
-                            $storeReceiptImg = Image::make($request->receipt_image)->save(Storage::disk('local')->path('/public/emptyings/receipts/' . $filename_receipt), 50);
-                            if (!Storage::disk('local')->exists('/public/emptyings/receipts/' . $filename_receipt)) {
+                            $receiptImageSaved = ImageOptimizationHelper::optimizeAndSave(
+                                $request->receipt_image,
+                                Storage::disk('local')->path('/public/emptyings/receipts/' . $filename_receipt),
+                                1600,
+                                70
+                            );
+                            if (!$receiptImageSaved || !Storage::disk('local')->exists('/public/emptyings/receipts/' . $filename_receipt)) {
                                 return redirect()->back()->withInput()->with('error', __("Error! Unable to save receipt image."));
                             }
                             $emptying->receipt_image = $filename_receipt;
@@ -1788,7 +1824,7 @@ foreach ($recipientIds as $userId) {
                 }
 
                 if ($request->hasFile('house_image')) {
-                    $extension_house = $request->house_image->getClientOriginalExtension();
+                    $extension_house = strtolower($request->house_image->getClientOriginalExtension());
                     $check = in_array($extension_house, $allowedFileExt);
                     if ($check) {
                         try {
@@ -1801,8 +1837,15 @@ foreach ($recipientIds as $userId) {
                                     "/public/emptyings/houses/{$new_archived_filename}"
                                 );
                             }
-                            $storeHouseImg = Image::make($request->house_image)
-                                ->save(Storage::disk('local')->path("/public/emptyings/houses/{$filename_house}"), 50);
+                            $houseImageSaved = ImageOptimizationHelper::optimizeAndSave(
+                                $request->house_image,
+                                Storage::disk('local')->path("/public/emptyings/houses/{$filename_house}"),
+                                1600,
+                                70
+                            );
+                            if (!$houseImageSaved) {
+                                throw new \RuntimeException(__('Unable to save the house image.'));
+                            }
                             $emptying->house_image = $filename_house;
                         } catch (\Throwable $th) {
                             DB::rollBack();
@@ -1842,6 +1885,10 @@ foreach ($recipientIds as $userId) {
     {
         try {
             $emptying = Emptying::findOrFail($id);
+            OperationalDataAccessService::authorizeRecord(
+                $emptying->service_provider_id,
+                $emptying->treatment_plant_id
+            );
             $revisions = Revision::all()
                 ->where('revisionable_type', get_class($emptying))
                 ->where('revisionable_id', $id)
@@ -1930,7 +1977,16 @@ foreach ($recipientIds as $userId) {
             ->orderBy('e.id')
             ->whereNull('e.deleted_at');
 
-        if (!Auth::user()->hasRole('Super Admin') && !Auth::user()->hasRole('Municipality - Super Admin') && !Auth::user()->hasRole('Municipality - IT Admin') && !Auth::user()->hasRole('Municipality - Sanitation Department')) {
+        if (
+            OperationalDataAccessService::isServiceProviderUser(Auth::user())
+            || OperationalDataAccessService::isTreatmentPlantUser(Auth::user())
+        ) {
+            OperationalDataAccessService::scopeQuery(
+                $query,
+                'e.service_provider_id',
+                'e.treatment_plant_id'
+            );
+        } elseif (!Auth::user()->hasRole('Super Admin') && !Auth::user()->hasRole('Municipality - Super Admin') && !Auth::user()->hasRole('Municipality - IT Admin') && !Auth::user()->hasRole('Municipality - Sanitation Department')) {
             $query->where('u.name', '=', Auth::user()->name);
         }
 

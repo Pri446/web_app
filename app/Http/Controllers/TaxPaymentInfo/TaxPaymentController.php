@@ -22,15 +22,31 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TaxImport;
 use Maatwebsite\Excel\HeadingRowImport;
 use App\Models\TaxPaymentInfo\TaxPayment;
+use App\Services\OwnerPiiAuditService;
+use App\Services\PropertyTaxPiiAccessService;
+use App\Services\PropertyTaxPiiPresenter;
+use Illuminate\Support\Facades\Auth;
 
 class TaxPaymentController extends Controller
 {
-    public function __construct()
+    private PropertyTaxPiiAccessService $piiAccess;
+    private PropertyTaxPiiPresenter $piiPresenter;
+    private OwnerPiiAuditService $piiAudit;
+
+    public function __construct(
+        PropertyTaxPiiAccessService $piiAccess,
+        PropertyTaxPiiPresenter $piiPresenter,
+        OwnerPiiAuditService $piiAudit
+    )
     {
+        $this->piiAccess = $piiAccess;
+        $this->piiPresenter = $piiPresenter;
+        $this->piiAudit = $piiAudit;
         $this->middleware('auth');
         $this->middleware('permission:List Property Tax Collection', ['only' => ['index']]);
         $this->middleware('permission:Import Property Tax Collection From CSV', ['only' => ['create', 'store']]);
         $this->middleware('permission:Export Property Tax Collection Info', ['only' => ['export', 'exportunmatched']]);
+        $this->middleware('pii.no-cache', ['only' => ['getData']]);
 
     }
     /**
@@ -43,8 +59,36 @@ class TaxPaymentController extends Controller
         $page_title = __("Property Tax Collection");
         $wards = Ward::getInAscOrder();
         $dueYears = DueYear::getInAscOrder();
+        $user = Auth::user();
+        $propertyTaxPiiUnlocked = $user && $this->piiAccess->isUnlocked($user);
+        $canUnlockPropertyTaxPii = $this->piiAccess->canUnlock($user);
+        $canExportPropertyTaxPii = $user
+            && $user->can('List Property Tax Collection')
+            && $user->can('View Property Tax Owner PII')
+            && $user->can('Unlock Property Tax Owner PII')
+            && $user->can('Export Property Tax Owner PII');
+        // Full-dataset export is intentionally narrower than selected-BIN
+        // export because Property Tax records have no municipality row scope.
+        $canExportAllPropertyTaxPii = $canExportPropertyTaxPii
+            && $user->hasAnyRole([
+                'Super Admin',
+                'Municipality - Super Admin',
+                'Municipality - IT Admin',
+            ]);
+        $propertyTaxPiiUnlockSeconds = $propertyTaxPiiUnlocked
+            ? $this->piiAccess->secondsRemaining($user)
+            : 0;
 
-        return view('taxpayment-info.index', compact('page_title','wards', 'dueYears'));
+        return view('taxpayment-info.index', compact(
+            'page_title',
+            'wards',
+            'dueYears',
+            'propertyTaxPiiUnlocked',
+            'canUnlockPropertyTaxPii',
+            'canExportPropertyTaxPii',
+            'canExportAllPropertyTaxPii',
+            'propertyTaxPiiUnlockSeconds'
+        ));
     }
     /**
      * Prepare data for the DataTable.
@@ -55,11 +99,40 @@ class TaxPaymentController extends Controller
      */
     public function getData(Request $request)
     {
-        $buildingData = DB::table(DB::raw('(SELECT tax_code, bin, ward, owner_name, owner_contact, due_year 
-            FROM taxpayment_info.tax_payment_status
-            ORDER BY tax_code) tax'))
+        $user = Auth::user();
+        $revealed = $user && $this->piiAccess->isUnlocked($user);
+
+        if ($revealed) {
+            $this->piiAudit->record(
+                'property_tax_owner_pii_list_viewed',
+                true,
+                $user,
+                null,
+                [
+                    'surface' => 'property_tax_list',
+                    'page_start' => (int) $request->input('start', 0),
+                    'page_length' => (int) $request->input('length', 10),
+                ],
+                'password_reentry'
+            );
+        }
+
+        // Select only the fields used by the table. Owner contact must never
+        // be included in this JSON response.
+        $buildingData = DB::table(DB::raw('(SELECT status.tax_code, status.bin, status.ward,
+                payment.owner_name, status.due_year
+            FROM taxpayment_info.tax_payment_status status
+            LEFT JOIN taxpayment_info.tax_payments payment
+                ON payment.tax_code = status.tax_code
+            ORDER BY status.tax_code) tax'))
             ->leftjoin('taxpayment_info.due_years AS due', 'due.value', '=', 'tax.due_year')
-            ->select('tax.*', 'due.name', 'tax.bin');
+            ->select([
+                'tax.tax_code',
+                'tax.bin',
+                'tax.ward',
+                'tax.owner_name',
+                'due.name',
+            ]);
 
         return DataTables::of($buildingData)
             ->filter(function ($query) use ($request) {
@@ -75,6 +148,12 @@ class TaxPaymentController extends Controller
                 if ($request->bin) {
                     $query->where('tax.bin', 'ILIKE', '%' . $request->bin . '%');
                 }
+            })
+            ->editColumn('owner_name', function ($row) use ($revealed) {
+                return $this->piiPresenter->presentValue(
+                    $row->owner_name,
+                    $revealed
+                );
             })
             ->make(true);
 
@@ -122,18 +201,27 @@ class TaxPaymentController extends Controller
                     Storage::disk('importtax')->delete('/' . $filename);
                     //deletes if already exists
                 }
-                $stored = $request->file('csvfile')->storeAs('/', $filename, 'importtax');
+                $stored = $request->file('csvfile')->storeAs('', $filename, 'importtax');
 
                 if ($stored)
                 {
-                    $storage = Storage::disk('importtax')->path('/');
-                    $location = preg_replace('/\\\\/', '', $storage);
-
-                    $file_selection = Storage::disk('importtax')->listContents();
-                    $filename = $file_selection[0]['basename'];
+                    // storeAs() already returns the path of the exact file that
+                    // was stored. Use that path directly instead of scanning the
+                    // entire import directory with listContents().
+                    //
+                    // This is important for two reasons:
+                    // 1. Flysystem v3 requires listContents($path), so the old
+                    //    zero-argument call throws an ArgumentCountError.
+                    // 2. Selecting the first directory entry could import an
+                    //    older/unrelated file when more than one file exists.
+                    //
+                    // disk()->path() also returns a valid native Windows path.
+                    // Do not remove backslashes: doing that turns a valid path
+                    // such as E:\\app\\storage\\file.csv into an invalid one.
+                    $filePath = Storage::disk('importtax')->path($stored);
 
                     //checking csv file has all heading row keys
-                    $headings = (new HeadingRowImport)->toArray($location.$filename);
+                    $headings = (new HeadingRowImport)->toArray($filePath);
                     $heading_row_errors = array();
                     if (!in_array("tax_code", $headings[0][0])) {
                         $heading_row_errors['tax_code'] = "Heading row : tax_code is required";
@@ -153,7 +241,10 @@ class TaxPaymentController extends Controller
                     \DB::statement('TRUNCATE TABLE taxpayment_info.tax_payments RESTART IDENTITY');
                     #\DB::statement('ALTER SEQUENCE IF exists taxpayment_info.tax_payments_id_seq RESTART WITH 1');
                     $import = new TaxImport();
-                    $import->import($location.$filename);
+                    // TaxImport returns a TaxPayment model for every CSV row.
+                    // TaxPayment's owner_name and owner_contact mutators encrypt
+                    // these values before Eloquent prepares the batch insert.
+                    $import->import($filePath);
 
                     $message = __('Successfully Imported Building Tax Payments From CSV.');
                     \DB::statement("select taxpayment_info.fnc_taxpaymentstatus()");
@@ -187,14 +278,17 @@ class TaxPaymentController extends Controller
             __('Tax Code'),
             __('BIN'),
             __('Ward'),
-            __('Owner Name'),
-            __('Owner Contact'),
             __('Due Years')
         ];
 
         $query = DB::table('taxpayment_info.tax_payment_status AS tax')
                                 ->leftjoin('taxpayment_info.due_years AS due', 'due.value', '=', 'tax.due_year')
-                                ->select('tax.*', 'due.name', 'tax.bin')
+                                ->select([
+                                    'tax.tax_code',
+                                    'tax.bin',
+                                    'tax.ward',
+                                    'due.name',
+                                ])
                                 ->where('tax.deleted_at', null)
                                 ->orderBy('tax.tax_code', 'ASC');
 
@@ -228,8 +322,6 @@ class TaxPaymentController extends Controller
                 $values[] = $taxpayment->tax_code;
                 $values[] = $taxpayment->bin;
                 $values[] = $taxpayment->ward;
-                $values[] = $taxpayment->owner_name;
-                $values[] = $taxpayment->owner_contact;
                 $values[] = $taxpayment->name;
                 $writer->addRow($values);
             }
@@ -241,14 +333,15 @@ class TaxPaymentController extends Controller
     {
         $columns = [
             __('Tax Code'),
-            __('Owner Name'),
-            __('Owner Contact'),
             __('Last Payment date')
         ];
 
         $query = DB::table('taxpayment_info.tax_payments AS tax')
                  ->leftjoin('building_info.buildings as b', 'tax.tax_code', '=', 'b.tax_code')
-                 ->select('tax.*')
+                 ->select([
+                     'tax.tax_code',
+                     'tax.last_payment_date',
+                 ])
                  ->whereNull('b.tax_code')
                  ->orderBy('tax.tax_code', 'ASC');    
        
@@ -266,8 +359,6 @@ class TaxPaymentController extends Controller
             foreach($taxpayments as $taxpayment) {
                 $values = [];
                 $values[] = $taxpayment->tax_code;
-                $values[] = $taxpayment->owner_name;
-                $values[] = $taxpayment->owner_contact;
                 $values[] = $taxpayment->last_payment_date;
                 $writer->addRow($values);
             }

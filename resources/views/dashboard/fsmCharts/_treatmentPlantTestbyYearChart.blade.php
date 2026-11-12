@@ -6,7 +6,7 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function () {
     // Assuming the data comes from the $treatmentPlantTest variable
     var sqlResult = @json($treatmentPlantTest);
 
@@ -18,37 +18,35 @@ document.addEventListener('DOMContentLoaded', function() {
     var fixedColors = ["#ffb964", "#023047", "#219EBC", "#8ECAE6", "#9D0208", "#FFD166", "#06D6A0", "#FF6B6B"];
     var belowStandardColor = "#CCCCCC"; // Grey color for below standard
 
-    // Organize data for Chart.js: Create one dataset for standardmeet and one for belowstandard for each treatment plant
+    // The legacy SQL names are inverted: "belowstandard" contains compliant
+    // tests, while "standardmeet" contains the remaining non-compliant tests.
     var datasets = [];
     treatmentPlantNames.forEach((plantName, index) => {
-    // Get the standardmeet and belowstandard values for each year
-    var standardMeetData = years.map(year => {
+    var compliantData = years.map(year => {
         const dataItem = sqlResult.find(item => item.treatment_plant_name === plantName && item.year === year);
-        return dataItem ? dataItem.standardmeet : 0; // Use 0 if no data
+        return dataItem ? Number(dataItem.belowstandard) : 0;
     });
 
-    var belowStandardData = years.map(year => {
+    var nonCompliantData = years.map(year => {
         const dataItem = sqlResult.find(item => item.treatment_plant_name === plantName && item.year === year);
-        return dataItem ? dataItem.standardnotmeet : 0; // Use 0 if no data
+        return dataItem ? Number(dataItem.standardmeet) : 0;
     });
 
-    // Add the standardmeet dataset
     datasets.push({
-        label: plantName, // Use only the plant name in the legend for standardmeet
-        backgroundColor: fixedColors[index % fixedColors.length], // Color for standardmeet
-        data: standardMeetData, // Data for standardmeet
-        stack: plantName, // Stack under the treatment plant
+        label: plantName,
+        backgroundColor: fixedColors[index % fixedColors.length],
+        data: compliantData,
+        stack: plantName,
     });
 
-    // Check if belowStandardData contains any non-zero values before adding the dataset
-    if (belowStandardData.some(value => value > 0)) {
+    if (nonCompliantData.some(value => value > 0)) {
         datasets.push({
-            label: plantName + ' - Non Compliance', // Include the plant name with '- Below Standard' in the legend
-            backgroundColor: belowStandardColor, // Grey color for below standard
-            borderColor: fixedColors[index % fixedColors.length], // Border color matches the plant's color
-            borderWidth: 2, // Set border width to make it distinguishable
-            data: belowStandardData, // Data for belowstandard
-            stack: plantName, // Stack under the treatment plant
+            label: plantName + ' - Non Compliance',
+            backgroundColor: belowStandardColor,
+            borderColor: fixedColors[index % fixedColors.length],
+            borderWidth: 2,
+            data: nonCompliantData,
+            stack: plantName,
         });
     }
 });
@@ -63,20 +61,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Chart options
     var options = {
         scales: {
-            x: {
-                stacked: true,  // Stack the bars horizontally
-            },
-            y: {
-                stacked: true,  // Stack the bars vertically
-            },
-        },
-        scales: {
-      xAxes: [{
+            xAxes: [{
                 scaleLabel: {
-                    display: true, // Enable the scale label
-                    labelString: 'Year' // The label text
+                    display: true,
+                    labelString: 'Year'
                 }
-            }],},
+            }],
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true,
+                    precision: 0
+                }
+            }]
+        },
         responsive: true,
         legend: {
             display: true,
@@ -95,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         data: chartData,
         options: options,
     });
-});
+}());
 
 document.getElementById('exportTreatmentPlantChart').addEventListener("click", downloadIMG);
 

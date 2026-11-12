@@ -68,13 +68,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->total_cost;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -126,31 +126,31 @@ class  BuildingDashboardService
 
 
         $emptying_dataset = [];
-        $emptying_dataset['stack'] = '"stack 1"';
-        $emptying_dataset['label'] = '"Emptying"';
-        $emptying_dataset['color'] = '"rgba(62, 199, 68, 0.75)"';
+        $emptying_dataset['stack'] = 'stack 1';
+        $emptying_dataset['label'] = 'Emptying';
+        $emptying_dataset['color'] = 'rgba(62, 199, 68, 0.75)';
         $emptying_dataset['data'] = [];
 
         $feedback_dataset = [];
-        $feedback_dataset['stack'] = '"stack 2"';
-        $feedback_dataset['label'] = '"Feedback"';
-        $feedback_dataset['color'] = '"rgba(255, 229, 0, 0.75)"';
+        $feedback_dataset['stack'] = 'stack 2';
+        $feedback_dataset['label'] = 'Feedback';
+        $feedback_dataset['color'] = 'rgba(255, 229, 0, 0.75)';
         $feedback_dataset['data'] = [];
 
         $application_dataset = [];
-        $application_dataset['stack'] = '"stack 3"';
-        $application_dataset['label'] = '"Application"';
-        $application_dataset['color'] = '"rgba(255, 179, 3, 0.75)"';
+        $application_dataset['stack'] = 'stack 3';
+        $application_dataset['label'] = 'Application';
+        $application_dataset['color'] = 'rgba(255, 179, 3, 0.75)';
         $application_dataset['data'] = [];
 
         $sludgecollecion_dataset = [];
-        $sludgecollecion_dataset['stack'] = '"stack 4"';
-        $sludgecollecion_dataset['label'] = '"Treatment Plant"';
-        $sludgecollecion_dataset['color'] = '"rgba(219, 61, 61, 0.75)"';
+        $sludgecollecion_dataset['stack'] = 'stack 4';
+        $sludgecollecion_dataset['label'] = 'Treatment Plant';
+        $sludgecollecion_dataset['color'] = 'rgba(219, 61, 61, 0.75)';
         $sludgecollecion_dataset['data'] = [];
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $emptying_dataset['data'][] = $row->emptying_count;
             $feedback_dataset['data'][] = $row->feedback_count;
             $application_dataset['data'][] = $row->application_count;
@@ -165,7 +165,7 @@ class  BuildingDashboardService
         ];
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
 
@@ -193,18 +193,18 @@ class  BuildingDashboardService
             . " FROM fsm.feedbacks fb $where $whereRawServiceProvider";
 
         $results = DB::select($query);
-        $labels = array('"Yes"', '"No"');
+        $labels = array('Yes', 'No');
         $values = array($results[0]->yes, $results[0]->no);
 
-        $colors = ['"rgba(62, 199, 68, 0.35)"', '"rgba(219, 61, 61, 0.35)"'];
-        $borderColor = ['"rgba(57, 142, 61, 0.65)"', '"rgba(62, 199, 68, 0.8)"', '"rgba(255, 229, 0, 0.8)"', '"rgba(255, 179, 3, 0.8)"', '"rgba(219, 61, 61, 0.65)"'];
-         $hoverBackgroundColor = ['"rgba(62, 199, 68, 0.45)"', '"rgba(219, 61, 61, 0.45)"'];
-         $hoverBorderColor = ['"rgba(62, 199, 68, 1)"', '"rgba(219, 61, 61, 1)"'];
+        $colors = ['rgba(62, 199, 68, 0.35)', 'rgba(219, 61, 61, 0.35)'];
+        $borderColor = ['rgba(57, 142, 61, 0.65)', 'rgba(62, 199, 68, 0.8)', 'rgba(255, 229, 0, 0.8)', 'rgba(255, 179, 3, 0.8)', 'rgba(219, 61, 61, 0.65)'];
+         $hoverBackgroundColor = ['rgba(62, 199, 68, 0.45)', 'rgba(219, 61, 61, 0.45)'];
+         $hoverBorderColor = ['rgba(62, 199, 68, 1)', 'rgba(219, 61, 61, 1)'];
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors),
             'borderColor' =>  $borderColor,
               'hoverBackgroundColor' => $hoverBackgroundColor,
               'hoverBorderColor' => $hoverBorderColor
@@ -231,15 +231,15 @@ class  BuildingDashboardService
             . " FROM fsm.feedbacks fb $where $whereRawServiceProvider";
 
         $results = DB::select($query);
-        $labels = array('"Yes"', '"No"');
+        $labels = array('Yes', 'No');
         $values = array($results[0]->yes, $results[0]->no);
 
-        $colors = ['"rgba(62, 199, 68, 0.35)"', '"rgba(219, 61, 61, 0.35)"'];
+        $colors = ['rgba(62, 199, 68, 0.35)', 'rgba(219, 61, 61, 0.35)'];
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors),
 
         ];
 
@@ -278,13 +278,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->length;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -306,13 +306,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->num_of_hotspots;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -335,13 +335,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -367,13 +367,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->type . '"';
+            $labels[] = $row->type;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -424,26 +424,26 @@ class  BuildingDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->functional_use_name . '"';
+            $labels[] = $row->functional_use_name;
             $values[] = $row->building_count;
         }
 
         $colors = [
-            '"#87CEFA"',  // Light Sky Blue
-            '"#6495ED"',  // Cornflower Blue
-            '"#1E90FF"',  // Dodger Blue
-            '"#4682B4"',  // Steel Blue
-            '"#4169E1"',  // Royal Blue
-            '"#0000CD"',  // Medium Blue
-            '"#000080"',  // Navy Blue
-            '"#00BFFF"' // Deep Sky Blue
+            '#87CEFA',  // Light Sky Blue
+            '#6495ED',  // Cornflower Blue
+            '#1E90FF',  // Dodger Blue
+            '#4682B4',  // Steel Blue
+            '#4169E1',  // Royal Blue
+            '#0000CD',  // Medium Blue
+            '#000080',  // Navy Blue
+            '#00BFFF' // Deep Sky Blue
         ];
 
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors)
         ];
 
         return $chart;
@@ -473,13 +473,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->name . '"';
+            $labels[] = $row->name;
             $values[] = $row->sum;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -526,36 +526,36 @@ class  BuildingDashboardService
 
         $years = array_keys($data);
         $labels = array_map(function ($year) {
-            return '"' . $year . '"';
+            return $year;
         }, $years);
         $colors = array(
-            '"rgb(100, 130, 252, 0.7)"',
-            '"rgb(60, 116, 47, 0.7)"',
-            '"rgb(176, 109, 28, 0.7)"',
-            '"rgb(248, 79, 101, 0.7)"',
-            '"rgb(0, 0, 128, 0.7)"',
-            '"rgb(205, 71, 7, 0.7)"',
-            '"rgb(184, 0, 0, 0.7)"',
-            '"rgb(37, 198, 198, 0.7)"',
-            '"rgb(151, 92, 173, 0.7)"',
-            '"rgb(243, 162, 63, 0.7)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
+            'rgb(100, 130, 252, 0.7)',
+            'rgb(60, 116, 47, 0.7)',
+            'rgb(176, 109, 28, 0.7)',
+            'rgb(248, 79, 101, 0.7)',
+            'rgb(0, 0, 128, 0.7)',
+            'rgb(205, 71, 7, 0.7)',
+            'rgb(184, 0, 0, 0.7)',
+            'rgb(37, 198, 198, 0.7)',
+            'rgb(151, 92, 173, 0.7)',
+            'rgb(243, 162, 63, 0.7)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
         );
         $colorsArr = array_slice($colors, 0, count($results), true);
         $datasets = array();
         $count = 0;
         foreach ($types as $key1 => $value1) {
             $dataset = array();
-            $dataset['label'] = '"' . $value1 . '"';
+            $dataset['label'] = $value1;
             $dataset['color'] = $colors[$count++];
             $dataset['data'] = array();
             foreach ($years as $year) {
@@ -565,7 +565,7 @@ class  BuildingDashboardService
         }
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
 
@@ -604,30 +604,30 @@ class  BuildingDashboardService
         }
 
         $labels = array_map(function ($landuse) {
-            return '"' . $landuse . '"';
+            return $landuse;
         }, $landuses);
-        // $colors = array('"#B938C7"', '"#528aad"','"#5AA59C"');
+        // $colors = array('#B938C7', '#528aad','#5AA59C');
         $colors = array(
-            '"rgb(100, 130, 252, 0.7)"',
-            '"rgb(60, 116, 47, 0.7)"',
-            '"rgb(176, 109, 28, 0.7)"',
-            '"rgb(248, 79, 101, 0.7)"',
-            '"rgb(0, 0, 128, 0.7)"',
-            '"rgb(205, 71, 7, 0.7)"',
-            '"rgb(184, 0, 0, 0.7)"',
-            '"rgb(37, 198, 198, 0.7)"',
-            '"rgb(151, 92, 173, 0.7)"',
-            '"rgb(243, 162, 63, 0.7)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
+            'rgb(100, 130, 252, 0.7)',
+            'rgb(60, 116, 47, 0.7)',
+            'rgb(176, 109, 28, 0.7)',
+            'rgb(248, 79, 101, 0.7)',
+            'rgb(0, 0, 128, 0.7)',
+            'rgb(205, 71, 7, 0.7)',
+            'rgb(184, 0, 0, 0.7)',
+            'rgb(37, 198, 198, 0.7)',
+            'rgb(151, 92, 173, 0.7)',
+            'rgb(243, 162, 63, 0.7)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
         );
         $colorsArr = array_slice($colors, 0, count($results), true);
         $datasets = array();
@@ -635,7 +635,7 @@ class  BuildingDashboardService
 
         foreach ($types as $key1 => $value1) {
             $dataset = array();
-            $dataset['label'] = '"' . $value1 . '"';
+            $dataset['label'] = $value1;
             $dataset['color'] = $colors[$count++];
             $dataset['data'] = array();
             $dataset['value'] = array();
@@ -647,7 +647,7 @@ class  BuildingDashboardService
             $datasets[] = $dataset;
         }
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
 
@@ -711,31 +711,31 @@ class  BuildingDashboardService
 
 
         $labels = array_map(function ($ward) {
-            return '"' . $ward . '"';
+            return $ward;
         }, $wards);
 
-        // $colors = array('"#B938C7"', '"#528aad"','"#5AA59C"');
+        // $colors = array('#B938C7', '#528aad','#5AA59C');
         $colors = array(
-            '"rgb(100, 130, 252, 0.7)"',
-            '"rgb(60, 116, 47, 0.7)"',
-            '"rgb(176, 109, 28, 0.7)"',
-            '"rgb(248, 79, 101, 0.7)"',
-            '"rgb(0, 0, 128, 0.7)"',
-            '"rgb(205, 71, 7, 0.7)"',
-            '"rgb(184, 0, 0, 0.7)"',
-            '"rgb(37, 198, 198, 0.7)"',
-            '"rgb(151, 92, 173, 0.7)"',
-            '"rgb(243, 162, 63, 0.7)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
+            'rgb(100, 130, 252, 0.7)',
+            'rgb(60, 116, 47, 0.7)',
+            'rgb(176, 109, 28, 0.7)',
+            'rgb(248, 79, 101, 0.7)',
+            'rgb(0, 0, 128, 0.7)',
+            'rgb(205, 71, 7, 0.7)',
+            'rgb(184, 0, 0, 0.7)',
+            'rgb(37, 198, 198, 0.7)',
+            'rgb(151, 92, 173, 0.7)',
+            'rgb(243, 162, 63, 0.7)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
         );
 
         $colorsArr = array_slice($colors, 0, count($results), true);
@@ -743,7 +743,7 @@ class  BuildingDashboardService
         $count = 0;
         foreach ($types as $key1 => $value1) {
             $dataset = array();
-            $dataset['label'] = '"' . $value1 . '"';
+            $dataset['label'] = $value1;
             $dataset['color'] = $colors[$count++];
             $dataset['data'] = array();
             $dataset['value'] = array();
@@ -755,7 +755,7 @@ class  BuildingDashboardService
         }
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
 
@@ -818,36 +818,36 @@ class  BuildingDashboardService
 
 
         $labels = array_map(function ($bldguse) {
-            return '"' . $bldguse . '"';
+            return $bldguse;
         }, $bldguses);
         $colors = array(
-            '"rgb(100, 130, 252, 0.7)"',
-            '"rgb(60, 116, 47, 0.7)"',
-            '"rgb(176, 109, 28, 0.7)"',
-            '"rgb(248, 79, 101, 0.7)"',
-            '"rgb(0, 0, 128, 0.7)"',
-            '"rgb(205, 71, 7, 0.7)"',
-            '"rgb(184, 0, 0, 0.7)"',
-            '"rgb(37, 198, 198, 0.7)"',
-            '"rgb(151, 92, 173, 0.7)"',
-            '"rgb(243, 162, 63, 0.7)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
+            'rgb(100, 130, 252, 0.7)',
+            'rgb(60, 116, 47, 0.7)',
+            'rgb(176, 109, 28, 0.7)',
+            'rgb(248, 79, 101, 0.7)',
+            'rgb(0, 0, 128, 0.7)',
+            'rgb(205, 71, 7, 0.7)',
+            'rgb(184, 0, 0, 0.7)',
+            'rgb(37, 198, 198, 0.7)',
+            'rgb(151, 92, 173, 0.7)',
+            'rgb(243, 162, 63, 0.7)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
         );
         $colorsArr = array_slice($colors, 0, count($results), true);
         $datasets = array();
         $count = 0;
         foreach ($types as $key1 => $value1) {
             $dataset = array();
-            $dataset['label'] = '"' . $value1 . '"';
+            $dataset['label'] = $value1;
             $dataset['color'] = $colors[$count++];
             $dataset['data'] = array();
             $dataset['value'] = array();
@@ -859,7 +859,7 @@ class  BuildingDashboardService
         }
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
 
@@ -871,7 +871,7 @@ class  BuildingDashboardService
 
 
         $chart = array(
-            // 'labels' => $labels,
+            // 'labels' => array_values($labels),
             // 'datasets' => $datasets,
 
             'labels' => [],
@@ -899,33 +899,33 @@ class  BuildingDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->type . '"';
+            $labels[] = $row->type;
             $values[] = $row->count;
         }
 
-        // $colors = array('"#B938C7"', '"#528aad"','"#5AA59C"');
+        // $colors = array('#B938C7', '#528aad','#5AA59C');
 
         $colors = array(
-            '"rgb(100, 130, 252, 0.7)"',
-            '"rgb(60, 116, 47, 0.7)"',
-            '"rgb(176, 109, 28, 0.7)"',
-            '"rgb(248, 79, 101, 0.7)"',
-            '"rgb(0, 0, 128, 0.7)"',
-            '"rgb(205, 71, 7, 0.7)"',
-            '"rgb(184, 0, 0, 0.7)"',
-            '"rgb(37, 198, 198, 0.7)"',
-            '"rgb(151, 92, 173, 0.7)"',
-            '"rgb(243, 162, 63, 0.7)"',
-            '"rgb(0, 171, 102, 0.7)"',
-            '"rgb(45, 85, 98, 0.7)"',
-            '"rgba(251,0, 0, 0.7)"',
-            '"rgb(173, 255, 47, 0.7)"',
-            '"rgb(246, 255, 0)"',
+            'rgb(100, 130, 252, 0.7)',
+            'rgb(60, 116, 47, 0.7)',
+            'rgb(176, 109, 28, 0.7)',
+            'rgb(248, 79, 101, 0.7)',
+            'rgb(0, 0, 128, 0.7)',
+            'rgb(205, 71, 7, 0.7)',
+            'rgb(184, 0, 0, 0.7)',
+            'rgb(37, 198, 198, 0.7)',
+            'rgb(151, 92, 173, 0.7)',
+            'rgb(243, 162, 63, 0.7)',
+            'rgb(0, 171, 102, 0.7)',
+            'rgb(45, 85, 98, 0.7)',
+            'rgba(251,0, 0, 0.7)',
+            'rgb(173, 255, 47, 0.7)',
+            'rgb(246, 255, 0)',
         );
         $chart = [
-            'labels' => $labels,
-            'values' => $values,
-            'colors' => $colors
+            'labels' => array_values($labels),
+            'values' => array_values($values),
+            'colors' => array_values($colors)
         ];
 
         return $chart;
@@ -946,13 +946,13 @@ class  BuildingDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->month . '"';
+            $labels[] = $row->month;
             $values[] = $row->count;
         }
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values
+            'labels' => array_values($labels),
+            'values' => array_values($values)
         ];
 
         return $chart;
@@ -989,13 +989,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -1023,13 +1023,13 @@ class  BuildingDashboardService
         $values = array();
 
         foreach ($results as $row) {
-            $labels[] = '"' . $row->week . '"';
+            $labels[] = $row->week;
             $values[] = $row->count;
         }
 
         $chart = [
-            'labels' => $labels,
-            'values' => $values
+            'labels' => array_values($labels),
+            'values' => array_values($values)
         ];
 
         return $chart;
@@ -1073,13 +1073,13 @@ class  BuildingDashboardService
         $labels = array();
         $values = array();
         foreach ($results as $row) {
-            $labels[] = '"' . $row->ward . '"';
+            $labels[] = $row->ward;
             $values[] = $row->count;
         }
 
         $chart = array(
-            'labels' => $labels,
-            'values' => $values,
+            'labels' => array_values($labels),
+            'values' => array_values($values),
         );
 
         return $chart;
@@ -1092,7 +1092,7 @@ class  BuildingDashboardService
 
 
         $chart = array(
-            //'labels' => $labels,
+            //'labels' => array_values($labels),
             //'datasets' => $datasets
             'labels' => [],
             'datasets' => [],
@@ -1124,19 +1124,19 @@ class  BuildingDashboardService
         $results = DB::select($query);
         $labels = [];
         foreach ($label as $month) {
-            $labels[] = '"' . $month . '"';
+            $labels[] = $month;
         }
 
         $low_income_communities_dataset = [];
-        $low_income_communities_dataset['stack'] = '"stack 1"';
-        $low_income_communities_dataset['label'] = '"Low Income communities"';
-        $low_income_communities_dataset['color'] = '"rgba(62, 199, 68, 0.75)"';
+        $low_income_communities_dataset['stack'] = 'stack 1';
+        $low_income_communities_dataset['label'] = 'Low Income communities';
+        $low_income_communities_dataset['color'] = 'rgba(62, 199, 68, 0.75)';
         $low_income_communities_dataset['data'] = [];
 
         $other_dataset = [];
-        $other_dataset['stack'] = '"stack 2"';
-        $other_dataset['label'] = '"Other communities"';
-        $other_dataset['color'] = '"rgba(255, 229, 0, 0.75)"';
+        $other_dataset['stack'] = 'stack 2';
+        $other_dataset['label'] = 'Other communities';
+        $other_dataset['color'] = 'rgba(255, 229, 0, 0.75)';
         $other_dataset['data'] = [];
 
         foreach ($results as $row) {
@@ -1151,7 +1151,7 @@ class  BuildingDashboardService
         ];
 
         $chart = array(
-            'labels' => $labels,
+            'labels' => array_values($labels),
             'datasets' => $datasets
         );
         return $chart;
@@ -1223,7 +1223,7 @@ class  BuildingDashboardService
             }
 
             $chart = [
-                'labels' => $labels,
+                'labels' => array_values($labels),
                 'datasets' => $datasets,
             ];
 

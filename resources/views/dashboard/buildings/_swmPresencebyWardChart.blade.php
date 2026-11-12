@@ -6,7 +6,7 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function () {
     // Data from controller
     var sqlResult = @json($swmPresenceward);
 
@@ -72,6 +72,6 @@ document.addEventListener('DOMContentLoaded', function() {
         a.download = 'Distribution of SWM Service by Ward.png';
         a.click();
     });
-});
+}());
 </script>
 @endpush

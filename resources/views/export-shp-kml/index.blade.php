@@ -130,15 +130,13 @@ $(document).ready(function(){
 
     $('#export_form').on('submit', function() {
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
-        var gurl = '<?php echo Config::get("constants.GEOSERVER_URL"); ?>';
-        var gurl_wfs = gurl + 'wfs';
+        var gurl_wfs = "{{ route('gis.wfs') }}";
 
         var selectedWards = $('#ward').val();
         // var selectedTaxzone = $('#taxzone').val();
         var selectedLayers = $('#ward_overlay').val();
         var selectedFormat = $('#export_format').val();
-
-        if(checkValidation(selectedWards, selectedLayers, selectedFormat))
+ if(checkValidation(selectedWards, selectedLayers, selectedFormat))
         {
             var filters = [];
 
@@ -167,7 +165,6 @@ $(document).ready(function(){
         return false;
 
     });
-
     function checkValidation(selectedWards, selectedLayers, selectedFormat){
 
             if ( !selectedWards || selectedWards.length < 1 || !selectedLayers || selectedLayers.length < 1 || !selectedFormat) {

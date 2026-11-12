@@ -61,21 +61,21 @@ class CtptServiceClass{
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['ctpt.destroy', $model->id]]);
 
                 if (Auth::user()->can('Edit PT/CT Toilet')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\CtptController@edit", [$model->id]) .
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\CtptController@edit", [$model->id]) .
                      '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View PT/CT Toilet')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\CtptController@show", [$model->id]) .
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\CtptController@show", [$model->id]) .
                     '"class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View PT/CT Toilet History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\CtptController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\CtptController@history", [$model->id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete PT/CT Toilet')) {
-                    $content .= '<a title="' . __("Delete") . '"  class="delete btn btn-danger btn-xs btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
+                    $content .= '<a title="' . e(__("Delete")) . '"  class="delete btn btn-danger btn-xs btn-sm mb-1"><i class="fa fa-trash"></i></a> ';
                 }
                 if (Auth::user()->can('View PT/CT Toilet on Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'toilets_layer', 'field' => 'id', 'val' => $model->id]) .
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'toilets_layer', 'field' => 'id', 'val' => $model->id]) .
                     '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
                 }
                 $content .= \Form::close();
@@ -181,7 +181,7 @@ class CtptServiceClass{
         $info->geom = DB::raw("ST_GeomFromText('".$centroid[0]->central_point."', 4326)");
        
         $info->save();
-        return redirect('fsm/ctpt')->with('success', __('Public / Community Toilets Added Successfully.'));
+        return redirect('fsm/ctpt')->with('success','Public / Community Toilets Added Successfully ');
     }
 
     public function updateCtptData($request, $id)
@@ -221,9 +221,9 @@ class CtptServiceClass{
             $info->geom = DB::raw("ST_GeomFromText('".$centroid[0]->central_point."', 4326)");
             $info->save();
 
-            return redirect('fsm/ctpt')->with('success', __('Public / Community Toilets Updated Successfully.'));
+            return redirect('fsm/ctpt')->with('success', 'Public / Community Toilets Updated Successfully');
         } else {
-            return redirect('fsm/ctpt')->with('error', __('Failed to update CT / PT General info.'));
+            return redirect('fsm/ctpt')->with('error', 'Failed to update CT / PT General info');
         }
 
     }
@@ -240,42 +240,9 @@ class CtptServiceClass{
         $caretaker_name = $data['caretaker_name'] ? $data['caretaker_name'] : null;
         $sanitary_supplies_disposal_facility = $data['sanitary_supplies_disposal_facility'] ? $data['sanitary_supplies_disposal_facility'] : null;
 
-        $columns = [
-            __('ID'),
-            __('Toilet Type'),
-            __('Toilet Name'),
-            __('Ward Number'),
-            __('Location'),
-            __('BIN'),
-            __('House Number'),
-            __('Toilet Connection of Building'),
-            __('Containment Connected'),
-            __('Drain Code'),
-            __('Sewer Code'),
-            __('Distance from Nearest Road (in m)'),
-            __('Status'),
-            __('Caretaker Name'),
-            __('Caretaker Gender'),
-            __('Caretaker Contact'),
-            __('Owning Institution'),
-            __('Name of Owning Institution'),
-            __('Operator and Maintained By'),
-            __('Name of Operate and Maintained by'),
-            __('Total Number of Seats'),
-            __('Total Number of Urinals'),
-            __('Separate Facility for Male and Female'),
-            __('No. of Seats for Male Users'),
-            __('No. of Seats for Female Users'),
-            __('Separate Facility for People with Disability'),
-            __('No. of Seats for People with Disability'),
-            __('Separate Facility for Children'),
-            __('Adherence with Universal Design Principles'),
-            __('Presence of Indicative Sign'),
-            __('Sanitary Supplies & Disposal Facilities'),
-            __('Uses Fee Collection'),
-            __('Uses Fee Rate'),
-            __('Frequency of Fee Collection')
-        ];
+        $columns = ['ID','Toilet Type','Toilet Name',
+        'Ward Number', 'Location', 'BIN', 'House Number','Toilet Connection of Building','Containment Connected','Drain Code', 'Sewer Code', 'Distance from Nearest Road (in m)','Status', 'Caretaker Name','Caretaker Gender', 'Caretaker Contact','Owning Institution','Name of Owning Institution', 'Operator and Maintained By','Name of Operate and Maintained by','Total Number of Seats ', 'Total Number of Urinals','Separate Facility for Male and Female','No. of Seats for Male Users','No. of Seats for Female Users ','Separate Facility for People with Disability', 'No. of seats for People with Disability','Separate Facility for Children',
+        'Adherence with Universal Design Principles ','Presence of Indicative Sign', 'Sanitary Supplies and Disposal Facilities', 'Uses Fee Collection', 'Uses Fee Rate', 'Frequency of Fee Collection'];
         $query = Ctpt::select('*')
         ->orderBy('id')
         ->whereNull('deleted_at');

@@ -9,13 +9,13 @@
         var myChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: [<?php echo implode(',', $ppe['labels']); ?>],
+                labels: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($ppe['labels'] ?? [])))),
                 datasets: [
                     {
                         label: "Impact in Creating Public Awareness",
-                        backgroundColor: [<?php echo implode(',', $ppe['colors']); ?>],
-                        hoverBackgroundColor: [<?php echo implode(',', $ppe['colors']); ?>],
-                        data: [<?php echo implode(',', $ppe['values']); ?>],
+                        backgroundColor: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($ppe['colors'] ?? [])))),
+                        hoverBackgroundColor: @json(array_values(array_map(function($x) { return is_string($x) ? trim($x, '"\'') : $x; }, (array)($ppe['colors'] ?? [])))),
+                        data: @json(array_values($ppe['values'] ?? [])),
                     }
                 ]
             },

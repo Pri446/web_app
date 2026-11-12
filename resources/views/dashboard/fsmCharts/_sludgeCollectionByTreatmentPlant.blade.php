@@ -6,7 +6,7 @@
 @push('scripts')
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function () {
     // Assume you have a JSON result from the SQL query
     var sqlResult = @json($sludgeCollectionByTreatmentPlantChart);
 
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
         data: chartData,
         options: options,
     });
-});
+}());
 document.getElementById('exportsludgeCollectionByTreatmentPlantChart').addEventListener("click", downloadIMG);
   //donwload pdf from original canvas
   function downloadIMG() {

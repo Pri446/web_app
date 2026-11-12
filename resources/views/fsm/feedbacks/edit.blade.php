@@ -22,7 +22,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             <div class="form-group row required">
                 {!! Form::label('customer_name', __('Applicant Name'),['class' => 'col-sm-3 control-label']) !!}
                 <div class="col-sm-6">
-                    {!! Form::text('customer_name', null,['class' => 'form-control','readonly' => true]) !!}
+                    {!! Form::text('customer_name',$application->applicant_name,['class' => 'form-control','readonly' => true]) !!}
                 </div>
             </div>
             <div class="form-group row required">
