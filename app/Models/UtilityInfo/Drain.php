@@ -18,6 +18,7 @@ class Drain extends Model
     protected $revisionCreationsEnabled = true;
     protected $table = 'utility_info.drains';
     protected $primaryKey = 'code';
+    protected $keyType = 'string';
     public $incrementing = false;
 
     public function buildings(){

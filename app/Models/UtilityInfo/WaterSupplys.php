@@ -16,6 +16,7 @@ class WaterSupplys extends Model
     protected $revisionCreationsEnabled = true;
     protected $table = 'utility_info.water_supplys';
     protected $primaryKey = 'code';
+    protected $keyType = 'string';
     public $incrementing = false;
 
         /**

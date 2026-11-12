@@ -20,6 +20,7 @@ class SewerLine extends Model
     protected $revisionCreationsEnabled = true;
     protected $table = 'utility_info.sewers';
     protected $primaryKey = 'code';
+    protected $keyType = 'string';
     public $incrementing = false;
     protected $with =['TreatmentPlant'];
        /**

@@ -195,7 +195,7 @@ class DrainController extends Controller
         return $this->drainService->download($data);
     }
     public function getDrainNames(){
-        $query = Drain::all()->toQuery();
+        $query = Drain::query()->select('code')->orderBy('code');
         if (request()->search){
             $query->where('code','ilike','%'.request()->search.'%');
         }
