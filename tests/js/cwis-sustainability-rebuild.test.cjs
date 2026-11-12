@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
-const script = fs.readFileSync(path.join(__dirname, '../../resources/views/cwis/sustainability/rebuild-script.blade.php'), 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const script = fs.readFileSync(path.join(__dirname, '../../resources/views/cwis/sustainability/rebuild-script.blade.php'), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/i)[1];
 
 function setup(confirmed) {
     const events = {}, frames = [];
