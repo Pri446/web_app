@@ -4,6 +4,92 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 @extends('layouts.maps')
 @section('title', __('Map'))
 @section('content')
+<style>
+    .ol-popup {
+        max-width: calc(100vw - 48px);
+        max-height: calc(100vh - 120px);
+    }
+    .summary-info-popup {
+        box-sizing: border-box !important;
+        width: 800px;
+        height: 400px;
+        min-width: 320px;
+        min-height: 200px;
+        max-width: calc(100vw - 32px);
+        max-height: calc(100vh - 40px);
+        padding: 12px 16px !important;
+        overflow: hidden;
+        resize: both;
+        z-index: 9999 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        position: relative;
+        top: 10px;
+        bottom: auto;
+        left: -50px;
+    }
+    .summary-info-popup:before,
+    .summary-info-popup:after {
+        display: none !important;
+    }
+    .summary-info-popup-resize-handle {
+        position: absolute;
+        right: 3px;
+        bottom: 3px;
+        width: 14px;
+        height: 14px;
+        cursor: nwse-resize;
+        z-index: 10000;
+        background: repeating-linear-gradient(
+            -45deg,
+            #888,
+            #888 1.5px,
+            transparent 1.5px,
+            transparent 3.5px
+        );
+        opacity: 0.6;
+        transition: opacity 0.15s ease-in-out;
+    }
+    .summary-info-popup-resize-handle:hover {
+        opacity: 1;
+    }
+    .summary-info-popup[style*="display: none"],
+    .summary-info-popup[style*="display:none"],
+    .summary-info-popup.d-none {
+        display: none !important;
+    }
+    .summary-info-popup > .card-title,
+    .summary-info-popup > h3,
+    .summary-info-popup .summary-info-popup-header {
+        flex: 0 0 auto !important;
+        margin: 0 !important;
+        padding-bottom: 6px !important;
+        border-bottom: 1px solid #e0e0e0 !important;
+        cursor: move;
+        user-select: none;
+    }
+    .summary-info-popup-content {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: auto !important;
+        white-space: nowrap !important;
+        padding: 8px 4px !important;
+        box-sizing: border-box !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .summary-info-popup-content table {
+        margin-bottom: 0 !important;
+        width: 100% !important;
+    }
+    .summary-info-popup-actions {
+        flex: 0 0 auto !important;
+        padding-top: 8px !important;
+        padding-right: 20px !important;
+        border-top: 1px solid #e0e0e0 !important;
+    }
+</style>
 
     <div class="content-wrapper map-container">
         <div class="map-toolbar clearfix">
@@ -93,11 +179,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     </form>
                 </div>
             </div>
-            <div id="buildings-road-popup" class="ol-popup" style="display: none;">
+            <div id="buildings-road-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
-                <div id="buildings-road-popup-content"></div>
+                <div id="buildings-road-popup-content" class="summary-info-popup-content"></div>
                 @can('Export in Decision Map Tools')
-                <div id="buildings-road-popup-content-download">
+                <div id="buildings-road-popup-content-download" class="summary-info-popup-actions">
 
                         <form method="get" action="{{ url("maps/export-buildings-road") }}">
                             <input type="hidden" name="road_codes" value="" id="road_codes"/>
@@ -109,9 +195,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 </div>
                 @endcan
             </div>
-            <div id="waterbody-inaccessible-popup" class="ol-popup" style="display: none;">
-                <div id="waterbody-inaccessible-popup-content"></div>
-                    <div id="waterbody-inaccessible-popup-content-download">
+            <div id="waterbody-inaccessible-popup" class="ol-popup summary-info-popup" style="display: none;">
+                <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
+                <div id="waterbody-inaccessible-popup-content" class="summary-info-popup-content"></div>
+                    <div id="waterbody-inaccessible-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/waterbody-inaccessible-buildings-reports") }}">
                             <input type="hidden" name="waterbody_hose_length_report" value="" id="waterbody_hose_length_report"/>
                             <input type="hidden" name="waterbody_hose_length_unit_report" value="" id="waterbody_hose_length_unit_report"/>
@@ -122,11 +209,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 </div>
             </div>
 
-            <div id="kml-dragdrop-popup" class="ol-popup" style="display: none;">
+            <div id="kml-dragdrop-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <a href="#" id="kml-dragdrop-popup-closer" class="ol-popup-closer"></a>
-                <div id="kml-dragdrop-popup-content"></div>
+                <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
+                <div id="kml-dragdrop-popup-content" class="summary-info-popup-content"></div>
                 @can('Export in KML Drag And Drop')
-                <div id="kml-dragdrop-popup-content-download">
+                <div id="kml-dragdrop-popup-content-download" class="summary-info-popup-actions">
                     <div class="btn-group">
                     <form method="POST" action="{{ url('maps/get-kml-info-report-csv') }}" id="kml-export-form">
                         @csrf
@@ -445,10 +533,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     </div>
 </div>
 
-            <div id="report-popup" class="ol-popup" style="display: none;">
+            <div id="report-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <a href="#" id="report-popup-closer" class="ol-popup-closer"></a>
-                <div id="report-popup-content"></div>
-                <div id="report-popup-content-download">
+                <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
+                <div id="report-popup-content" class="summary-info-popup-content"></div>
+                <div id="report-popup-content-download" class="summary-info-popup-actions">
                     <div><strong>{{ __('Export to') }}:</strong></div>
                     <div class="btn-group">
                         <form method="post" action="{{ url("getPolygonReportCSV") }}">
@@ -458,10 +547,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     </div>
                 </div>
             </div>
-            <div id="drain-potentialSummary-popup" class="ol-popup" style="display: none;">
+            <div id="drain-potentialSummary-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
-                <div id="drain-potentialSummary-popup-content"></div>
-                <div id="drain-potentialSummary-popup-content-download">
+                <div id="drain-potentialSummary-popup-content" class="summary-info-popup-content"></div>
+                <div id="drain-potentialSummary-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/export-drain-potential-buildings") }}">
                             <input type="hidden" name="db_code" value="" id="DrainBufferCode"/>
                             <input type="hidden" name="db_distance" value="" id="DBdistance"/>
@@ -474,11 +563,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         </form>
                 </div>
             </div>
-            <div id="water-body-popup" class="ol-popup" style="display: none;">
+            <div id="water-body-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
-                <div id="water-body-popup-content"></div>
+                <div id="water-body-popup-content" class="summary-info-popup-content"></div>
 
-                <div id="water-body-popup-content-download">
+                <div id="water-body-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/export-buffer-polygon-waterbody") }}">
                             <input type="hidden" name="wb_code" value="" id="waterBodyCode"/>
                             <input type="hidden" name="wb_distance" value="" id="WBdistance"/>
@@ -491,10 +580,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 </div>
 
             </div>
-            <div id="ward-buildings-popup" class="ol-popup" style="display: none;">
-                <div id="ward-buildings-popup-content"></div>
+            <div id="ward-buildings-popup" class="ol-popup summary-info-popup" style="display: none;">
+                <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
+                <div id="ward-buildings-popup-content" class="summary-info-popup-content"></div>
 
-                <div id="ward-buildings-popup-content-download">
+                <div id="ward-buildings-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/export-ward-buildings") }}">
                             <input type="hidden" name="ward_building_no" value="" id="ward_building_no"/>
                             @can('Export in Summary Information Map Tools')
@@ -506,16 +596,16 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 </div>
 
             </div>
-            <div id="buffer-polygon-popup" class="ol-popup" style="display: none;">
+            <div id="buffer-polygon-popup" class="ol-popup summary-info-popup" style="display: none;">
 
 
                     <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
 
-                    <div id="buffer-polygon-popup-content"></div>
+                    <div id="buffer-polygon-popup-content" class="summary-info-popup-content"></div>
 
 
 
-                <div id="buffer-polygon-popup-content-download">
+                <div id="buffer-polygon-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/export-buffer-polygon") }}">
                             <input type="hidden" name="buffer_polygon_geom" value="" id="buffer_polygon_geom"/>
                             <input type="hidden" name="buffer_polygon_distance" value="" id="buffer_polygon_distance"/>
@@ -530,11 +620,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
 
             </div>
-            <div id="road-popup" class="ol-popup" style="display: none;">
+            <div id="road-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
-                <div id="road-popup-content"></div>
+                <div id="road-popup-content" class="summary-info-popup-content"></div>
 
-                <div id="road-popup-content-download">
+                <div id="road-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/export-road-buildings") }}">
                             <input type="hidden" name="road_code" value="" id="RDCode"/>
                             <input type="hidden" name="rb_distance" value="" id="RDBdistance"/>
@@ -546,10 +636,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 </div>
 
             </div>
-            <div id="point-buffer-popup" class="ol-popup" style="display: none;">
+            <div id="point-buffer-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
-                <div id="point-buffer-popup-content"></div>
-                <div id="point-buffer-popup-content-download">
+                <div id="point-buffer-popup-content" class="summary-info-popup-content"></div>
+                <div id="point-buffer-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/export-point-buildings") }}">
                             <input type="hidden" id="PTB-long-csv" name="PTB_long" value=""/>
                             <input type="hidden" id="PTB-lat-csv" name="PTB_lat" value=""/>
@@ -605,13 +695,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     </div>
                 </div>
             </div>
-            <div id="population-popup" class="ol-popup" style="display: none;">
+            <div id="population-popup" class="ol-popup summary-info-popup" style="display: none;">
                 <a href="#" id="population-popup-closer" class="ol-popup-closer"></a>
-                <div id="population-popup-content"></div>
+                <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
+                <div id="population-popup-content" class="summary-info-popup-content"></div>
             </div>
-            <div id="road-inaccessible-popup" class="ol-popup" style="display: none;">
-                <div id="road-inaccessible-popup-content"></div>
-                <div id="road-inaccessible-popup-content-download">
+            <div id="road-inaccessible-popup" class="ol-popup summary-info-popup" style="display: none;">
+                <h3 class="card-title py-2">{{ __('Summary Info') }}</h3>
+                <div id="road-inaccessible-popup-content" class="summary-info-popup-content"></div>
+                <div id="road-inaccessible-popup-content-download" class="summary-info-popup-actions">
                         <form method="get" action="{{ url("maps/road-inaccessible-buildings-reports") }}">
                             <input type="hidden" name="road_width_report" value="" id="road_width_report"/>
                             <input type="hidden" name="road_width_unit_report" value="" id="road_width_unit_report"/>
@@ -1492,23 +1584,28 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         </div>
     </div>
     <!-- Modal -->
-    <div id="feedback-popup" class="ol-popup" style="display: none;">
-        <div id="feedback-popup-content"></div>
-        <button id="feedback-popup-closer" type="button" class="btn btn-default float-right xol-popup-closer">{{ __('Close') }}</button>
+    <div id="feedback-popup" class="ol-popup summary-info-popup" style="display: none;">
+        <h3 class="card-title py-2">{{ __('Feedback') }}</h3>
+        <div id="feedback-popup-content" class="summary-info-popup-content"></div>
+        <div class="summary-info-popup-actions">
+            <button id="feedback-popup-closer" type="button" class="btn btn-default float-right xol-popup-closer">{{ __('Close') }}</button>
+        </div>
     </div>
 
      <!-- Modal -->
-     <div id="containment-report-popup" class="ol-popup" style="display: none;">
-        <div id="containment-report-popup-content"></div>
-
-                        <form method="get" style="margin-top: 12px;" action="{{ url("maps/export-containment-report") }}">
-                            <input type="hidden" name="containment_report_polygon" value="" id="containment_report_polygon"/>
-                            <input type="hidden" name="containment_report_year" value="" id="containment_report_year"/>
-                             @can('Export Containment Report')
-                           <button id="containment-report-popup-export" type="submit" class="btn btn-default">Export to Excel</button>
-                           @endcan
-                            <button id="containment-report-popup-closer" type="button" class="btn btn-default float-right xol-popup-closer">Close</button>
-                        </form>
+     <div id="containment-report-popup" class="ol-popup summary-info-popup" style="display: none;">
+        <h3 class="card-title py-2">{{ __('Containment Report') }}</h3>
+        <div id="containment-report-popup-content" class="summary-info-popup-content"></div>
+        <div class="summary-info-popup-actions">
+            <form method="get" action="{{ url("maps/export-containment-report") }}">
+                <input type="hidden" name="containment_report_polygon" value="" id="containment_report_polygon"/>
+                <input type="hidden" name="containment_report_year" value="" id="containment_report_year"/>
+                 @can('Export Containment Report')
+               <button id="containment-report-popup-export" type="submit" class="btn btn-default">Export to Excel</button>
+               @endcan
+                <button id="containment-report-popup-closer" type="button" class="btn btn-default float-right xol-popup-closer">Close</button>
+            </form>
+        </div>
     </div>
 
     <!-- Modal -->
@@ -5697,286 +5794,138 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
 
             /**
-             * Elements that make up the popup for report.
+             * Helper to make a map popup resizable with a visual grip handle and pointer capture.
              */
+            function makePopupResizable(popup) {
+                if (!popup || !popup.classList || !popup.classList.contains('summary-info-popup')) return;
+                if (popup.querySelector('.summary-info-popup-resize-handle')) return;
+
+                var resizer = document.createElement('div');
+                resizer.className = 'summary-info-popup-resize-handle';
+                resizer.setAttribute('title', 'Drag to resize');
+                popup.appendChild(resizer);
+
+                var resizing = false;
+                var startW = 0, startH = 0;
+                var rStartX = 0, rStartY = 0;
+
+                resizer.addEventListener('pointerdown', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    resizing = true;
+                    document.body.style.userSelect = "none";
+                    try {
+                        resizer.setPointerCapture(e.pointerId);
+                    } catch (_) {}
+
+                    startW = popup.offsetWidth;
+                    startH = popup.offsetHeight;
+                    rStartX = e.clientX;
+                    rStartY = e.clientY;
+                });
+
+                resizer.addEventListener('pointermove', function (e) {
+                    if (!resizing) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    var nw = Math.max(320, Math.min(window.innerWidth - 32, startW + (e.clientX - rStartX)));
+                    var nh = Math.max(200, Math.min(window.innerHeight - 40, startH + (e.clientY - rStartY)));
+
+                    popup.style.width = nw + 'px';
+                    popup.style.height = nh + 'px';
+                });
+
+                function stopResize(e) {
+                    if (!resizing) return;
+                    resizing = false;
+                    document.body.style.userSelect = "";
+                    try {
+                        resizer.releasePointerCapture(e.pointerId);
+                    } catch (_) {}
+                }
+
+                resizer.addEventListener('pointerup', stopResize);
+                resizer.addEventListener('pointercancel', stopResize);
+            }
+
+            /**
+             * Reusable helper to initialize and register an OpenLayers map popup overlay,
+             * attach closer handler, enable resizability, and configure display.
+             */
+            function createMapPopupOverlay(containerId, closerId, options) {
+                var container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+                if (!container) return null;
+
+                var closer = closerId
+                    ? (typeof closerId === 'string' ? document.getElementById(closerId) : closerId)
+                    : container.querySelector('.ol-popup-closer, .xol-popup-closer');
+
+                var overlay = new ol.Overlay(Object.assign({
+                    element: container,
+                    autoPan: true,
+                    stopEvent: true,
+                    autoPanAnimation: {
+                        duration: 250
+                    }
+                }, options || {}));
+
+                $(container).show();
+                map.addOverlay(overlay);
+
+                if (closer) {
+                    closer.onclick = function () {
+                        overlay.setPosition(undefined);
+                        closer.blur();
+                        container.style.transform = '';
+                        return false;
+                    };
+                }
+
+                makePopupResizable(container);
+
+                return overlay;
+            }
+
             var reportPopupContainer = document.getElementById('report-popup');
             var reportPopupContent = document.getElementById('report-popup-content');
             var reportPopupCloser = document.getElementById('report-popup-closer');
+            var reportPopupOverlay = createMapPopupOverlay(reportPopupContainer, reportPopupCloser);
 
-
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var reportPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: reportPopupContainer,
-                autoPan: true,
-                dragging: false,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(reportPopupContainer).show();
-
-            map.addOverlay(reportPopupOverlay);
-
-
-            /**
-             * Add a click handler to hide the popup for report.
-             * @return {boolean} Don't follow the href.
-             */
-            reportPopupCloser.onclick = function () {
-                reportPopupOverlay.setPosition(undefined);
-                reportPopupCloser.blur();
-                return false;
-            };
-
-              /**
-             * Elements that make up the popup for report.
-             */
             var reportContainmentPopupContainer = document.getElementById('containment-report-popup');
             var reportContainmentPopupContent = document.getElementById('containment-report-popup-content');
             var reportContainmentPopupCloser = document.getElementById('containment-report-popup-closer');
+            var reportContainmentPopupOverlay = createMapPopupOverlay(reportContainmentPopupContainer, reportContainmentPopupCloser);
 
-
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var reportContainmentPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: reportContainmentPopupContainer,
-                autoPan: true,
-                dragging: false,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(reportContainmentPopupContainer).show();
-
-            map.addOverlay(reportContainmentPopupOverlay);
-
-
-            /**
-             * Add a click handler to hide the popup for report.
-             * @return {boolean} Don't follow the href.
-             */
-            reportContainmentPopupCloser.onclick = function () {
-                reportContainmentPopupOverlay.setPosition(undefined);
-                reportContainmentPopupCloser.blur();
-                return false;
-            };
-            
-
-            /**
-             * Elements that make up the popup for feedback.
-             */
             var feedbackPopupContainer = document.getElementById('feedback-popup');
             var feedbackPopupContent = document.getElementById('feedback-popup-content');
             var feedbackPopupCloser = document.getElementById('feedback-popup-closer');
+            var feedbackPopupOverlay = createMapPopupOverlay(feedbackPopupContainer, feedbackPopupCloser);
 
-
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var feedbackPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: feedbackPopupContainer,
-                autoPan: true,
-                dragging: false,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(feedbackPopupContainer).show();
-
-            map.addOverlay(feedbackPopupOverlay);
-
-
-            /**
-             * Add a click handler to hide the popup for feedback.
-             * @return {boolean} Don't follow the href.
-             */
-            feedbackPopupCloser.onclick = function () {
-                feedbackPopupOverlay.setPosition(undefined);
-                feedbackPopupCloser.blur();
-                return false;
-            };
-
-
-            /**
-             * Elements that make up the popup for Drain Potential Buildings Summary.
-             */
             var drainPotentialSummaryPopupContainer = document.getElementById('drain-potentialSummary-popup');
             var drainPotentialSummaryuPopupContent = document.getElementById('drain-potentialSummary-popup-content');
             var drainPotentialSummaryPopupCloser = document.getElementById('drain-potentialSummary-popup-closer');
+            var drainPotentialSummaryPopupOverlay = createMapPopupOverlay(drainPotentialSummaryPopupContainer, drainPotentialSummaryPopupCloser);
 
-            /**
-             * Create an overlay to anchor the Drain Potential Buildings Summary popup to the map.
-             */
-            var drainPotentialSummaryPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: drainPotentialSummaryPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(drainPotentialSummaryPopupContainer).show();
-
-            map.addOverlay(drainPotentialSummaryPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for drain potential summary.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Decision Map Tools')
-            drainPotentialSummaryPopupCloser.onclick = function () {
-                drainPotentialSummaryPopupOverlay.setPosition(undefined);
-                drainPotentialSummaryPopupCloser.blur();
-                return false;
-            };
-            @endcan
-            /**
-             * Elements that make up the popup for water body.
-             */
             var waterBodyPopupContainer = document.getElementById('water-body-popup');
             var waterBodyPopupContent = document.getElementById('water-body-popup-content');
             var waterBodyPopupCloser = document.getElementById('water-body-popup-closer');
+            var waterBodyPopupOverlay = createMapPopupOverlay(waterBodyPopupContainer, waterBodyPopupCloser);
 
-            /**
-             * Create an overlay to anchor the water body popup to the map.
-             */
-            var waterBodyPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: waterBodyPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(waterBodyPopupContainer).show();
-
-            map.addOverlay(waterBodyPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for water body.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Summary Information Water Bodies Map Tools')
-            waterBodyPopupCloser.onclick = function () {
-                waterBodyPopupOverlay.setPosition(undefined);
-                waterBodyPopupCloser.blur();
-                return false;
-            };
-            @endcan
-            /**
-             * Elements that make up the popup for ward buildings.
-             */
             var wardBuildingsPopupContainer = document.getElementById('ward-buildings-popup');
             var wardBuildingsPopupContent = document.getElementById('ward-buildings-popup-content');
             var wardBuildingsPopupCloser = document.getElementById('ward-buildings-popup-closer');
+            var wardBuildingsPopupOverlay = createMapPopupOverlay(wardBuildingsPopupContainer, wardBuildingsPopupCloser);
 
-            /**
-             * Create an overlay to anchor the ward buildings popup to the map.
-             */
-            var wardBuildingsPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: wardBuildingsPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(wardBuildingsPopupContainer).show();
-
-            map.addOverlay(wardBuildingsPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for ward buildings.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Summary Information Wards Map Tools')
-            wardBuildingsPopupCloser.onclick = function () {
-                wardBuildingsPopupOverlay.setPosition(undefined);
-                wardBuildingsPopupCloser.blur();
-                return false;
-            };
-            @endcan
-            /**
-             * Elements that make up the popup for buffer polygon.
-             */
             var bufferPolygonPopupContainer = document.getElementById('buffer-polygon-popup');
             var bufferPolygonPopupContent = document.getElementById('buffer-polygon-popup-content');
             var bufferPolygonPopupCloser = document.getElementById('buffer-polygon-popup-closer');
+            var bufferPolygonPopupOverlay = createMapPopupOverlay(bufferPolygonPopupContainer, bufferPolygonPopupCloser);
 
-            /**
-             * Create an overlay to anchor the buffer polygon popup to the map.
-             */
-            var bufferPolygonPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: bufferPolygonPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(bufferPolygonPopupContainer).show();
-
-            map.addOverlay(bufferPolygonPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for polygon buffer.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Summary Information Buffer Map Tools')
-            bufferPolygonPopupCloser.onclick = function () {
-                bufferPolygonPopupOverlay.setPosition(undefined);
-                bufferPolygonPopupCloser.blur();
-                return false;
-            };
-            @endcan
-
-            /**
-             * Elements that make up the popup for road.
-             */
             var roadPopupContainer = document.getElementById('road-popup');
             var roadPopupContent = document.getElementById('road-popup-content');
             var roadPopupCloser = document.getElementById('road-popup-closer');
-            /**
-             * Create an overlay to anchor the road building popup to the map.
-             */
-            var roadPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: roadPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(roadPopupContainer).show();
-
-            map.addOverlay(roadPopupOverlay);
-
-
-            /**
-             * Add a click handler to hide the  popup for road.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Summary Information Road Map Tools')
-            roadPopupCloser.onclick = function () {
-                roadPopupOverlay.setPosition(undefined);
-                roadPopupCloser.blur();
-                return false;
-            };
-            @endcan
+            var roadPopupOverlay = createMapPopupOverlay(roadPopupContainer, roadPopupCloser);
             // Addded by Abhisan March 16
             var dragPan;
             map.getInteractions().forEach(function (interaction) {
@@ -5999,83 +5948,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             });*/
 
             //End addition by Abhisan
-            /**
-             * Elements that make up the popup for feature info.
-             */
             var popupMarkerContainer = document.getElementById('popup-marker');
             var popupMarkerContent = document.getElementById('popup-marker-content');
             var popupMarkerCloser = document.getElementById('popup-marker-closer');
+            var popupMarkerOverlay = createMapPopupOverlay(popupMarkerContainer, popupMarkerCloser);
 
-
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var popupMarkerOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: popupMarkerContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(popupMarkerContainer).show();
-
-            map.addOverlay(popupMarkerOverlay);
-
-            /**
-             * Add a click handler to hide the popup.
-             * @return {boolean} Don't follow the href.
-             */
-            popupMarkerCloser.onclick = function () {
-                popupMarkerOverlay.setPosition(undefined);
-                popupMarkerCloser.blur();
-                return false;
-            };
-            /**
-             * Elements that make up the popup for buildings to road.
-             */
             var buildingsToRoadPopupContainer = document.getElementById('buildings-road-popup');
             var buildingsToRoadPopupContent = document.getElementById('buildings-road-popup-content');
             var buildingsToRoadPopupCloser = document.getElementById('buildings-road-popup-closer');
-
-            /**
-             * Create an overlay to anchor the buffer polygon popup to the map.
-             */
-            var buildingsToRoadPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: buildingsToRoadPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(buildingsToRoadPopupContainer).show();
-
-            map.addOverlay(buildingsToRoadPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for polygon buffer.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Export in Decision Map Tools')
-            buildingsToRoadPopupCloser.onclick = function () {
-                buildingsToRoadPopupOverlay.setPosition(undefined);
-                buildingsToRoadPopupCloser.blur();
-                return false;
-            };
-            @endcan
-            function escapeHtml(text) {
-                if (text === null || text === undefined) return '';
-                return String(text)
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
-            }
-
+            var buildingsToRoadPopupOverlay = createMapPopupOverlay(buildingsToRoadPopupContainer, buildingsToRoadPopupCloser);
             // display popup on click
             map.on('click', function (evt) {
                 var feature = map.forEachFeatureAtPixel(evt.pixel,
@@ -6103,72 +5984,15 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             });
 
 
-            /**
-             * Elements that make up the popup for point-buffer.
-             */
             var pointBufferPopupContainer = document.getElementById('point-buffer-popup');
             var pointBufferPopupContent = document.getElementById('point-buffer-popup-content');
             var pointBufferPopupCloser = document.getElementById('point-buffer-popup-closer');
+            var pointBufferPopupOverlay = createMapPopupOverlay(pointBufferPopupContainer, pointBufferPopupCloser);
 
-            /**
-             * Create an overlay to anchor the pointBuffer building popup to the map.
-             */
-            var pointBufferPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: pointBufferPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(pointBufferPopupContainer).show();
-
-            map.addOverlay(pointBufferPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for pointBuffer.
-             * @return {boolean} Don't follow the href.
-             */
-            @can('Summary Information Point Map Tools')
-            pointBufferPopupCloser.onclick = function () {
-                pointBufferPopupOverlay.setPosition(undefined);
-                pointBufferPopupCloser.blur();
-                return false;
-            };
-            @endcan
- /**
-             * Elements that make up the popup for KML drag and drop.
-             */
             var kmlDragDropPopupContainer = document.getElementById('kml-dragdrop-popup');
             var kmlDragDropPopupContent = document.getElementById('kml-dragdrop-popup-content');
             var kmlDragDropPopupCloser = document.getElementById('kml-dragdrop-popup-closer');
-
-            /**
-             * Create an overlay to anchor the KML drag and drop popup to the map.
-             */
-            var kmlDragDropPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: kmlDragDropPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(kmlDragDropPopupContainer).show();
-
-            map.addOverlay(kmlDragDropPopupOverlay);
-
-            /**
-             * Add a click handler to hide the  popup for KML drag and drop.
-             * @return {boolean} Don't follow the href.
-             */
-            kmlDragDropPopupCloser.onclick = function () {
-                kmlDragDropPopupOverlay.setPosition(undefined);
-                kmlDragDropPopupCloser.blur();
-                return false;
-            };
+            var kmlDragDropPopupOverlay = createMapPopupOverlay(kmlDragDropPopupContainer, kmlDragDropPopupCloser);
 
             
             var drag;
@@ -6936,38 +6760,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 });
                 map.addInteraction(control);
           }
-            /**
-             * Elements that make up the popup for export.
-             */
             var exportPopupContainer = document.getElementById('export-popup');
             var exportPopupContent = document.getElementById('export-popup-content');
             var exportPopupCloser = document.getElementById('export-popup-closer');
-
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var exportPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: exportPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(exportPopupContainer).show();
-
-            map.addOverlay(exportPopupOverlay);
-
-            /**
-             * Add a click handler to hide the popup for export.
-             * @return {boolean} Don't follow the href.
-             */
-            exportPopupCloser.onclick = function () {
-                exportPopupOverlay.setPosition(undefined);
-                exportPopupCloser.blur();
-                return false;
-            };
+            var exportPopupOverlay = createMapPopupOverlay(exportPopupContainer, exportPopupCloser);
 
             // Add handler to report information tool button click
             $('#export_control').click(function (e) {
@@ -7015,130 +6811,25 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 }
             });
 
-            /**
-             * Elements that make up the popup for CSV export.
-             */
             var exportCsvPopupContainer = document.getElementById('export-csv-popup');
             var exportCsvPopupContent = document.getElementById('export-csv-popup-content');
             var exportCsvPopupCloser = document.getElementById('export-csv-popup-closer');
+            var exportCsvPopupOverlay = createMapPopupOverlay(exportCsvPopupContainer, exportCsvPopupCloser);
 
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var exportCsvPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: exportCsvPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(exportCsvPopupContainer).show();
-
-            map.addOverlay(exportCsvPopupOverlay);
-
-            /**
-             * Add a click handler to hide the popup for export.
-             * @return {boolean} Don't follow the href.
-             */
-            exportCsvPopupCloser.onclick = function () {
-                exportCsvPopupOverlay.setPosition(undefined);
-                exportCsvPopupCloser.blur();
-                return false;
-            };
-
-            /**
-             * Elements that make up the popup for population.
-             */
             var populationPopupContainer = document.getElementById('population-popup');
             var populationPopupContent = document.getElementById('population-popup-content');
             var populationPopupCloser = document.getElementById('population-popup-closer');
+            var populationPopupOverlay = createMapPopupOverlay(populationPopupContainer, populationPopupCloser);
 
-            /**
-             * Create an overlay to anchor the population popup to the map.
-             */
-            var populationPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: populationPopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(populationPopupContainer).show();
-
-            map.addOverlay(populationPopupOverlay);
-            /**
-             * Add a click handler to hide the popup for population.
-             * @return {boolean} Don't follow the href.
-             */
-            populationPopupCloser.onclick = function () {
-                populationPopupOverlay.setPosition(undefined);
-                populationPopupCloser.blur();
-                return false;
-            };
-            /**
-             * Elements that make up the popup for population.
-             */
             var roadInaccessiblePopupContainer = document.getElementById('road-inaccessible-popup');
             var roadInaccessiblePopupContent = document.getElementById('road-inaccessible-popup-content');
             var roadInaccessiblePopupCloser = document.getElementById('road-inaccessible-popup-closer');
-            /**
-             * Create an overlay to anchor the road inaccessible popup to the map.
-             */
-            var roadInaccessiblePopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: roadInaccessiblePopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
+            var roadInaccessiblePopupOverlay = createMapPopupOverlay(roadInaccessiblePopupContainer, roadInaccessiblePopupCloser);
 
-            $(roadInaccessiblePopupContainer).show();
-
-            map.addOverlay(roadInaccessiblePopupOverlay);
-            /**
-             * Add a click handler to hide the popup for population.
-             * @return {boolean} Don't follow the href.
-             */
-            roadInaccessiblePopupCloser.onclick = function () {
-                roadInaccessiblePopupOverlay.setPosition(undefined);
-                roadInaccessiblePopupCloser.blur();
-                return false;
-            };
-            /**
-             * Elements that make up the popup for waterbody inaccessible.
-             */
             var waterbodyInaccessiblePopupContainer = document.getElementById('waterbody-inaccessible-popup');
             var waterbodyInaccessiblePopupContent = document.getElementById('waterbody-inaccessible-popup-content');
             var waterbodyInaccessiblePopupCloser = document.getElementById('waterbody-inaccessible-popup-closer');
-            /**
-             * Create an overlay to anchor the waterbody inaccessible popup to the map.
-             */
-            var waterbodyInaccessiblePopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: waterbodyInaccessiblePopupContainer,
-                autoPan: true,
-                stopEvent: false,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(waterbodyInaccessiblePopupContainer).show();
-
-            map.addOverlay(waterbodyInaccessiblePopupOverlay);
-            /**
-             * Add a click handler to hide the popup for population.
-             * @return {boolean} Don't follow the href.
-             */
-            waterbodyInaccessiblePopupCloser.onclick = function () {
-                waterbodyInaccessiblePopupOverlay.setPosition(undefined);
-                waterbodyInaccessiblePopupCloser.blur();
-                return false;
-            };
+            var waterbodyInaccessiblePopupOverlay = createMapPopupOverlay(waterbodyInaccessiblePopupContainer, waterbodyInaccessiblePopupCloser);
             // Add handler to export csv for buidins to update tax zones information tool button click
             $('#update_tax_zone').click(function (e) {
                 e.preventDefault();
@@ -9427,39 +9118,10 @@ $.ajax({
                 map.getTargetElement().style.cursor = hit ? 'pointer' : '';
             };
 
-            /**
-             * Elements that make up the popup for feature info.
-             */
             var featureInfoPopupContainer = document.getElementById('feature-info-popup');
             var featureInfoPopupContent = document.getElementById('feature-info-popup-content');
             var featureInfoPopupCloser = document.getElementById('feature-info-popup-closer');
-
-
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var featureInfoPopupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: featureInfoPopupContainer,
-                autoPan: true,
-                stopEvent: true,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
-
-            $(featureInfoPopupContainer).show();
-
-            map.addOverlay(featureInfoPopupOverlay);
-
-            /**
-             * Add a click handler to hide the popup.
-             * @return {boolean} Don't follow the href.
-             */
-            featureInfoPopupCloser.onclick = function () {
-                featureInfoPopupOverlay.setPosition(undefined);
-                featureInfoPopupCloser.blur();
-                return false;
-            };
+            var featureInfoPopupOverlay = createMapPopupOverlay(featureInfoPopupContainer, featureInfoPopupCloser);
 
 
             // Display information about feature
@@ -10184,63 +9846,106 @@ $.ajax({
 
 
 
-            /**
-             * Elements that make up the popup.
-             */
             var popupContainer = document.getElementById('popup');
             var popupContent = document.getElementById('popup-content');
             var popupCloser = document.getElementById('popup-closer');
+            var popupOverlay = createMapPopupOverlay(popupContainer, popupCloser);
 
+            // UNIVERSAL DRAGGABLE POPUPS
+            (function initDraggablePopups() {
+                var popups = document.querySelectorAll('.ol-popup');
 
-            /**
-             * Create an overlay to anchor the popup to the map.
-             */
-            var popupOverlay = new ol.Overlay(/** @type {olx.OverlayOptions} */ ({
-                element: popupContainer,
-                autoPan: true,
-                stopEvent: true,
-                autoPanAnimation: {
-                    duration: 250
-                }
-            }));
+                popups.forEach(function (popup) {
+                    if (popup.id === 'feature-info-popup') {
+                        return; // feature-info-popup has its own fixed-position drag handler
+                    }
 
-            $(popupContainer).show();
+                    if (typeof makePopupResizable === 'function') {
+                        makePopupResizable(popup);
+                    }
 
-            map.addOverlay(popupOverlay);
+                    var dragging = false;
+                    var startX = 0, startY = 0;
+                    var dx = 0, dy = 0;
 
-            /**
-             * Add a click handler to hide the popup.
-             * @return {boolean} Don't follow the href.
-             */
-            popupCloser.onclick = function () {
-                popupOverlay.setPosition(undefined);
-                popupCloser.blur();
-                return false;
-            };
+                    function getTranslate() {
+                        var t = popup.style.transform || '';
+                        var m = t.match(/translate\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
+                        return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
+                    }
 
-            //DRAGGABLE OVERLAYS 
-// Drag interaction
-            var ol_Drag = new ol.interaction.DragOverlay({
-                overlays: [
-                    reportPopupOverlay,
-                    drainPotentialSummaryPopupOverlay,
-                    waterBodyPopupOverlay,
-                    wardBuildingsPopupOverlay,
-                    bufferPolygonPopupOverlay,
-                    roadPopupOverlay,
-                    popupMarkerOverlay,
-                    buildingsToRoadPopupOverlay,
-                    pointBufferPopupOverlay,
-                    exportCsvPopupOverlay,
-                    populationPopupOverlay,
-                    roadInaccessiblePopupOverlay,
-                    feedbackPopupOverlay,
-                    kmlDragDropPopupOverlay,
-                ]
-            });
-            map.addInteraction(ol_Drag);
+                    function setTranslate(x, y) {
+                        popup.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+                    }
 
-//END DRAGGABLE OVERLAYS
+                    popup.addEventListener('pointerdown', function (e) {
+                        // Check if clicking near bottom-right corner (for native resize)
+                        var rect = popup.getBoundingClientRect();
+                        if (e.clientX >= rect.right - 20 && e.clientY >= rect.bottom - 20) {
+                            return;
+                        }
+
+                        // Do not start drag if clicked inside resize handle, content, inputs, buttons, selects, or closer buttons
+                        if (e.target.closest && e.target.closest('.summary-info-popup-resize-handle, .summary-info-popup-content, button, a, input, select, textarea, .ol-popup-closer, .xol-popup-closer, table')) {
+                            return;
+                        }
+
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        document.body.style.userSelect = "none";
+                        dragging = true;
+                        try {
+                            popup.setPointerCapture(e.pointerId);
+                        } catch (_) {}
+
+                        var t = getTranslate();
+                        dx = t.x;
+                        dy = t.y;
+
+                        startX = e.clientX;
+                        startY = e.clientY;
+                    });
+
+                    popup.addEventListener('pointermove', function (e) {
+                        if (!dragging) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        var nx = dx + (e.clientX - startX);
+                        var ny = dy + (e.clientY - startY);
+                        setTranslate(nx, ny);
+                    });
+
+                    function stopDrag(e) {
+                        if (!dragging) return;
+                        dragging = false;
+                        document.body.style.userSelect = "";
+                        try {
+                            popup.releasePointerCapture(e.pointerId);
+                        } catch (_) {}
+                    }
+
+                    popup.addEventListener('pointerup', stopDrag);
+                    popup.addEventListener('pointercancel', stopDrag);
+
+                    // Prevent wheel / touchmove from bubbling to map (prevents map zoom and map pan when scrolling popup)
+                    ['wheel', 'touchmove'].forEach(function (evt) {
+                        popup.addEventListener(evt, function (ev) {
+                            ev.stopPropagation();
+                        }, { passive: false });
+                    });
+                });
+
+                // Reset translate transform when closer buttons are clicked
+                $(document).on('click', '.ol-popup-closer, .xol-popup-closer', function () {
+                    var p = this.closest('.ol-popup');
+                    if (p) {
+                        p.style.transform = '';
+                    }
+                });
+            })();
+            // END UNIVERSAL DRAGGABLE POPUPS
 
 
             // Display information about coordinate
