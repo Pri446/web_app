@@ -990,7 +990,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                                                 @endforeach
                                                             </div>
 
-                                                            <button type="button" class="btn btn-default" id="building_tax_payment_clear_button">{{ __('Filter') }}
+                                                            <button type="button" class="btn btn-default" id="building_tax_payment_filter_button">{{ __('Filter') }}
+                                                            </button>
+                                                            <button type="button" class="btn btn-default" id="building_tax_payment_clear_button">{{ __('Clear') }}
                                                             </button>
                                                             @can('Export in General Map Tools')
                                                                 <div class="btn-group">
@@ -1028,7 +1030,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                                                     </div>
                                                                 @endforeach
                                                             </div>
-                                                            <button type="button" class="btn btn-default" id="water_supply_payment_clear_button">{{ __('Filter') }}
+                                                            <button type="button" class="btn btn-default" id="water_supply_payment_filter_button">{{ __('Filter') }}
+                                                            </button>
+                                                            <button type="button" class="btn btn-default" id="water_supply_payment_clear_button">{{ __('Clear') }}
                                                             </button>
                                                             @can('Export in General Map Tools')
                                                                 <div class="btn-group">
@@ -1071,7 +1075,10 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                                                 @endforeach
                                                             </div>
                                                             <button type="button" class="btn btn-default"
-                                                                    id="swm_clear_button">{{ __('Filter') }}
+                                                                    id="swm_filter_button">{{ __('Filter') }}
+                                                            </button>
+                                                            <button type="button" class="btn btn-default"
+                                                                    id="swm_clear_button">{{ __('Clear') }}
                                                             </button>
                                                             @can('Export in General Map Tools')
                                                                 <div class="btn-group">
@@ -1196,7 +1203,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                                                         {!! Form::select('ward',$wards,null,['id' => 'ward_tax_due', 'multiple' => true, 'style' => 'width: 100%'])!!}
                                                                 </div>
                                                                 <button type="submit" class="btn btn-default">{{ __('Filter') }}</button>
-                                                                <button type="button" class="btn btn-default" id="wardtaxzone_clear_button">{{ __('Close') }}
+                                                                <button type="button" class="btn btn-default" id="wardtaxzone_clear_button">{{ __('Clear') }}
                                                                 </button>
                                                             </form>
                                                             <table>
@@ -2920,8 +2927,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 },
                 @endcan
 
-                @if(auth()->user()->can('Tax Payment Status Buildings Map Layer') || auth()->user()->can('Water Payment Status Map Layer'))
-                @can('Tax Payment Status Buildings Map Layer')
+                @if(auth()->user()->can('Tax Payment Status Buildings Map Layer') || auth()->user()->can('Property Tax Map Tools'))
                  buildings_tax_status_layer:{
                     name: '{{ __("Tax Payment Status") }}',
                     styles:{
@@ -2935,8 +2941,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     showCount: false,
                     filters: [],
                 },
-                @endcan
-                @can('Water Payment Status Map Layer')
+                @endif
+                @if(auth()->user()->can('Water Payment Status Map Layer') || auth()->user()->can('Water Payment Status Map Tools'))
                 buildings_water_payment_status_layer:{
                         name: '{{ __("Water Payment Status") }}',
                     styles:{
@@ -2957,9 +2963,8 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     showCount: false,
                     filters: [],
                 },
-                @endcan
                 @endif
-                @can('Solid Waste Status Map Layer')
+                @if(auth()->user()->can('Solid Waste Status Map Layer') || auth()->user()->can('Solid Waste Payment Status Map Tools'))
                 buildings_swm_payment_status_layer:{
                         name: '{{ __("Solid Waste Service Status") }}',
                     styles:{
@@ -2979,7 +2984,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     showCount: false,
                     filters: [],
                 },
-                @endcan
+                @endif
                 @can('Low Income Community Map Layer')
                 low_income_communities_layer: {
                     name: '{{ __("Low Income Community") }}',
@@ -3491,8 +3496,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
             // Check Overlay checkbox
             function showLayer(layer) {
+                if (mLayer[layer] && mLayer[layer].layer) {
+                    mLayer[layer].layer.setVisible(true);
+                }
                 var elem = $('#overlay_checkbox_container input[type=checkbox][name=' + layer + ']');
-                if (!elem.is(':checked')) { // if the checkbox is not checked
+                if (elem.length && !elem.is(':checked')) { // if the checkbox is not checked
                     // Trigger checkbox click event
                     elem.click();
                 }
@@ -3500,8 +3508,11 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
             // Uncheck Overlay checkbox
             function hideLayer(layer) {
+                if (mLayer[layer] && mLayer[layer].layer) {
+                    mLayer[layer].layer.setVisible(false);
+                }
                 var elem = $('#overlay_checkbox_container input[type=checkbox][name=' + layer + ']');
-                if (elem.is(':checked')) { // if the checkbox is checked
+                if (elem.length && elem.is(':checked')) { // if the checkbox is checked
                     // Trigger checkbox click event
                     elem.click();
                 }
@@ -5507,6 +5518,19 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 $.each(eLayer, function (key, value) {
                     value.layer.getSource().clear();
                 });
+
+                if (typeof selectInteraction !== 'undefined' && selectInteraction) {
+                    selectInteraction.getFeatures().clear();
+                }
+
+                map.getOverlays().forEach(function (overlay) {
+                    var element = overlay.getElement();
+                    if (element && element.classList.contains('ol-popup')) {
+                        overlay.setPosition(undefined);
+                        element.style.transform = '';
+                    }
+                });
+
                 map.removeOverlay(staticMeasureTooltip);
             });
 
@@ -5957,6 +5981,16 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             var buildingsToRoadPopupContent = document.getElementById('buildings-road-popup-content');
             var buildingsToRoadPopupCloser = document.getElementById('buildings-road-popup-closer');
             var buildingsToRoadPopupOverlay = createMapPopupOverlay(buildingsToRoadPopupContainer, buildingsToRoadPopupCloser);
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                return String(text)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
             // display popup on click
             map.on('click', function (evt) {
                 var feature = map.forEachFeatureAtPixel(evt.pixel,
@@ -6658,37 +6692,83 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     });
 
 
-            // Handler for building tax payment checkbox change
-            $('#building_tax_payment_checkbox_container').on('change', 'input[type=checkbox]', function () {
-
+            function applyPaymentStatusFilter(containerSelector, filterKey, layerName) {
                 var checkedList = [];
-                $('#building_tax_payment_checkbox_container input[type=checkbox]:checked').each(function () {
-                    checkedList.push("due_year = '" + $(this).attr('name') + "'");
+                $(containerSelector + ' input[type=checkbox]:checked').each(function () {
+                    var dueYear = parseInt($(this).attr('name'), 10);
+                    if (!isNaN(dueYear)) {
+                        if (dueYear === 99) {
+                            checkedList.push('(due_year = 99 OR due_year IS NULL)');
+                        } else if (dueYear === 5) {
+                            checkedList.push('(due_year >= 5)');
+                        } else {
+                            checkedList.push('due_year = ' + dueYear);
+                        }
+                    }
                 });
 
                 if (checkedList.length > 0) {
-                    mFilter.buildings_tax_status_layer = '(' + checkedList.join(' OR ') + ')';
+                    mFilter[filterKey] = '(' + checkedList.join(' OR ') + ')';
+                    updateAllCQLFiltersParams();
+                    showLayer(layerName);
                 } else {
-                    mFilter.buildings_tax_status_layer = '';
+                    mFilter[filterKey] = '';
+                    updateAllCQLFiltersParams();
+                    hideLayer(layerName);
                 }
-                updateAllCQLFiltersParams();
-                showLayer('buildings_tax_status_layer');
+            }
+
+            // Apply payment filters when a checkbox changes or the Filter button is clicked.
+            $('#building_tax_payment_checkbox_container').on('change', 'input[type=checkbox]', function () {
+                applyPaymentStatusFilter(
+                    '#building_tax_payment_checkbox_container',
+                    'buildings_tax_status_layer',
+                    'buildings_tax_status_layer'
+                );
             });
 
-            // Handler for water supply payment checkbox change
             $('#water_supply_payment_checkbox_container').on('change', 'input[type=checkbox]', function () {
-                var checkedList = [];
-                $('#water_supply_payment_checkbox_container input[type=checkbox]:checked').each(function () {
-                     checkedList.push("due_year = '" + $(this).attr('name') + "'");
-                });
-                if (checkedList.length > 0) {
-                    mFilter.buildings_water_payment_status_layer = '(' + checkedList.join(' OR ') + ')';
-                } else {
-                    mFilter.buildings_water_payment_status_layer = '';
-                }
+                applyPaymentStatusFilter(
+                    '#water_supply_payment_checkbox_container',
+                    'buildings_water_payment_status_layer',
+                    'buildings_water_payment_status_layer'
+                );
+            });
 
-                updateAllCQLFiltersParams();
-                showLayer('buildings_water_payment_status_layer');
+            $('#swm_checkbox_container').on('change', 'input[type=checkbox]', function () {
+                applyPaymentStatusFilter(
+                    '#swm_checkbox_container',
+                    'buildings_swm_payment_status_layer',
+                    'buildings_swm_payment_status_layer'
+                );
+            });
+
+            $('#building_tax_payment_filter_button').click(function () {
+                applyPaymentStatusFilter(
+                    '#building_tax_payment_checkbox_container',
+                    'buildings_tax_status_layer',
+                    'buildings_tax_status_layer'
+                );
+            });
+
+            $('#water_supply_payment_filter_button').click(function () {
+                applyPaymentStatusFilter(
+                    '#water_supply_payment_checkbox_container',
+                    'buildings_water_payment_status_layer',
+                    'buildings_water_payment_status_layer'
+                );
+            });
+
+            $('#swm_filter_button').click(function () {
+                applyPaymentStatusFilter(
+                    '#swm_checkbox_container',
+                    'buildings_swm_payment_status_layer',
+                    'buildings_swm_payment_status_layer'
+                );
+            });
+
+            $('#building_tax_payment_form, #water_supply_payment_form, #swm_form').on('submit', function (e) {
+                e.preventDefault();
             });
 
             $('#print_scale').on('change', function() {
@@ -10892,6 +10972,8 @@ $.ajax({
             });
 
 
+            var taxDueBuildingsRequest = null;
+
             // Add handler to tax due buildings filer form submit
             $('#tax_due_buildings_form').submit(function () {
                 var selectedWards = $('#ward_tax_due').val();
@@ -10912,7 +10994,7 @@ $.ajax({
 
                 displayAjaxLoader();
                 var url = '{{ url("maps/due-buildings-ward-taxzone") }}';
-                $.ajax({
+                taxDueBuildingsRequest = $.ajax({
                     url: url,
                     type: 'post',
                     data: {selectedWards: selectedWards, selectedTaxZones: selectedTaxZones, "_token": "{{ csrf_token() }}"},
@@ -10941,8 +11023,10 @@ $.ajax({
                         showLayer('buildings_layer');
                         zoomToCity();
                     },
-                    error: function (data) {
-                        displayAjaxError();
+                    error: function (data, textStatus) {
+                        if (textStatus !== 'abort') {
+                            displayAjaxError();
+                        }
                     }
                 });
 
@@ -10950,9 +11034,15 @@ $.ajax({
             });
             // Add handler to wardtaxzone filter clear button
             $('#wardtaxzone_clear_button').click(function () {
+                if (taxDueBuildingsRequest && taxDueBuildingsRequest.readyState !== 4) {
+                    taxDueBuildingsRequest.abort();
+                    removeAjaxLoader();
+                }
                 $('#ward_tax_due').multipleSelect('uncheckAll');
                 $('#tax_zone_tax_due').multipleSelect('uncheckAll');
-                $('#tax_due_buildings_form').submit();
+                if (eLayer.building_markers) {
+                    eLayer.building_markers.layer.getSource().clear();
+                }
             });
 
 
@@ -11351,11 +11441,20 @@ $.ajax({
 
             var checkedList = [];
             $('#building_tax_payment_checkbox_container input[type=checkbox]:checked').each(function () {
-                checkedList.push("due_year = '" + $(this).attr('name') + "'");
+                var dueYear = parseInt($(this).attr('name'), 10);
+                if (!isNaN(dueYear)) {
+                    if (dueYear === 99) {
+                        checkedList.push('(due_year = 99 OR due_year IS NULL)');
+                    } else if (dueYear === 5) {
+                        checkedList.push('(due_year >= 5)');
+                    } else {
+                        checkedList.push('due_year = ' + dueYear);
+                    }
+                }
             });
 
             if (checkedList.length > 0) {
-                checklistparam = checkedList.join(' OR ');
+                checklistparam = '(' + checkedList.join(' OR ') + ')';
             } else {
                 Swal.fire({
                     title: "{{ __('Please check one or more options!') }}",
@@ -11368,7 +11467,9 @@ $.ajax({
 
             var outputFormat = format === 'csv' ? 'CSV' : (format === 'kml' ? 'KML' : 'SHAPE-ZIP');
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,owner_name,owner_contact,due_year,geom&outputFormat=" + outputFormat;
+            // Map exports intentionally omit encrypted owner PII. Controlled PII
+            // exports are handled by the authenticated Property Tax workflow.
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":buildings_tax_status_layer&CQL_FILTER=deleted_at is null AND " + checklistparam + "&PROPERTYNAME=tax_code,bin,ward,due_year,geom&outputFormat=" + outputFormat;
 
             if (format === 'csv') {
                 fetch(exportLink)
@@ -11422,11 +11523,20 @@ $.ajax({
 
                 var checkedList = [];
                 $('#water_supply_payment_checkbox_container input[type=checkbox]:checked').each(function () {
-                    checkedList.push("due_year = '" + $(this).attr('name') + "'");
+                    var dueYear = parseInt($(this).attr('name'), 10);
+                    if (!isNaN(dueYear)) {
+                        if (dueYear === 99) {
+                            checkedList.push('(due_year = 99 OR due_year IS NULL)');
+                        } else if (dueYear === 5) {
+                            checkedList.push('(due_year >= 5)');
+                        } else {
+                            checkedList.push('due_year = ' + dueYear);
+                        }
+                    }
                 });
 
                 if (checkedList.length > 0) {
-                    checklistparam = checkedList.join(' OR ');
+                    checklistparam = '(' + checkedList.join(' OR ') + ')';
                 } else {
                     Swal.fire({
                         title: "{{ __('Please check one or more options!') }}",
@@ -11469,6 +11579,12 @@ $.ajax({
 
 
 
+            // Add handler to export swm filter to CSV button
+            $('#export_swm_filter_csv').click(function (e) {
+                e.preventDefault();
+                exportswmFilter('csv');
+            });
+
             // Add handler to export water supply filter to KML button
             $('#export_swm_filter_kml').click(function (e) {
                 e.preventDefault();
@@ -11488,11 +11604,20 @@ $.ajax({
 
                 var checkedList = [];
                 $('#swm_checkbox_container input[type=checkbox]:checked').each(function () {
-                    checkedList.push("due_year = '" + $(this).attr('name') + "'");
+                    var dueYear = parseInt($(this).attr('name'), 10);
+                    if (!isNaN(dueYear)) {
+                        if (dueYear === 99) {
+                            checkedList.push('(due_year = 99 OR due_year IS NULL)');
+                        } else if (dueYear === 5) {
+                            checkedList.push('(due_year >= 5)');
+                        } else {
+                            checkedList.push('due_year = ' + dueYear);
+                        }
+                    }
                 });
 
                 if (checkedList.length > 0) {
-                    checklistparam = checkedList.join(' OR ');
+                    checklistparam = '(' + checkedList.join(' OR ') + ')';
                 } else {
                     Swal.fire({
                         title: "{{ __('Please check one or more options!') }}",
@@ -11537,22 +11662,25 @@ $.ajax({
 
             // Add handler to building tax payment filter clear button
             $('#building_tax_payment_clear_button').click(function () {
-                $('#building_tax_payment_checkbox_container input[type=checkbox]:checked').each(function () {
-                    $(this).prop( "checked", false )
-                });
+                $('#building_tax_payment_checkbox_container input[type=checkbox]').prop('checked', false);
+                mFilter.buildings_tax_status_layer = '';
+                updateAllCQLFiltersParams();
+                hideLayer('buildings_tax_status_layer');
             });
-            // Add handler to building tax payment filter clear button
+            // Add handler to water supply payment filter clear button
             $('#water_supply_payment_clear_button').click(function () {
-                $('#water_supply_payment_checkbox_container input[type=checkbox]:checked').each(function () {
-                    $(this).prop( "checked", false )
-                });
-            })
-             // Add handler to swm filter clear button
-             $('#swm_clear_button').click(function () {
-                $('#swm_checkbox_container input[type=checkbox]:checked').each(function () {
-                    $(this).prop( "checked", false )
-                });
-            })
+                $('#water_supply_payment_checkbox_container input[type=checkbox]').prop('checked', false);
+                mFilter.buildings_water_payment_status_layer = '';
+                updateAllCQLFiltersParams();
+                hideLayer('buildings_water_payment_status_layer');
+            });
+            // Add handler to solid waste payment filter clear button
+            $('#swm_clear_button').click(function () {
+                $('#swm_checkbox_container input[type=checkbox]').prop('checked', false);
+                mFilter.buildings_swm_payment_status_layer = '';
+                updateAllCQLFiltersParams();
+                hideLayer('buildings_swm_payment_status_layer');
+            });
 
 
             $('#application_date_form').submit(function () {
@@ -12107,17 +12235,18 @@ $.ajax({
             }
 
             function updateCQLFilterParams(layer) {
-
-                if (mLayer[layer]) {
-
-                    var cqlFilters = [];
+                if (mLayer[layer] && mLayer[layer].layer) {
+                    var cqlFilters = ['deleted_at is null'];
                     $.each(mLayer[layer].filters, function (index, value) {
                         if (mFilter[value]) {
                             cqlFilters.push(mFilter[value]);
                         }
                     });
-                    var cql_filter = cqlFilters.length > 0 ? cqlFilters.join(" AND ") : 'deleted_at is null';
-                    mLayer[layer].layer.get('source').updateParams({CQL_FILTER: cql_filter});
+                    var cql_filter = cqlFilters.join(" AND ");
+                    var source = mLayer[layer].layer.getSource ? mLayer[layer].layer.getSource() : mLayer[layer].layer.get('source');
+                    if (source && source.updateParams) {
+                        source.updateParams({CQL_FILTER: cql_filter});
+                    }
                 }
             }
 

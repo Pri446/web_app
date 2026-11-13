@@ -5,6 +5,7 @@ namespace App\Services\Fsm;
 
 use DB;
 use App\Classes\FormField;
+use App\Enums\EmptyingReason;
 use App\Models\Fsm\EmployeeInfo;
 use App\Models\Fsm\Emptying;
 use App\Models\Fsm\TreatmentPlant;
@@ -185,9 +186,10 @@ class EmptyingService
                 new FormField(
                     label: __('Reason for Emptying'),
                     labelFor: 'emptying_reason',
-                    inputType: 'text',
+                    inputType: 'select',
                     inputId: 'emptying_reason',
-                    inputValue: ($emptying->emptying_reason),
+                    selectValues: EmptyingReason::options(),
+                    selectedValue: $emptying->emptying_reason,
                     required: true,
                     disabled: true,
                     placeholder: __('Reason for Emptying'),
@@ -318,30 +320,6 @@ class EmptyingService
             // their visibility from the current form values, allowing the
             // operator to change No. of Trips without reloading the page.
                 $hideFinalTripFields = (int) $application->trip_count !== ((int) $emptying->trip_no + 1);
-            if ($application->trip_count == $emptying->trip_no + 1) {
-                $folderPathBuildJpg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpg');
-                $folderPathBuildJpeg = public_path('/storage/emptyings/houses/' . $application->bin . '.jpeg');
-                $imagePathBuildJpg = 'storage/emptyings/houses/' . $application->bin . '.jpg';
-                $imagePathBuildJpeg = 'storage/emptyings/houses/' . $application->bin . '.jpeg';
-                if (file_exists($folderPathBuildJpg) == true) {
-                    $imageBuildSrc = asset($imagePathBuildJpg);
-                    $labelNameBuild = $application->bin . '.jpg';
-                } elseif (file_exists($folderPathBuildJpeg) == true) {
-                    $imageBuildSrc = asset($imagePathBuildJpeg);
-                    $labelNameBuild = $application->bin . '.jpeg';
-                } else {
-                    $imageBuildSrc = false;
-                    $labelNameBuild = "No House Image";
-                }
-                // receipt
-                $folderPathReceipt = public_path('/storage/emptyings/receipts/' . $emptying->receipt_image);
-                $imagePathReceipt = 'storage/emptyings/receipts/' . $emptying->receipt_image;
-                if (file_exists($folderPathReceipt) == true) {
-                    $imageReceiptSrc = asset($imagePathReceipt);
-                } else {
-                    $imageReceiptSrc = false;
-                }
-
 
                 $this->createFormFields[] = new FormField(
                     label: __('Receipt Number'),
@@ -447,8 +425,9 @@ class EmptyingService
                 new FormField(
                     label: __('Reason for Emptying'),
                     labelFor: 'emptying_reason',
-                    inputType: 'textarea',
+                    inputType: 'select',
                     inputId: 'emptying_reason',
+                    selectValues: EmptyingReason::options(),
                     required: true,
                     placeholder: __('Reason for Emptying'),
                 ),
@@ -899,9 +878,10 @@ class EmptyingService
                 new FormField(
                     label: __('Reason for Emptying'),
                     labelFor: 'emptying_reason',
-                    inputType: 'textarea',
+                    inputType: 'select',
                     inputId: 'emptying_reason',
-                    inputValue: $emptying->emptying_reason,
+                    selectValues: EmptyingReason::options(),
+                    selectedValue: $emptying->emptying_reason,
                     required: true,
                     placeholder: __('Reason for Emptying'),
                     disabled: true
@@ -1110,9 +1090,10 @@ class EmptyingService
                 new FormField(
                     label: __('Reason for Emptying'),
                     labelFor: 'emptying_reason',
-                    inputType: 'textarea',
+                    inputType: 'select',
                     inputId: 'emptying_reason',
-                    inputValue: $emptying->emptying_reason,
+                    selectValues: EmptyingReason::options(),
+                    selectedValue: $emptying->emptying_reason,
                     required: true,
                     placeholder: __('Reason for Emptying'),
                 ),
@@ -1538,7 +1519,7 @@ class EmptyingService
             if ($application->trip_count == ($emptying->trip_no + 1)) {
 
                 // --- Image upload required on final trip ---
-                $allowedFileExt = ['jpg', 'jpeg'];
+                $allowedFileExt = ['jpg', 'jpeg', 'png'];
 
                 if (!$request->hasFile('receipt_image') || !$request->hasFile('house_image')) {
                     DB::rollBack();
@@ -1590,11 +1571,12 @@ class EmptyingService
                         ->with('error', 'Error! Invalid image format.');
                 }
 
-                // Save images
-                $filename_house = $application->bin . '.' . $extension_house;
+                // Save images (standardize to .jpg for performance and consistent viewing)
+                $target_extension_house = in_array($extension_house, ['jpg', 'jpeg']) ? $extension_house : 'jpg';
+                $filename_house = $application->bin . '.' . $target_extension_house;
                 if (Storage::disk('local')->exists("/public/emptyings/houses/{$filename_house}")) {
                     $dateTime = now()->format('Y-m-d_H-i-s');
-                    $new_archived_filename = "{$application->bin}_{$dateTime}.{$extension_house}";
+                    $new_archived_filename = "{$application->bin}_{$dateTime}.{$target_extension_house}";
                     Storage::disk('local')->move(
                         "/public/emptyings/houses/{$filename_house}",
                         "/public/emptyings/houses/{$new_archived_filename}"
@@ -1610,7 +1592,8 @@ class EmptyingService
                     throw new \RuntimeException(__('Unable to save the house image.'));
                 }
                 $emptying->house_image = $filename_house;
-                $filename_receipt = "{$emptying->id}_{$emptying->application_id}_{$emptying->receipt_number}_{$dateTime}.{$extension_receipt}";
+                $target_extension_receipt = in_array($extension_receipt, ['jpg', 'jpeg']) ? $extension_receipt : 'jpg';
+                $filename_receipt = "{$emptying->id}_{$emptying->application_id}_{$emptying->receipt_number}_{$dateTime}.{$target_extension_receipt}";
 
                 $receiptImageSaved = ImageOptimizationHelper::optimizeAndSave(
                     $request->receipt_image,
@@ -1794,13 +1777,14 @@ foreach ($recipientIds as $userId) {
                 $dateTime->setTimezone(new DateTimeZone('Asia/Kathmandu'));
                 $dateTime = $dateTime->format('Y_m_d');
                 //check image upload
-                $allowedFileExt = ['jpg', 'jpeg'];
+                $allowedFileExt = ['jpg', 'jpeg', 'png'];
                 if ($request->hasFile('receipt_image')) {
                     $extension_receipt = strtolower($request->receipt_image->getClientOriginalExtension());
                     $check = in_array($extension_receipt, $allowedFileExt);
                     if ($check) {
                         try {
-                            $filename_receipt = $emptying->id . '_' . $emptying->application_id . '_' . $emptying->receipt_number . '_' . $dateTime . '.' . $extension_receipt;
+                            $target_extension_receipt = in_array($extension_receipt, ['jpg', 'jpeg']) ? $extension_receipt : 'jpg';
+                            $filename_receipt = $emptying->id . '_' . $emptying->application_id . '_' . $emptying->receipt_number . '_' . $dateTime . '.' . $target_extension_receipt;
                             $receiptImageSaved = ImageOptimizationHelper::optimizeAndSave(
                                 $request->receipt_image,
                                 Storage::disk('local')->path('/public/emptyings/receipts/' . $filename_receipt),
@@ -1828,10 +1812,11 @@ foreach ($recipientIds as $userId) {
                     $check = in_array($extension_house, $allowedFileExt);
                     if ($check) {
                         try {
-                            $filename_house = $application->bin . '.' . $extension_house;
+                            $target_extension_house = in_array($extension_house, ['jpg', 'jpeg']) ? $extension_house : 'jpg';
+                            $filename_house = $application->bin . '.' . $target_extension_house;
                             if (Storage::disk('local')->exists("/public/emptyings/houses/{$filename_house}")) {
                                 $dateTime = now()->format('Y-m-d_H-i-s');
-                                $new_archived_filename = "{$application->bin}_{$dateTime}.{$extension_house}";
+                                $new_archived_filename = "{$application->bin}_{$dateTime}.{$target_extension_house}";
                                 Storage::disk('local')->move(
                                     "/public/emptyings/houses/{$filename_house}",
                                     "/public/emptyings/houses/{$new_archived_filename}"

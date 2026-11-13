@@ -44,7 +44,9 @@ return [
     |
     */
 
-    'expiration' => 120,
+    // Mobile users stay signed in until they log out. Tokens are revoked when
+    // the password changes or the user is deactivated (see User::booted).
+    'expiration' => env('SANCTUM_EXPIRATION'),
 
     /*
     |--------------------------------------------------------------------------

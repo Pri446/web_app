@@ -172,7 +172,7 @@ $('#locateBuildingModal').on('shown.bs.modal', function () {
     )
     + '&CQL_FILTER=' + encodeURIComponent(
         'INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
-    ) + '&authkey=' + encodeURIComponent(authkey);
+    );
 
     $.getJSON(wfsUrl, function (data) {
         if (data.features && data.features.length > 0) {

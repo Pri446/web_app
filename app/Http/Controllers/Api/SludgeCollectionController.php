@@ -535,8 +535,13 @@ class SludgeCollectionController extends Controller
                 $completedTrips = max(0, (int) $sludgeCollection->trip_no);
                 $requiredTrips = max(1, (int) $application->trip_count);
 
-                $application->sludge_collection_status =
-                    $completedTrips >= $requiredTrips ? 2 : 1;
+                if ($completedTrips === 0) {
+                    $application->sludge_collection_status = 0;
+                } elseif ($completedTrips >= $requiredTrips) {
+                    $application->sludge_collection_status = 2;
+                } else {
+                    $application->sludge_collection_status = 1;
+                }
                 $application->save();
             }
 

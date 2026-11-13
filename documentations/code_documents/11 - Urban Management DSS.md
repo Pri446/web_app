@@ -3485,6 +3485,7 @@ The KML Viewer is a map-index tool available from `resources\\views\\maps\\index
 -   Features that intersect the municipality are rendered in the KML layer and the map zooms to their extent. Non-intersecting features are reported to the user.
 -   Polygon features are sent to `POST /maps/get-kml-summary-info`; matching buildings are displayed in a separate layer and summary information is shown in a popup.
 -   The KML geometry can be submitted through `POST /maps/get-kml-info-report-csv` for the related report/export workflow.
+-   Map service requests use the authenticated `/gis/wms` and `/gis/wfs` proxy routes; GeoServer URLs and authentication keys are not exposed in the browser.
 
 ###### KML Summary Report
 

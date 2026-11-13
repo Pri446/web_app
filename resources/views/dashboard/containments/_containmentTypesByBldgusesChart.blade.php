@@ -1,7 +1,9 @@
 @include('layouts.dashboard.chart-card',[
     'card_title' => __("Containment Types Categorized by Building Usage"),
     'export_chart_btn_id' => "exportcontainmentTypesByBldgUsesChart",
-    'canvas_id' => "containmentTypesByBldgUsesChart"
+    'canvas_id' => "containmentTypesByBldgUsesChart",
+    'chart_card_class' => 'containment-usage-chart-card',
+    'chart_height' => 400
 ])
 @push('scripts')
 <script>
@@ -22,12 +24,11 @@
         ]
     },
       options: {
-      indexAxis: 'y',
-
-        animation:{
-          animateScale:true
-        },
+        animation: { duration: 0 },
+        hover: { animationDuration: 0 },
+        responsiveAnimationDuration: 0,
         responsive: true,
+        maintainAspectRatio: false,
       legend: {
          display: true,
          position: 'bottom',
@@ -65,8 +66,8 @@
                     var allData = data.datasets[tooltipItem.datasetIndex].data;
                     var allValues = data.datasets[tooltipItem.datasetIndex].values;
                     var tooltipLabel = data.datasets[tooltipItem.datasetIndex].label;
-                    var tooltipData = allData[tooltipItem.index];
-                    var tooltipValue = allValues[tooltipItem.index];
+                    var tooltipData = Number(allData[tooltipItem.index]) || 0;
+                    var tooltipValue = allValues[tooltipItem.index] || 0;
                     return tooltipLabel + ": " + tooltipData.toFixed(2) + "% : "+tooltipValue;
                 },
             }

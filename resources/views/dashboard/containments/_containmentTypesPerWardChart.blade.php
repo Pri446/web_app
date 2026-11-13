@@ -71,8 +71,8 @@ var myChart = new Chart(ctx, {
                 var allData = data.datasets[tooltipItem.datasetIndex].data;
                 var allValues = data.datasets[tooltipItem.datasetIndex].values;
                 var tooltipLabel = data.datasets[tooltipItem.datasetIndex].label;
-                var tooltipData = allData[tooltipItem.index];
-                var tooltipValue = allValues[tooltipItem.index];
+                var tooltipData = Number(allData[tooltipItem.index]) || 0;
+                var tooltipValue = allValues[tooltipItem.index] || 0;
                 //return tooltipLabel + ": " + tooltipData.toFixed(2) + "% : "+tooltipValue;
                 return tooltipLabel + ": " +tooltipValue;
             },

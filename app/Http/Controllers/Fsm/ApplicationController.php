@@ -14,9 +14,9 @@ use App\Models\Fsm\Emptying;
 use App\Models\Fsm\ServiceProvider;
 use App\Models\Fsm\VacutugType;
 use App\Services\Fsm\ApplicationService;
+use App\Services\Fsm\OperationalDataAccessService;
 use App\Services\ApplicationPiiAccessService;
 use App\Services\OwnerPiiAuditService;
-use App\Services\Fsm\OperationalDataAccessService;
 use Exception;
 use App\Models\Fsm\Containment;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +43,15 @@ class ApplicationController extends Controller
         ApplicationPiiAccessService $applicationPiiAccess,
         OwnerPiiAuditService $piiAudit
     ) {
+        $this->middleware('auth');
+        $this->middleware('permission:List Applications', ['only' => ['index', 'getData']]);
+        $this->middleware('permission:View Application', ['only' => ['show']]);
+        $this->middleware('permission:Add Application', ['only' => ['create', 'store']]);
+        $this->middleware('permission:Edit Application', ['only' => ['edit', 'update', 'editScheduling', 'schedulingform', 'checkCapacityByDate', 'resolveAnf']]);
+        $this->middleware('permission:Delete Application', ['only' => ['destroy', 'forceDelete']]);
+        $this->middleware('permission:Export Applications', ['only' => ['export']]);
+        $this->middleware('permission:View Application History', ['only' => ['history']]);
+        $this->middleware('permission:Generate Application Report', ['only' => ['applicationReport']]);
         $this->applicationService = $applicationService;
         $this->applicationPiiAccess = $applicationPiiAccess;
         $this->piiAudit = $piiAudit;
@@ -291,24 +300,23 @@ class ApplicationController extends Controller
         $application = Application::findOrFail($id);
         OperationalDataAccessService::authorizeApplication($application);
 
-        if ($application) {
-            $page_title = __('Application Details');
-            $customerPiiUnlocked = $this->customerPiiIsUnlocked($application, 'view');
-            $formFields = $this->applicationService->getShowFormFields(
-                $application,
-                $customerPiiUnlocked
+        $page_title = __('Application Details');
+        $customerPiiUnlocked = $this->customerPiiIsUnlocked($application, 'view');
+        $formFields = $this->applicationService->getShowFormFields(
+            $application,
+            $customerPiiUnlocked
+        );
+        if ($customerPiiUnlocked) {
+            $this->piiAudit->record(
+                'application_customer_pii_viewed',
+                true,
+                Auth::user(),
+                null,
+                ['application_id' => (int) $application->id, 'surface' => 'application_details'],
+                'password_reentry'
             );
-            if ($customerPiiUnlocked) {
-                $this->piiAudit->record(
-                    'application_customer_pii_viewed',
-                    true,
-                    Auth::user(),
-                    null,
-                    ['application_id' => (int) $application->id, 'surface' => 'application_details'],
-                    'password_reentry'
-                );
-            }
-            $indexAction = $this->applicationService->getIndexAction();
+        }
+        $indexAction = $this->applicationService->getIndexAction();
 
         return view('layouts.show', compact('page_title', 'formFields', 'application', 'indexAction'))
             ->with('cardForm', true);
@@ -322,7 +330,8 @@ class ApplicationController extends Controller
      */
     public function edit($id)
     {
-        $application = Application::find($id);
+        $application = Application::findOrFail($id);
+        OperationalDataAccessService::authorizeApplication($application);
         if ($application) {
             $page_title = __("Edit Application");
             $customerPiiUnlocked = $this->customerPiiIsUnlocked($application, 'edit');

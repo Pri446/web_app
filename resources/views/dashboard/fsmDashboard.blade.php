@@ -2,7 +2,12 @@
 Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 @extends('layouts.dashboard')
 @section('title', $page_title)
+@push('scripts')
+    <script src="{{ asset('js/fsm-dashboard-charts.js') }}?v={{ filemtime(public_path('js/fsm-dashboard-charts.js')) }}"></script>
+@endpush
 @section('content')
+    @php($fsm_chart_cards = true)
+    <div class="fsm-dashboard">
 
         <div class="row" style="padding: 15px 0 15px 0;font-size: 24px;">
             <div class="col-lg-8 col-xs-8">
@@ -74,7 +79,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
 
 
-        <div class="row">
+        <div class="row containment-usage-chart-row">
         @can('Ward-Wise Distribution of Containment Types in Residential Buildings Chart')
             <div class="col-md-6">
                 @include('dashboard.containments._containmentTypesByBldgUsesResidentialsChart')
@@ -170,6 +175,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                 @include('dashboard.fsmCharts._emptyingServiceByTypeYearChart')
             </div>
         @endcan
+    </div>
     </div>
 @stop
 @push('scripts')

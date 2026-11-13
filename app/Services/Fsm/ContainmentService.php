@@ -81,21 +81,21 @@ class ContainmentService
                 $content = \Form::open(['method' => 'DELETE', 'route' => ['containments.destroy', $model->public_id]]);
 
                 if (Auth::user()->can('List Containment Buildings')) {
-                    $content .= '<a title="' . __("View Building Connected to Containment") . '" href="' . action("Fsm\ContainmentController@listBuildings", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-solid fa-building"></i></a> ';
+                    $content .= '<a title="' . e(__("View Building Connected to Containment")) . '" href="' . action("Fsm\ContainmentController@listBuildings", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-solid fa-building"></i></a> ';
                 }
                 if (Auth::user()->can('Edit Containment')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ContainmentController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\ContainmentController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Containment')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ContainmentController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\ContainmentController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Containment History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ContainmentController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\ContainmentController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
 
                 if (Auth::user()->can('View Containment History')) {
-                    $content .= '<a title="' . __("Type Change History") . '" href="' . action("Fsm\ContainmentController@typeChangeHistory", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-sharp fa-solid fa-file-pen"></i></a> ';
+                    $content .= '<a title="' . e(__("Type Change History")) . '" href="' . action("Fsm\ContainmentController@typeChangeHistory", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa-sharp fa-solid fa-file-pen"></i></a> ';
                 }
 
                 if (Auth::user()->can('Delete Containment')) {
@@ -103,15 +103,15 @@ class ContainmentService
                 }
 
                 if (Auth::user()->can('View Containment On Map')) {
-                    $content .= '<a title="' . __("Map") . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'public_id', 'val' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
+                    $content .= '<a title="' . e(__("Map")) . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'public_id', 'val' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-map-marker"></i></a> ';
                 }
                 if (Auth::user()->can('Emptying Service History')) {
-                    $content .= '<a title="' . __("Emptying Service History") . '" href="' . action("Fsm\EmptyingController@index", ['containment_public_id' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1 ' . (($model->emptyingService()->exists()) ? '"' : 'disabled"') .  '><i class="fa fa-recycle"></i></a> ';
+                    $content .= '<a title="' . e(__("Emptying Service History")) . '" href="' . action("Fsm\EmptyingController@index", ['containment_public_id' => $model->public_id]) . '" class="btn btn-info btn-sm mb-1 ' . (($model->emptyingService()->exists()) ? '"' : 'disabled"') .  '><i class="fa fa-recycle"></i></a> ';
                 }
 
 
                 if (Auth::user()->can('View Nearest Road To Containment On Map')) {
-                    $content .= '<a title="' . __("Nearest Road") . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'public_id', 'val' => $model->public_id, 'action' => 'containment-road']) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-road"></i></a> ';
+                    $content .= '<a title="' . e(__("Nearest Road")) . '" href="' . action("MapsController@index", ['layer' => 'containments_layer', 'field' => 'public_id', 'val' => $model->public_id, 'action' => 'containment-road']) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-road"></i></a> ';
                 }
 
                 $content .= \Form::close();
@@ -141,13 +141,13 @@ class ContainmentService
 
                 $content = \Form::open(['method' => 'DELETE', 'action' => ['Fsm\ContainmentController@deleteBuilding', $model->public_id, $request->building_public_id]]);
                 if (Auth::user()->can('Edit Containment')) {
-                    $content .= '<a title="' . __("Edit") . '" href="' . action("Fsm\ContainmentController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
+                    $content .= '<a title="' . e(__("Edit")) . '" href="' . action("Fsm\ContainmentController@edit", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-edit"></i></a> ';
                 }
                 if (Auth::user()->can('View Containment')) {
-                    $content .= '<a title="' . __("Detail") . '" href="' . action("Fsm\ContainmentController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
+                    $content .= '<a title="' . e(__("Detail")) . '" href="' . action("Fsm\ContainmentController@show", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-list"></i></a> ';
                 }
                 if (Auth::user()->can('View Containment History')) {
-                    $content .= '<a title="' . __("History") . '" href="' . action("Fsm\ContainmentController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
+                    $content .= '<a title="' . e(__("History")) . '" href="' . action("Fsm\ContainmentController@history", [$model->public_id]) . '" class="btn btn-info btn-sm mb-1"><i class="fa fa-history"></i></a> ';
                 }
                 if (Auth::user()->can('Delete Building from Containment')) {
                     $content .= '<a href="#" title="Delete Connection of Containment from Building" class="delete btn btn-danger btn-sm mb-1"><i class="fa fa-trash"></i></a> ';

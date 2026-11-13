@@ -44,7 +44,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="myModalLabel">KML Viewer</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
 <span aria-hidden="true">×</span></button>
 
             </div>
@@ -58,6 +58,7 @@
 <!-- Layer Switcher -->
 <script src="https://unpkg.com/ol-layerswitcher@3.8.3"></script>
 <script src="{{asset('js/app.js')}}"></script>
+<script src="{{ asset('js/kml-preview.js') }}?v={{ filemtime(public_path('js/kml-preview.js')) }}"></script>
 
 
 <script>
@@ -85,10 +86,7 @@
             });
             kmlLayer.set("name","kml-layer");
             map.addLayer(kmlLayer);
-            kmlLayer.once("change", function(e){
-                var extent = kmlSource.getExtent();
-                map.getView().fit(extent);
-            });
+            fitKmlPreview(map, kmlLayer);
             map.updateSize();
         })
         var kmlSource;
@@ -218,8 +216,7 @@
                 center: ol.proj.transform([85.37004580498977, 27.643296216592432], 'EPSG:4326', 'EPSG:3857'),
                 // zoom: 12,
                 minZoom: 12.5,
-                maxZoom: 19,
-                extent: ol.proj.transformExtent([85.32348539192756, 27.58711426558866, 85.44082675863419, 27.684646263435823], 'EPSG:4326', 'EPSG:3857')
+                maxZoom: 22
             })
         });
 

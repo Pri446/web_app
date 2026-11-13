@@ -69,6 +69,10 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
         });
 
+        RateLimiter::for('gis-tiles', function (Request $request) {
+            return Limit::perMinute(600)->by(optional($request->user())->id ?: $request->ip());
+        });
+
         $webLoginLimitResponse = function (Request $request, array $headers) {
             $retryAfter = (int) ($headers['Retry-After'] ?? 60);
             $message = trans('auth.throttle', ['seconds' => $retryAfter]);

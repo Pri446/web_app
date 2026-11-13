@@ -215,16 +215,19 @@ class FeedbackController extends Controller{
     public function update(FeedbackRequest $request, $id)
     {
 
-          $feedback = Feedback::findOrFail($id);
+        $feedback = Feedback::findOrFail($id);
         $this->authorizeFeedbackRecord($feedback);
         $application = Application::findOrFail($feedback->application_id);
 
-        $targetApplication = Application::findOrFail($request->application_id);
-        OperationalDataAccessService::authorizeApplication($targetApplication);
-        $feedback->application_id = $request->application_id? $request->application_id : null;
-        $feedback->customer_name = $request->customer_name ? $request->customer_name : null;
-        $feedback->customer_gender = $request->customer_gender ? $request->customer_gender : null;
-        $feedback->customer_number = $request->customer_number ? $request->customer_number : null;
+        // Keep the feedback bound to its existing application; the readonly
+        // browser field is presentation only and must not be trusted.
+        $feedback->application_id = $application->id;
+        // Feedback's legacy customer_* columns are an operational applicant
+        // snapshot. Never accept these values from the browser and never copy
+        // the encrypted customer_* PII stored by the Application module.
+        $feedback->customer_name = $application->applicant_name;
+        $feedback->customer_gender = $application->applicant_gender;
+        $feedback->customer_number = $application->applicant_contact;
         $feedback->fsm_service_quality = (bool)$request->fsm_service_quality ;
         $feedback->wear_ppe = (bool)$request->wear_ppe;
         $feedback->comments = $request->comments ? $request->comments : null;
@@ -334,7 +337,17 @@ class FeedbackController extends Controller{
                 $join->on('e.application_id', '=', 'a.id')
                     ->whereNull('e.deleted_at');
             })
-            ->select('f.*')
+            // Export the Application applicant fields directly. The encrypted
+            // customer_* fields are intentionally never selected or decrypted.
+            ->select([
+                'f.application_id',
+                'a.applicant_name',
+                'a.applicant_gender',
+                'a.applicant_contact',
+                'f.fsm_service_quality',
+                'f.wear_ppe',
+                'f.comments',
+            ])
             ->whereNull('f.deleted_at')
             ->orderBy('f.id', 'asc');
 

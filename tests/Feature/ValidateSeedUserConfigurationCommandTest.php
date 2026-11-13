@@ -6,6 +6,11 @@ use Tests\TestCase;
 
 class ValidateSeedUserConfigurationCommandTest extends TestCase
 {
+    public function test_default_configuration_requires_only_the_super_admin_account(): void
+    {
+        $this->assertSame(['super_admin'], array_keys(config('seed_users.accounts')));
+    }
+
     public function test_command_fails_when_required_configuration_is_missing(): void
     {
         config(['seed_users.accounts' => []]);
@@ -41,7 +46,7 @@ class ValidateSeedUserConfigurationCommandTest extends TestCase
             'name' => 'Deployment Account',
             'username' => 'deployment_'.bin2hex(random_bytes(4)),
             'email' => bin2hex(random_bytes(4)).'@example.test',
-            'password' => 'Aa9!'.bin2hex(random_bytes(8)),
+            'password' => '$Aa9!'.bin2hex(random_bytes(8)),
             'role' => 'Super Admin',
             'user_type' => '',
             'environment_variables' => [

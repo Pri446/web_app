@@ -136,7 +136,8 @@ $(document).ready(function(){
         // var selectedTaxzone = $('#taxzone').val();
         var selectedLayers = $('#ward_overlay').val();
         var selectedFormat = $('#export_format').val();
- if(checkValidation(selectedWards, selectedLayers, selectedFormat))
+
+        if(checkValidation(selectedWards, selectedLayers, selectedFormat))
         {
             var filters = [];
 
@@ -150,21 +151,23 @@ $(document).ready(function(){
             });
 
             var outputFormat = selectedFormat == 'kml' ? 'KML' : 'SHAPE-ZIP';
+            var fileExtension = selectedFormat == 'kml' ? 'kml' : 'zip';
+            var exportFilename = 'export_imis_' +
+                moment().format('YYYYMMDD_HHmmss') + '.' + fileExtension;
 
-            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&authkey={{ Config::get("constants.AUTH_KEY") }}&typeName=" + layers.join(',') + "&CQL_FILTER=INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL" +
-    "&outputFormat=" + outputFormat;
+            var cqlFilter = "INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))AND deleted_at IS NULL";
+            var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" +
+                encodeURIComponent(layers.join(',')) + "&CQL_FILTER=" + encodeURIComponent(cqlFilter) +
+                "&outputFormat=" + outputFormat;
 
-            if(outputFormat == 'SHAPE-ZIP') {
-                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.zip';
-            } else {
-                exportLink += '&format_options=filename:' + 'export_imis_' + moment().format('YYYYMMDD_HHmmss') + '.kml';
-            }
+            exportLink += '&format_options=filename:' + exportFilename;
             window.open(exportLink);
 
         }
         return false;
 
     });
+
     function checkValidation(selectedWards, selectedLayers, selectedFormat){
 
             if ( !selectedWards || selectedWards.length < 1 || !selectedLayers || selectedLayers.length < 1 || !selectedFormat) {

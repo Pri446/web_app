@@ -1177,6 +1177,59 @@ a.nav-link:hover .sidebar-icon {
 
 }
 
+/* Keep FSM chart cards aligned when their titles wrap. */
+.containment-usage-chart-row > .col-md-6,
+.fsm-dashboard .row > [class*="col-md-"] {
+    display: flex;
+}
+
+.containment-usage-chart-row .containment-usage-chart-card,
+.fsm-dashboard .dashboard-chart-card {
+    width: 100%;
+}
+
+.containment-usage-chart-row .containment-usage-chart-card .card-header,
+.fsm-dashboard .dashboard-chart-card .card-header {
+    flex: 1 0 auto;
+}
+
+.containment-usage-chart-row .containment-usage-chart-card .card-body,
+.fsm-dashboard .dashboard-chart-card .card-body {
+    flex: 0 0 auto;
+}
+
+.containment-usage-chart-row .containment-usage-chart-card.collapsed-card,
+.fsm-dashboard .dashboard-chart-card.collapsed-card {
+    align-self: flex-start;
+}
+
+.containment-usage-chart-row .containment-usage-chart-card.maximized-card .card-header,
+.fsm-dashboard .dashboard-chart-card.maximized-card .card-header {
+    flex: 0 0 auto;
+}
+
+.containment-usage-chart-card .card-header,
+.fsm-dashboard .dashboard-chart-card .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-height: 86px;
+}
+
+.containment-usage-chart-card .card-title,
+.fsm-dashboard .dashboard-chart-card .card-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.containment-usage-chart-card .card-tools,
+.fsm-dashboard .dashboard-chart-card .card-tools {
+    display: flex;
+    flex-shrink: 0;
+    float: none;
+    margin-right: 0;
+}
+
 <<<<<<< Updated upstream
 .dashboard-count .a {
       fill: #ffffff;
