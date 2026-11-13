@@ -6,12 +6,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use Tests\Concerns\UsesIsolatedAuthDatabase;
 
 class LoginSecurityHardeningTest extends TestCase
 {
+    use UsesIsolatedAuthDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->setUpIsolatedAuthDatabase();
 
         Cache::flush();
         Auth::shouldReceive('guard')->andReturnSelf()->byDefault();

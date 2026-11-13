@@ -46,6 +46,16 @@ class User extends Authenticatable
      */
     protected $fillable = ['name', 'email', 'username', 'password', 'status'];
 
+    protected static function booted()
+    {
+        // API tokens have no time limit, so revoke them when access changes
+        static::updated(function (User $user) {
+            if ($user->wasChanged('password') || ($user->wasChanged('status') && (int) $user->status !== 1)) {
+                $user->tokens()->delete();
+            }
+        });
+    }
+
     /**
      * The attributes excluded from the model's JSON form.
      *

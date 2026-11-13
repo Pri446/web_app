@@ -427,18 +427,6 @@
 
             }
         });
-    var usecatgs = JSON.parse('{!! $usecatgsJson !!}');
-       // code that checks house image greater than 5MB from frontend
-    $('#house_image').on('change', function() {
-        validateFileSize(document.querySelector('#house_image'),'fileSizeHintImg','5');
-    });
-
-     // code that checks geom greater than 1MB from frontend
-     $('#geom').on('change', function() {
-        validateFileSize(document.querySelector('#geom'),'fileSizeHintKML','1');
-    });
-
-
     var usecatgs = {{ Illuminate\Support\Js::from(json_decode($usecatgsJson)) }};
     // use category handled on initial load
     var html = '<option value="">' + _('Use Category of Building') + '</option>';

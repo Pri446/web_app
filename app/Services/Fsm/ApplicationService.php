@@ -1048,25 +1048,21 @@ class ApplicationService
             'building_info.buildings.house_number AS house_address',
         ];
 
-        if (Auth::user()->hasRole('Service Provider - Admin') || Auth::user()->hasRole('Service Provider - Help Desk')) {
-            return Application::select($columns)
-                ->setEagerLoads([])
-                ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')
-                ->whereNull('applications.deleted_at')
-                ->where('applications.service_provider_id', Auth::user()->service_provider_id);
-        } else if (Auth::user()->hasRole('Treatment Plant - Admin')) {
-            return Application::select($columns)
-                ->setEagerLoads([])
-                ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')->whereHas("emptying", function ($q) use ($request) {
-                    $q->where("treatment_plant_id", "=", Auth::user()->treatment_plant_id)
-                        ->whereIn('emptying_status', [1, 2])
-                        ->whereNull('deleted_at');
-                });
-        } else {
-            return Application::select($columns)
-                ->setEagerLoads([])
-                ->leftJoin('building_info.buildings', 'building_info.buildings.bin', '=', 'applications.bin')
-                ->whereNull('applications.deleted_at');
+        $query = Application::select($columns)
+            ->setEagerLoads([])
+            ->leftJoin(
+                'building_info.buildings',
+                'building_info.buildings.bin',
+                '=',
+                'applications.bin'
+            )
+            ->whereNull('applications.deleted_at');
+
+        if (Auth::user()->hasRole('Service Provider - Help Desk')) {
+            return $query->where(
+                'applications.service_provider_id',
+                Auth::user()->service_provider_id ?? -1
+            );
         }
 
         return OperationalDataAccessService::scopeApplicationQuery($query);
@@ -1805,8 +1801,7 @@ class ApplicationService
             ]);
         }
 
-        // Apply additional conditions based on user roles and request parameters
-        if (Auth::user()->hasRole('Service Provider - Admin') || Auth::user()->hasRole('Service Provider - Help Desk')) {
+        if (Auth::user()->hasRole('Service Provider - Help Desk')) {
             $query->where('a.service_provider_id', Auth::user()->service_provider_id);
         } else {
             OperationalDataAccessService::scopeQuery(

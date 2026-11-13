@@ -61,6 +61,12 @@ class UsersTableSeederTest extends TestCase
             $table->unsignedInteger('model_id');
         });
 
+        Schema::create('personal_access_tokens', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('tokenable_type');
+            $table->unsignedInteger('tokenable_id');
+        });
+
         $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 

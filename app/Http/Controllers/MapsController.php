@@ -1363,7 +1363,7 @@ class MapsController extends Controller
      * @param Request $request The request containing an array of WKT geometries.
      * @return \Illuminate\Http\JsonResponse JSON response indicating intersection results for each geometry.
      */
-       public function checkGeometry(Request $request)
+     public function checkGeometry(Request $request)
      {
          $geometries = $request->input('geometries', []);
          $results = [];
@@ -1409,6 +1409,7 @@ class MapsController extends Controller
          return response()->json(['success' => true, 'details' => $results]);
      }
 
+
         /**
          * Processes an array of geometries from the request and filters only valid polygons (ST_POLYGON).
          * If valid polygons exist, it forwards them to another method for further processing.
@@ -1417,7 +1418,7 @@ class MapsController extends Controller
          * @return \Illuminate\Http\JsonResponse|\Illuminate\Http\Response Returns the result of building lookup
          *         if valid polygons exist; otherwise, returns an error response indicating no valid polygons found.
          */
-           public function getKmlSummaryInfo(Request $request)
+        public function getKmlSummaryInfo(Request $request)
         {
              // Get all the geometries sent in the request.
              $geometries = $request->input('geometries', []);

@@ -119,7 +119,7 @@
         {!! Form::label('ward', __('Ward').' <span class="text-danger">*</span>', ['class' => 'col-sm-3 control-label'], false) !!}
         <div class="col-sm-3">
             @php
-                $wards = range(1, 16);
+                $wards = range(1, 8);
                 $wards = array_combine($wards, $wards);
             @endphp
             {!! Form::select('ward', $wards, null, ['class' => 'form-control', 'placeholder' => 'Ward', 'required']) !!}
@@ -152,16 +152,31 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js"></script>
     
     <script>
-        window.mapConfig = window.mapConfig || {
-            centerLng: 85.37004580498977,
-            centerLat: 27.643296216592432,
-            minZoom: 12,
-            maxZoom: 18
-        };
-
         var workspace = '<?php echo Config::get("constants.GEOSERVER_WORKSPACE"); ?>';
         var gurl_wms = "{{ route('gis.wms') }}";
         var gurl_wfs = "{{ route('gis.wfs') }}";
+        var placesMapBounds = @json($mapBounds ?? null);
+
+        function createPlacesMapView() {
+            var options = {
+                minZoom: 13,
+                maxZoom: 21
+            };
+
+            if (Array.isArray(placesMapBounds) && placesMapBounds.length === 4) {
+                var municipalityExtent = ol.proj.transformExtent(
+                    placesMapBounds,
+                    'EPSG:4326',
+                    'EPSG:3857'
+                );
+
+                options.extent = municipalityExtent;
+                options.center = ol.extent.getCenter(municipalityExtent);
+                options.zoom = 14;
+            }
+
+            return new ol.View(options);
+        }
         // URL of GeoServer Legends
         var gurl_legend =
                 gurl_wms +
@@ -217,7 +232,8 @@
                 params: {
                     'LAYERS': workspace + ':' + 'wards_layer',
                     'TILED': true,
-                    'STYLES': 'wards_layer_none'
+                    'STYLES': 'wards_layer_none',
+                    'CQL_FILTER': 'ward >= 1 AND ward <= 8'
                 },
                 serverType: 'geoserver',
                 transition: 0,
@@ -253,13 +269,14 @@
         });
         
         var placesLayer = new ol.layer.Image({
-            visible: false,
+            visible: true,
             title: "Places",
             source: new ol.source.ImageWMS({
                 url: gurl_wms,
                 params: {
                     'LAYERS': workspace + ':' + 'places_layer',
                     'TILED': true,
+                    'CQL_FILTER': 'deleted_at is NULL',
                 },
                 serverType: 'geoserver',
                 transition: 0,
@@ -296,12 +313,7 @@
                     ]
                 })
             ],
-            view: typeof createMapView !== 'undefined' ? createMapView() : new ol.View({
-                center: ol.proj.transform([85.37004580498977,27.643296216592432], 'EPSG:4326', 'EPSG:3857'),
-                zoom: 13,
-                minZoom: 12,
-                maxZoom: 18
-            })
+            view: createPlacesMapView()
         });
         
         map.addControl(layerSwitcher);
@@ -355,9 +367,7 @@
             return bestKey;
         }
 
-        // Fetch every ward polygon from GeoServer ONE time (no CQL_FILTER, so
-        // there's no attribute name to get wrong) and cache it. Subsequent
-        // calls reuse the cache instantly.
+        // Fetch the eight municipality ward polygons once and cache them.
         function loadAllWardFeatures(onReady) {
             if (allWardFeatures) {
                 onReady();
@@ -371,7 +381,8 @@
                 + '&request=GetFeature'
                 + '&typeName=' + encodeURIComponent('wards_layer')
                 + '&outputFormat=application/json'
-                + '&srsName=EPSG:4326';
+                + '&srsName=EPSG:4326'
+                + '&CQL_FILTER=' + encodeURIComponent('ward >= 1 AND ward <= 8');
 
             $.ajax({
                 url: wfsUrl,
@@ -603,22 +614,6 @@
             eLayer.selected_pointcoordinate.layer.getSource().addFeature(feature);
             map.getView().setCenter(ol.proj.transform([parseFloat(long), parseFloat(lat)], 'EPSG:4326', 'EPSG:3857'));
         }
-        
-        function setInitialZoom() {
-            if (typeof window.mapConfig !== 'undefined' && window.mapConfig.centerLng && window.mapConfig.centerLat) {
-                map.getView().setCenter(ol.proj.transform(
-                    [window.mapConfig.centerLng, window.mapConfig.centerLat], 
-                    'EPSG:4326', 
-                    'EPSG:3857'
-                ));
-                map.getView().setZoom(window.mapConfig.minZoom || 13);
-            } else {
-                map.getView().setCenter(ol.proj.transform([85.37004580498977, 27.643296216592432], 'EPSG:4326', 'EPSG:3857'));
-                map.getView().setZoom(13);
-            }
-        }
-        
-        setInitialZoom();
         
         $(document).ready(function(){
             $('#type').select2({

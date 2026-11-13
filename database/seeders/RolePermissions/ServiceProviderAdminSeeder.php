@@ -24,11 +24,12 @@ class ServiceProviderAdminSeeder extends Seeder
             switch ($createdRole->name){
                 case 'Service Provider - Admin':
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group',['Sludge Collections', 'Feedbacks', 'Building Structures',  'Low Income Communities', 'KPI Target' ])
-                    ->whereIn('type',['View','List','View on map']));
+                    ->whereIn('type',['View','List','View on map','Edit']));
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group',['Containments'])
                      ->whereIn('type',['View','List','View on map', 'Export', 'Service History']));
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group',['Applications','Emptyings'])
                     ->whereIn('type',['View','List','Export']));
+                    $createdRole->givePermissionTo(Permission::all()->whereIn('group',['Schedule Desludging','Schedule Reintegration']));
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group',['KPI Dashboard']));
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group',['Help Desks','Desludging Vehicles','Employee Infos'])->whereNotIn('type',['History']));
                      $createdRole->givePermissionTo(Permission::all()->whereIn('group',['Treatment Plants'])->whereIn('type',['View','List','View on map','Export']));

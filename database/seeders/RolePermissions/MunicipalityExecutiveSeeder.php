@@ -33,7 +33,8 @@ class MunicipalityExecutiveSeeder extends Seeder
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Low Income Communities'])->whereIn('type', ['List', "View", 'Export', 'View on map']));
 
                     //For FSM Module
-                    $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Containments', 'Service Providers', 'Employee Infos', 'Desludging Vehicles', 'Treatment Plants', 'Treatment Plant Efficiency Tests', 'Applications', 'Emptyings', 'Sludge Collections', 'Feedbacks', 'Help Desks', 'Treatment Plant Efficiency Standards'])->whereNotIn('type', ['Add', 'Edit', 'Delete', 'Import','History']));
+                    $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Containments', 'Service Providers', 'Employee Infos', 'Desludging Vehicles', 'Treatment Plants', 'Treatment Plant Efficiency Tests', 
+                    'Applications', 'Emptyings', 'Sludge Collections', 'Feedbacks', 'Help Desks', 'Treatment Plant Efficiency Standards'])->whereNotIn('type', ['Add', 'Edit', 'Delete', 'Import','History','Export']));
 
                     //For Sewer Connection Module
                     $createdRole->givePermissionTo(Permission::all()->whereIn('group', ['Sewer Connection',])->whereIn('type', ['List', 'Approve', 'View on map', 'Delete']));

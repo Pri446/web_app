@@ -8,12 +8,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
+use Tests\Concerns\UsesIsolatedAuthDatabase;
 
 class LoginRateLimitingTest extends TestCase
 {
+    use UsesIsolatedAuthDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->setUpIsolatedAuthDatabase();
 
         Cache::flush();
         config([

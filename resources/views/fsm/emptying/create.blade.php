@@ -167,7 +167,7 @@ var extentMaxLat = 27.78;
     )
     + '&CQL_FILTER=' + encodeURIComponent(
         'INTERSECTS(geom,POINT(' + lng + ' ' + lat + '))'
-    ) + '&authkey=' + encodeURIComponent(authkey);
+    );
 
     $.getJSON(wfsUrl, function (data) {
         if (data.features && data.features.length > 0) {

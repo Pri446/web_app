@@ -33,4 +33,7 @@ return [
         'containments' => ['layer' => 'containments_layer', 'style' => 'containments_layer_none'],
         'sewers' => ['layer' => 'sewerlines_layer', 'style' => 'sewer_none'],
     ],
+    // Seconds a rendered mobile map tile is reused before GeoServer draws it again.
+    // Edits to map data show up on mobile after at most this long. 0 turns it off.
+    'mobile_wms_cache_seconds' => (int) env('GIS_MOBILE_WMS_CACHE_SECONDS', 600),
 ];

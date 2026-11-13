@@ -223,12 +223,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                         <p>{{__('Treatment Plants')}}</p>
                                     </a>
                                 </li>
-                                    <li class="nav-item">
-                                        <a href="{{ action('Fsm\TreatmentplantPerformanceTestController@index') }}" class="nav-link {{ request()->is('fsm/treatment-plant-performance-test/*','fsm/treatment-plant-performance-test') ? 'active' : '' }}">
-                                        <i class="nav-icon fa-solid fa-gear "style="font-size: 14px;"></i>
-                                            <p>{{__('Performance')}}<br>{{__('Efficiency Standards')}}</p>
-                                        </a>
-                                    </li>
+                                  
                                 @endcan
                                 {{-- @can('List Treatment Plant Efficiency Tests')
                                         <li class="nav-item">
@@ -241,6 +236,12 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         @endcan --}}
 
                         @can('List Treatment Plant Efficiency Tests')
+                          <li class="nav-item">
+                                        <a href="{{ action('Fsm\TreatmentplantPerformanceTestController@index') }}" class="nav-link {{ request()->is('fsm/treatment-plant-performance-test/*','fsm/treatment-plant-performance-test') ? 'active' : '' }}">
+                                        <i class="nav-icon fa-solid fa-gear "style="font-size: 14px;"></i>
+                                            <p>{{__('Performance')}}<br>{{__('Efficiency Standards')}}</p>
+                                        </a>
+                                    </li>
                         <li class="nav-item">
                             <a href="{{ action('Fsm\TreatmentPlantTestController@index') }}" class="nav-link {{ request()->is('fsm/treatment-plant-test','fsm/treatment-plant-test/*') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>

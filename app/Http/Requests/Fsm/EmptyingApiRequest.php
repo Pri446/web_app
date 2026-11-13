@@ -3,7 +3,9 @@
 // Developed By: Innovative Solution Pvt. Ltd. (ISPL)
 namespace App\Http\Requests\Fsm;
 
+use App\Enums\EmptyingReason;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class EmptyingApiRequest extends FormRequest
 {
@@ -39,7 +41,7 @@ class EmptyingApiRequest extends FormRequest
             'total_cost' => 'required|numeric|gt:0',
             'house_image' => 'mimes:jpeg,jpg',
             'receipt_image' => 'required|mimes:jpeg,jpg',
-            'emptying_reason' => 'required',
+            'emptying_reason' => ['required', Rule::in(EmptyingReason::values())],
             'service_receiver_contact' => 'required|integer',
             'service_receiver_gender' => 'required',
             'service_receiver_name' => 'required',
@@ -78,6 +80,7 @@ class EmptyingApiRequest extends FormRequest
             'receipt_image.file' => __('The receipt image must be an image file.'),
             'receipt_image.mimetypes' => __('The receipt image type is not supported.'),
             'emptying_reason.required' => __('The reason for emptying is required.'),
+            'emptying_reason.in' => __('The selected reason for emptying is invalid.'),
             'service_receiver_contact.required' => __('The service receiver contact Number is required.'),
             'service_receiver_gender.required' => __('The service receiver gender is required.'),
             'service_receiver_name.required' => __('The service receiver name is required.'),

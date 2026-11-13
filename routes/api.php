@@ -60,9 +60,16 @@ Route::post('/login', [AuthController::class, 'login'])
 Route::group([
     'name' => 'protected-api-routes',
     'middleware' => 'auth:sanctum'
-],function (){
-    Route::get('gis/wms', [\App\Http\Controllers\GISProxyController::class, 'wms'])
-        ->name('mobile.gis.wms');
+], function (){
+    Route::prefix('gis')->group(function () {
+        // A map screen loads many tiles at once, so tiles have their own limit
+        // and do not use up the shared API limit.
+        Route::get('/wms', [GISProxyController::class, 'mobileWms'])
+            ->withoutMiddleware('throttle:api')
+            ->middleware('throttle:gis-tiles')
+            ->name('mobile.gis.wms');
+    });
+
     /*
     |
     | Logout---------------------------------------------------------------
@@ -164,7 +171,7 @@ Route::group([
         Route::post('/buildings/save', [BuildingApiController::class, 'storeBuildingDataMobile']);
         Route::get('/map/building-by-point', [BuildingSurveyController::class, 'locateBuildingByPoint']);
     });
-   // Write endpoints â€” force JSON on validation/auth/throttle failures
+   // Write endpoints — force JSON on validation/auth/throttle failures
     Route::middleware([
         'auth:sanctum',
         'force.json',

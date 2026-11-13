@@ -54,13 +54,14 @@ public function __construct()
     public function create()
     {
         $page_title = 'Add Places';
+        $mapBounds = $this->municipalityMapBounds();
         $types = Places::whereNotNull('type')
             ->where('type', '!=', '')
             ->distinct()
             ->orderBy('type')
             ->pluck('type')
             ->toArray();
-        return view('places.create', compact('page_title', 'types'));
+        return view('places.create', compact('page_title', 'types', 'mapBounds'));
     }
 
     public function store(Request $request)
@@ -100,6 +101,7 @@ public function __construct()
     public function edit($id)
     {
         $page_title = 'Edit Places';
+        $mapBounds = $this->municipalityMapBounds();
         $place = Places::findOrFail($id);
         $geometry = DB::selectOne(
             'SELECT ST_AsText(geom) AS geom FROM layer_info.places WHERE id = ?',
@@ -112,14 +114,14 @@ public function __construct()
             ->orderBy('type')
             ->pluck('type')
             ->toArray();
-        return view('places.edit', compact('page_title', 'types', 'place', 'geom'));
+        return view('places.edit', compact('page_title', 'types', 'place', 'geom', 'mapBounds'));
     }
 
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'ward' => 'required',
+            'ward' => 'required|integer',
             'geom' => 'required',
             'type' => 'nullable|string|max:255',
             'unique_reference_id' => [
@@ -161,6 +163,26 @@ public function __construct()
         
         return redirect()->route('places.index')
             ->with('success', 'Places deleted successfully.');
+    }
+
+    private function municipalityMapBounds(): ?array
+    {
+        $bounds = DB::selectOne(
+            'SELECT ST_XMin(extent) AS min_lng, ST_YMin(extent) AS min_lat, '
+            . 'ST_XMax(extent) AS max_lng, ST_YMax(extent) AS max_lat '
+            . 'FROM (SELECT ST_Extent(geom) AS extent FROM layer_info.citypolys) AS municipality_extent'
+        );
+
+        if (!$bounds || $bounds->min_lng === null) {
+            return null;
+        }
+
+        return [
+            (float) $bounds->min_lng,
+            (float) $bounds->min_lat,
+            (float) $bounds->max_lng,
+            (float) $bounds->max_lat,
+        ];
     }
 
     public function getData(Request $request)

@@ -513,6 +513,7 @@ The proxy forwards approved map requests to GeoServer while keeping the GeoServe
 -   `GET /api/gis/wms`: Protected mobile WMS route using `auth:sanctum`.
 -   Validates the requested layer against `config/gis.php`, validates the configured workspace, and checks the user's layer permission.
 -   Rejects unapproved layers, workspaces, services, and operations.
+-   The map-index KML Viewer uses the authenticated `/gis/wms` and `/gis/wfs` proxy URLs; GeoServer URLs and authentication keys are not exposed in browser-side JavaScript.
 
 ### GISExportController
 

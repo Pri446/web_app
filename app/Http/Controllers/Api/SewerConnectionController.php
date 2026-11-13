@@ -124,7 +124,7 @@ class SewerConnectionController extends Controller
             $wms = WmsLink::all()->where('name', '=', $layer)->pluck('link', 'name');
             return response()->json([
                 'success' => true,
-                'baseUrl' => rtrim(config('constants.GEOSERVER_URL'), '/') . '/',
+                'baseUrl' => url('api/gis') . '/',
                 'data' => $wms,
                 'bbox'    => config('constants.GEOSERVER_BBOX'),
                 'width'   => config('constants.GEOSERVER_WIDTH'),

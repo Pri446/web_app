@@ -1,4 +1,5 @@
-<div class="card card-outline card-info">
+@php($chart_height = $chart_height ?? (!empty($fsm_chart_cards) ? 400 : null))
+<div class="card card-outline card-info dashboard-chart-card {{ $chart_card_class ?? '' }}">
     <div class="card-header">
         <h3 class="card-title">{{ $card_title }}</h3>
         <div class="card-tools">
@@ -24,7 +25,13 @@
     </div>
     <!-- /.card-header -->
     <div class="card-body collapse show">
-        <canvas id="{{ $canvas_id }}" style="height:250px"></canvas>
+        @isset($chart_height)
+            <div style="position: relative; height: {{ $chart_height }}px;">
+                <canvas id="{{ $canvas_id }}"></canvas>
+            </div>
+        @else
+            <canvas id="{{ $canvas_id }}" style="height:250px"></canvas>
+        @endisset
     </div>
     <!-- /.card-body -->
 </div>

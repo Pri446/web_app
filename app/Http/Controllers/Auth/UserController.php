@@ -143,8 +143,8 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        $userDetail = User::findorfail($id);
-        $this->authorizeUserRecord($userDetail);
+        $userDetail = User::findOrFail($id);
+        UserRecordAccessService::authorizeView($userDetail);
 
         $user = $this->userService->getUserRelatedData($id);
 

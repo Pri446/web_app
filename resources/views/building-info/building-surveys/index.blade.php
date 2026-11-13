@@ -108,7 +108,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="myModalLabel">KML Viewer</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
 <span aria-hidden="true">x</span></button>
 
             </div>
@@ -125,6 +125,7 @@
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
 <script src="https://openlayers.org/en/v4.6.5/build/ol.js"></script>
+<script src="{{ asset('js/kml-preview.js') }}?v={{ filemtime(public_path('js/kml-preview.js')) }}"></script>
 <script src="https://unpkg.com/ol-layerswitcher@3.8.3"></script>
 <link rel="stylesheet" href="https://openlayers.org/en/v4.6.5/css/ol.css" type="text/css">
 <link rel="stylesheet" href="https://unpkg.com/ol-layerswitcher@3.8.3/dist/ol-layerswitcher.css" />
@@ -284,11 +285,8 @@
     kmlLayer.set('name', 'kml-layer');
     map.addLayer(kmlLayer);
 
-    // Fit the map view to the KML's extent once it loads
-    kmlLayer.once('change', function () {
-        var extent = kmlSource.getExtent();
-        map.getView().fit(extent, { size: map.getSize() });
-    });
+    // Fit only after the source contains a loaded footprint.
+    fitKmlPreview(map, kmlLayer);
 
     // Ensure the map container resizes correctly
     map.updateSize();
@@ -422,8 +420,7 @@ var map = new ol.Map({
         center: ol.proj.transform([85.37004580498977, 27.643296216592432], 'EPSG:4326', 'EPSG:3857'),
         // zoom: 12,
         minZoom: 12.5,
-        maxZoom: 25,
-        extent: ol.proj.transformExtent([85.32348539192756, 27.58711426558866, 85.44082675863419, 27.684646263435823], 'EPSG:4326', 'EPSG:3857')
+        maxZoom: 22
     })
 });
 
