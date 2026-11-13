@@ -1340,12 +1340,15 @@ class BuildingStructureService
      public function fetchCTPTHouseNumber()
      {
 
-        $query = Building::select('building_info.buildings.bin', 'building_info.buildings.house_number')
+        $query = Building::query()->setEagerLoads([])
+        ->select('building_info.buildings.bin', 'building_info.buildings.house_number')
         ->join('building_info.use_categorys', 'building_info.buildings.use_category_id', '=', 'building_info.use_categorys.id')
-        ->leftJoin('fsm.toilets', 'building_info.buildings.bin', '=', 'fsm.toilets.bin')
         ->where('building_info.use_categorys.name', 'ILIKE', request('toilet_type'))
-        ->whereNull('fsm.toilets.id')
-        ->whereNull('fsm.toilets.deleted_at')
+        ->whereNotExists(function ($query) {
+            $query->selectRaw('1')->from('fsm.toilets')
+                ->whereColumn('fsm.toilets.bin', 'building_info.buildings.bin')
+                ->whereNull('fsm.toilets.deleted_at');
+        })
         ->whereNull('building_info.buildings.deleted_at');
 
 
@@ -1357,7 +1360,6 @@ class BuildingStructureService
                  ->orWhere('building_info.buildings.house_number', 'ilike', '%' . request()->search . '%');
          });
      }
-     $buildings = $query->get();
      $total = $query->count();
 
      $limit = 10;
@@ -1374,7 +1376,7 @@ class BuildingStructureService
      } else {
          $more = false;
      }
-     $house_numbers = $query->offset($start_from)
+     $house_numbers = $query->orderBy('building_info.buildings.bin')->offset($start_from)
          ->limit($limit)
          ->get();
      $json = [];

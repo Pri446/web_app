@@ -182,7 +182,7 @@ class SewerLineController extends Controller
     }
 
     public function getSewerNames(){
-        $query = SewerLine::all()->toQuery();
+        $query = SewerLine::query()->without('TreatmentPlant')->select('code')->orderBy('code');
         if (request()->search){
             $query->where('code','ilike','%'.request()->search.'%');
         }

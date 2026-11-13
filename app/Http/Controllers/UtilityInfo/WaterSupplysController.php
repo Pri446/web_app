@@ -174,7 +174,7 @@ class WaterSupplysController extends Controller
     }
 
     public function getWaterSupplyCode(){
-        $query = WaterSupplys::all()->toQuery();
+        $query = WaterSupplys::query()->select('code')->orderBy('code');
         if (request()->search){
             $query->where('code', 'ilike', '%'.request()->search.'%');
         }

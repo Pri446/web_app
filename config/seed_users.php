@@ -26,17 +26,5 @@ return [
     'password_min_length' => 8,
     'accounts' => [
         'super_admin' => $account('SEED_SUPER_ADMIN', 'Super Admin', ''),
-        'municipality_super_admin' => $account('SEED_MUNICIPALITY_SUPER_ADMIN', 'Municipality - Super Admin', 'Municipality'),
-        'municipality_executive' => $account('SEED_MUNICIPALITY_EXECUTIVE', 'Municipality - Executive', 'Municipality'),
-        'municipality_it_admin' => $account('SEED_MUNICIPALITY_IT_ADMIN', 'Municipality - IT Admin', 'Municipality'),
-        'municipality_building_permit' => $account('SEED_MUNICIPALITY_BUILDING_PERMIT', 'Municipality - Building Permit Department', 'Municipality'),
-        'municipality_building_surveyor' => $account('SEED_MUNICIPALITY_BUILDING_SURVEYOR', 'Municipality - Building Surveyor', 'Municipality'),
-        'municipality_infrastructure' => $account('SEED_MUNICIPALITY_INFRASTRUCTURE', 'Municipality - Infrastructure Department', 'Municipality'),
-        'municipality_tax' => $account('SEED_MUNICIPALITY_TAX', 'Municipality - Tax Department', 'Municipality'),
-        'municipality_water_billing' => $account('SEED_MUNICIPALITY_WATER_BILLING', 'Municipality - Water Billing Unit', 'Municipality'),
-        'municipality_sanitation' => $account('SEED_MUNICIPALITY_SANITATION', 'Municipality - Sanitation Department', 'Municipality'),
-        'municipality_public_health' => $account('SEED_MUNICIPALITY_PUBLIC_HEALTH', 'Municipality - Public Health Department', 'Municipality'),
-        'municipality_solid_waste' => $account('SEED_MUNICIPALITY_SOLID_WASTE', 'Municipality - Solid Waste Management Department', 'Municipality'),
-        'guest' => $account('SEED_GUEST', 'Guest', 'Guest'),
     ],
 ];
