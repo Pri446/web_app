@@ -107,19 +107,17 @@ class SewerLineService {
     {
         if(empty($code)){
 
-            $sewerLineTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM sewerlines_temp");
-            $geom = ($sewerLineTemp[0]->geom);
             $maxcode = SewerLine::withTrashed()->max('code');
             $maxcode = str_replace('S', '', $maxcode);
             $sewerLine = new SewerLine();
-            $sewerLine->code = 'S' . sprintf('%04d', $maxcode + 1);
+            $sewerLine->code = 'S' . sprintf('%06d', $maxcode + 1);
             $sewerLine->user_id = Auth::id();
             $sewerLine->road_code = $data['road_code'] ? $data['road_code'] : null;
             $sewerLine->length = $data['length'] ? $data['length'] : null;
             $sewerLine->location = $data['location'] ? $data['location'] : null;
             $sewerLine->diameter = $data['diameter'] ? $data['diameter'] : null;
             $sewerLine->treatment_plant_id = $data['treatment_plant_id'] ? $data['treatment_plant_id'] : null;
-            $sewerLine->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $geom . "', 4326))") : null;
+            $sewerLine->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $data['geom'] . "', 4326))") : null;
             $sewerLine->save();
         }
         else{

@@ -101,8 +101,6 @@ class RoadlineService {
     public function storeOrUpdate($code = null,$data)
     {
         if(empty($code)){
-            /*$roadlineTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM roadline_temp");
-            $geom = ($roadlineTemp[0]->geom);*/
 
             $maxcode = Roadline::withTrashed()->max('code');
             $maxcode = str_replace('R', '', $maxcode);

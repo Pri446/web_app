@@ -103,13 +103,11 @@ class DrainService {
     public function storeOrUpdate($code = null,$data)
     {
         if(empty($code)){
-            $drainTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM drain_temp");
-            $geom = ($drainTemp[0]->geom);
-
+           
             $maxcode = Drain::withTrashed()->max('code');
             $maxcode = str_replace('D', '', $maxcode);
             $drain = new Drain();
-            $drain->code = 'D' . sprintf('%04d', $maxcode + 1);
+            $drain->code = 'D' . sprintf('%06d', $maxcode + 1);
             $drain->user_id = Auth::id();
             $drain->road_code = $data['road_code'] ? $data['road_code'] : null;
             $drain->surface_type = $data['surface_type'] ? $data['surface_type'] : null;
@@ -117,7 +115,7 @@ class DrainService {
             $drain->treatment_plant_id = $data['treatment_plant_id'] ? $data['treatment_plant_id'] : null;
             $drain->size = $data['size'] ? $data['size'] : null;
             $drain->length = $data['length'] ? $data['length'] : null;
-            $drain->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $geom . "', 4326))") : null;
+            $drain->geom = $data['geom'] ? DB::raw("ST_Multi(ST_GeomFromText('" . $data['geom'] . "', 4326))") : null;
             $drain->save();
         }
         else{

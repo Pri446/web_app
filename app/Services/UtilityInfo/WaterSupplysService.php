@@ -101,11 +101,8 @@ class WaterSupplysService
 
         if (empty($code)) {
 
-            // $waterSupplysTemp = DB::select("SELECT ST_AsText(geom) AS geom FROM watersupplys_temp");
-            // $geom = ($waterSupplysTemp[0]->geom);
             $maxcode = WaterSupplys::withTrashed()->max('code');
             $maxcode = str_replace('WS', '', $maxcode);
-            // $maxcode = (int)$maxcode; 
             $waterSupplys = new WaterSupplys();
             $waterSupplys->user_id = Auth::id();
             $waterSupplys->code = 'WS' . sprintf('%06d', $maxcode + 1);
