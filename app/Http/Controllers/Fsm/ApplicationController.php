@@ -61,6 +61,7 @@ class ApplicationController extends Controller
             'show',
             'edit',
             'export',
+            'history',
         ]);
     }
 
@@ -473,7 +474,34 @@ class ApplicationController extends Controller
      */
     public function history($id)
     {
-        return $this->applicationService->getApplicationHistory($id);
+        $piiRevealed = $this->applicationPiiAccess->isUnlocked(
+            Auth::user(),
+            'view',
+            (string) $id
+        );
+
+        if ($piiRevealed) {
+            $this->piiAudit->record(
+                'application_customer_pii_history_viewed',
+                true,
+                Auth::user(),
+                null,
+                [
+                    'surface' => 'application_history',
+                    'application_id' => (string) $id,
+                ],
+                $this->applicationPiiAccess->authenticationMethod(
+                    Auth::user(),
+                    'view',
+                    (string) $id
+                )
+            );
+        }
+
+        return $this->applicationService->getApplicationHistory(
+            $id,
+            $piiRevealed
+        );
     }
 
     public function resolveAnf(Request $request, $id)

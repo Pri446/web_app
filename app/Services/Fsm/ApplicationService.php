@@ -42,6 +42,7 @@ use App\Enums\FeedbackStatus;
 use App\Models\Fsm\Emptying;
 use App\Services\ApplicationCustomerPiiPresenter;
 use App\Services\OwnerPiiPresenter;
+use App\Services\PiiHistoryPresenter;
 
 
 class ApplicationService
@@ -1701,7 +1702,7 @@ class ApplicationService
      * @param $id
      * @return \Illuminate\Contracts\Foundation\Application|RedirectResponse|Redirector
      */
-    public function getApplicationHistory($id)
+    public function getApplicationHistory($id, bool $piiRevealed = false)
     {
         try {
             $application = Application::findOrFail($id);
@@ -1717,7 +1718,14 @@ class ApplicationService
         } catch (\Throwable $e) {
             return redirect(route('application.index'))->with('error', __('Failed to generate history.'));
         }
-        return view('fsm.applications.history', compact('application', 'revisions'));
+        $piiHistoryFields = PiiHistoryPresenter::APPLICATION_CUSTOMER_FIELDS;
+
+        return view('fsm.applications.history', compact(
+            'application',
+            'revisions',
+            'piiRevealed',
+            'piiHistoryFields'
+        ));
     }
 
     /**
