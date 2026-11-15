@@ -661,9 +661,14 @@
                     .prop('disabled', true)
                     .text("{{ __('Exporting...') }}");
 
+                // Capture the password for this request only, then remove it
+                // from the input so it is not retained in the open modal/DOM.
+                var requestBody = new FormData(form[0]);
+                $('#export_password').val('');
+
                 fetch(form.attr('action'), {
                     method: 'POST',
-                    body: new FormData(form[0]),
+                    body: requestBody,
                     credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json, text/csv',

@@ -396,9 +396,14 @@ $(function() {
         form.data('submitting', true);
         $('#property-tax-pii-export-submit').prop('disabled', true).text("{{ __('Exporting...') }}");
 
+        // Capture the password for this request only, then remove it from the
+        // page while the export is being generated.
+        var requestBody = new FormData(form[0]);
+        $('#property_tax_export_password').val('');
+
         fetch(form.attr('action'), {
             method: 'POST',
-            body: new FormData(form[0]),
+            body: requestBody,
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json, text/csv', 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function(response) {

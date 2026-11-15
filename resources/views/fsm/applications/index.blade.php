@@ -560,9 +560,14 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         .prop('disabled', true)
                         .text("{{ __('Exporting...') }}");
 
+                    // Capture the password for this request only, then remove
+                    // it from the page while the export is being generated.
+                    var requestBody = new FormData(form[0]);
+                    $('#application_export_password').val('');
+
                     fetch(form.attr('action'), {
                         method: 'POST',
-                        body: new FormData(form[0]),
+                        body: requestBody,
                         credentials: 'same-origin',
                         headers: {
                             'Accept': 'application/json, text/csv',

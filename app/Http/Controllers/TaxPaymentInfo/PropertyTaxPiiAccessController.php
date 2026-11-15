@@ -33,8 +33,15 @@ class PropertyTaxPiiAccessController extends Controller
             'current_password' => ['required', 'string', 'max:255'],
         ]);
 
-        if (empty($user->password)
-            || !Hash::check((string) $request->input('current_password'), (string) $user->password)) {
+        $password = (string) $request->input('current_password', '');
+        $passwordIsValid = $password !== ''
+            && !empty($user->password)
+            && Hash::check($password, (string) $user->password);
+
+        $request->request->remove('current_password');
+        unset($password);
+
+        if (!$passwordIsValid) {
             $this->access->lock();
             $this->audit->record(
                 'property_tax_pii_password_failed',

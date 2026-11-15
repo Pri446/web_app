@@ -31,10 +31,14 @@ class ApplicationPiiAccessController extends Controller
         abort_unless($allowed, 403);
         $password = (string) $request->input('current_password', '');
         $passwordHash = (string) ($user->password ?? '');
+        $passwordIsValid = $password !== ''
+            && $passwordHash !== ''
+            && Hash::check($password, $passwordHash);
 
-        if ($password === ''
-            || $passwordHash === ''
-            || !Hash::check($password, $passwordHash)) {
+        $request->request->remove('current_password');
+        unset($password, $passwordHash);
+
+        if (!$passwordIsValid) {
             $this->access->lock();
             $this->audit->record(
                 'application_pii_password_failed',

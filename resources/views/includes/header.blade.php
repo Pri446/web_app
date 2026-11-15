@@ -281,9 +281,15 @@ $mapPiiSecondsRemaining = $mapPiiUnlocked ? max(
                 form.data('submitting', true);
                 submitButton.prop('disabled', true).text("{{ __('Preparing...') }}");
 
+                // FormData keeps the value required by this one request. Clear
+                // the visible input immediately so the password is not left in
+                // the page DOM while the key backup is being generated.
+                var requestBody = new FormData(form[0]);
+                $('#pii_key_backup_password').val('');
+
                 fetch(form.attr('action'), {
                     method: 'POST',
-                    body: new FormData(form[0]),
+                    body: requestBody,
                     credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json, application/octet-stream',

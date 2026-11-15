@@ -84,11 +84,15 @@ class PropertyTaxPiiExportController extends Controller
             ]);
         }
 
-        if (empty($user->password)
-            || !Hash::check(
-                (string) $request->input('property_tax_export_password'),
-                (string) $user->password
-            )) {
+        $password = (string) $request->input('property_tax_export_password', '');
+        $passwordIsValid = $password !== ''
+            && !empty($user->password)
+            && Hash::check($password, (string) $user->password);
+
+        $request->request->remove('property_tax_export_password');
+        unset($password);
+
+        if (!$passwordIsValid) {
             $this->access->lock();
             $this->audit->record(
                 'property_tax_pii_export_password_failed',
