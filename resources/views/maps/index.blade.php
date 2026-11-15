@@ -667,9 +667,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             <div class="input-group-prepend">
                                         <span class="input-group-text" >{{ __('Export') }}</span>
                                 </div>
-            <div class="input-group-append">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ __('Select a format') }}</button>
-                <div class="dropdown-menu">
+            <div class="input-group-append btn-group">
+                <button id="export-format-toggle" class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ __('Select a format') }}</button>
+                <div class="dropdown-menu" aria-labelledby="export-format-toggle">
                 <a class="dropdown-item" id="export-csv-btn" href="#">CSV</a>
                 <a class="dropdown-item"  id="export-kml-btn" href="#">KML</a>
                 <a class="dropdown-item" id="export-shape-btn"  href="#">Shape File</a>
@@ -6844,6 +6844,27 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             var exportPopupContent = document.getElementById('export-popup-content');
             var exportPopupCloser = document.getElementById('export-popup-closer');
             var exportPopupOverlay = createMapPopupOverlay(exportPopupContainer, exportPopupCloser);
+
+            // Keep the Export Data Set format menu usable even when the bundled
+            // dropdown plugin is not initialized on the map overlay.
+            $('#export-format-toggle').on('click.exportFormat', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                var menu = $(this).siblings('.dropdown-menu');
+                var isOpen = menu.hasClass('show');
+
+                $('#export-popup .dropdown-menu.show').not(menu).removeClass('show').css('display', '');
+                menu.toggleClass('show', !isOpen).css('display', isOpen ? '' : 'block');
+                $(this).attr('aria-expanded', !isOpen);
+            });
+
+            $(document).on('click.exportFormat', function (e) {
+                if (!$(e.target).closest('#export-popup .btn-group').length) {
+                    $('#export-format-toggle').attr('aria-expanded', 'false');
+                    $('#export-popup .dropdown-menu').removeClass('show').css('display', '');
+                }
+            });
 
             // Add handler to report information tool button click
             $('#export_control').click(function (e) {
