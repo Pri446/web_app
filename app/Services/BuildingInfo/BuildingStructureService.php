@@ -554,7 +554,6 @@ class BuildingStructureService
                 $building->estimated_area = $this->storeGeomInfo($request, 'area', 'update');
             }
             $building->user_id = Auth::id();
-            $this->storeOwnerInfo($request, $id);
 
             // toilet_status
             if ($building->toilet_status == true) {
@@ -677,7 +676,9 @@ class BuildingStructureService
                 }
             }
             $building->save();
-            // store owner
+            // Store the owner once, after the Building update succeeds. This
+            // method used to be called both before and after $building->save(),
+            // which created duplicate owner revision rows for one form submit.
             $this->storeOwnerInfo($request);
             DB::commit();
             return Redirect("building-info/buildings")->with('success', __("Building Information updated successfully"));
