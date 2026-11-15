@@ -1833,6 +1833,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                                 id="toilet-isochrone-distance" 
                                 placeholder="{{ __('Distance in meter') }}" 
                                 min="1" 
+                                required
                                 step="1" />
 
                         </div>
@@ -9019,9 +9020,12 @@ $.ajax({
                     },
                     success: function (Response) {
                         data2 = Response['polygon'];
+                        var format = new ol.format.WKT();
                         if (data2 && Array.isArray(data2)) {
                             for (var i = 0; i < data2.length; i++) {
-                                var format = new ol.format.WKT();
+                                if (!data2[i] || !data2[i].geom) {
+                                    continue;
+                                }
                                 var featureP = format.readFeature(data2[i].geom, {
                                     dataProjection: 'EPSG:4326',
                                     featureProjection: 'EPSG:3857'
@@ -9032,6 +9036,11 @@ $.ajax({
                         }
                         else
                         {
+                            if (!data2 || !data2.geom) {
+                                removeAjaxLoader();
+                                displayAjaxErrorModal(@json(__('No accessibility area was found for this distance.')));
+                                return;
+                            }
                             var featureP = format.readFeature(data2.geom, {
                                 dataProjection: 'EPSG:4326',
                                 featureProjection: 'EPSG:3857'
@@ -9045,8 +9054,13 @@ $.ajax({
                         $('#popup-toilet-isochrone').modal('hide');
                         removeAjaxLoader();
                     },
-                    error: function (data2) {
-                        displayAjaxError();
+                    error: function (xhr) {
+                        var validationMessage = xhr.responseJSON && xhr.responseJSON.errors &&
+                            xhr.responseJSON.errors.distance && xhr.responseJSON.errors.distance[0];
+                        displayAjaxErrorModal(validationMessage || @json(__('An error occurred')));
+                    },
+                    complete: function () {
+                        removeAjaxLoader();
                     }
                 });
                 

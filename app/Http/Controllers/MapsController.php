@@ -1476,11 +1476,11 @@ class MapsController extends Controller
 
     public function getToiletIsochroneAreaLayers(Request $request)
     {
-        if (request()->distance > 0) {
-            $distance = request()->distance;
-        } else {
-            $distance = 0;
-        }
+        $validated = $request->validate([
+            'distance' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $distance = (float) $validated['distance'];
         $results = $this->mapsService->getToiletIsochroneAreaLayers($distance);
         return [
             'polygon' => $results['polygon']
