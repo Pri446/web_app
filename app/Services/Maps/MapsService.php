@@ -1744,7 +1744,7 @@ class MapsService {
  *
  * For each toilet in the database (excluding "Community Toilets"), this function:
  * - Finds the nearest node in the road network.
- * - Calculates a concave hull polygon around the reachable area (based on driving distance).
+ * - Calculates a compatible hull polygon around the reachable area (based on driving distance).
  * - Identifies buildings that lie within this isochrone area and are not linked to a drain.
  *
  * @param float $distance The travel distance in meters .
@@ -1790,8 +1790,15 @@ class MapsService {
         $node_id = DB::SELECT($node_id_query)[0]->id;
 
         $polygon_query = "
-            SELECT ST_asTEXT(ST_setSRID(ST_ConcaveHull(ST_Collect(the_geom), 0.9),4326)) as isochrone
+            SELECT ST_asTEXT(
+                ST_Buffer(
+                    ST_ConvexHull(ST_Collect(the_geom))::geography,
+                    1
+                )::geometry
+            ) as isochrone
             FROM (
+                SELECT ST_SetSRID(ST_Point(".$long.", ".$lat."),4326) as the_geom
+                UNION ALL
                 SELECT ST_Transform(ST_setSRID(the_geom, 4326),4326) as the_geom
                 FROM  pgr_drivingdistance('SELECT
                 id::integer AS id,
