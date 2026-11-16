@@ -18,9 +18,6 @@ use Box\Spout\Common\Type;
 use Box\Spout\Writer\Style\Color;
 use Box\Spout\Writer\WriterFactory;
 use Box\Spout\Writer\AbstractWriter;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\TaxImport;
-use Maatwebsite\Excel\HeadingRowImport;
 use App\Models\TaxPaymentInfo\TaxPayment;
 use App\Services\OwnerPiiAuditService;
 use App\Services\PropertyTaxPiiAccessService;
@@ -124,7 +121,15 @@ class TaxPaymentController extends Controller
             FROM taxpayment_info.tax_payment_status status
             LEFT JOIN taxpayment_info.tax_payments payment
                 ON payment.tax_code = status.tax_code
-            ORDER BY status.tax_code) tax'))
+            UNION ALL
+            SELECT payment.tax_code, NULL AS bin, NULL AS ward,
+                payment.owner_name, NULL AS due_year
+            FROM taxpayment_info.tax_payments payment
+            WHERE NOT EXISTS (
+                SELECT 1 FROM building_info.buildings building
+                WHERE building.tax_code = payment.tax_code
+                    AND building.deleted_at IS NULL
+            )) tax'))
             ->leftjoin('taxpayment_info.due_years AS due', 'due.value', '=', 'tax.due_year')
             ->select([
                 'tax.tax_code',
@@ -154,6 +159,9 @@ class TaxPaymentController extends Controller
                     $row->owner_name,
                     $revealed
                 );
+            })
+            ->editColumn('bin', function ($row) {
+                return $row->bin ?: __('Unmatched');
             })
             ->make(true);
 
@@ -220,38 +228,30 @@ class TaxPaymentController extends Controller
                     // such as E:\\app\\storage\\file.csv into an invalid one.
                     $filePath = Storage::disk('importtax')->path($stored);
 
-                    //checking csv file has all heading row keys
-                    $headings = (new HeadingRowImport)->toArray($filePath);
-                    $heading_row_errors = array();
-                    if (!in_array("tax_code", $headings[0][0])) {
-                        $heading_row_errors['tax_code'] = "Heading row : tax_code is required";
+                    try {
+                        $result = app(\App\Services\TaxPaymentImportService::class)->import($filePath);
+                    } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+                        // Do not flash row values, which can contain owner PII.
+                        $errors = [];
+                        foreach ($e->failures() as $failure) {
+                            $errors[] = __('CSV row :row: invalid :field.', [
+                                'row' => $failure->row(), 'field' => $failure->attribute(),
+                            ]);
+                            if (count($errors) >= 20) break;
+                        }
+                        return back()->withErrors(['csvfile' => array_merge(
+                            [__('Import cancelled. Previous data was preserved.')], $errors
+                        )]);
+                    } catch (\Illuminate\Validation\ValidationException $e) {
+                        throw $e;
+                    } catch (\Throwable $e) {
+                        // Database errors may contain plaintext or encrypted owner values.
+                        \Log::error('Property Tax import failed.', ['exception_type' => get_class($e)]);
+                        return back()->withErrors(['csvfile' => __('Import failed. Previous data was preserved. Check the database functions and PII encryption configuration.')]);
                     }
-                    if (!in_array("owner_name", $headings[0][0])) {
-                        $heading_row_errors['owner_name'] = "Heading row : owner_name is required";
-                    }
-                    if (!in_array("owner_contact", $headings[0][0])) {
-                        $heading_row_errors['owner_contact'] = "Heading row : owner_contact is required";
-                    }
-                    if (!in_array("last_payment_date", $headings[0][0])) {
-                        $heading_row_errors['last_payment_date'] = "Heading row : last_payment_date is required";
-                    }
-                    if (count($heading_row_errors) > 0) {
-                    return back()->withErrors($heading_row_errors);
-                    }
-                    \DB::statement('TRUNCATE TABLE taxpayment_info.tax_payments RESTART IDENTITY');
-                    #\DB::statement('ALTER SEQUENCE IF exists taxpayment_info.tax_payments_id_seq RESTART WITH 1');
-                    $import = new TaxImport();
-                    // TaxImport returns a TaxPayment model for every CSV row.
-                    // TaxPayment's owner_name and owner_contact mutators encrypt
-                    // these values before Eloquent prepares the batch insert.
-                    $import->import($filePath);
 
-                    $message = __('Successfully Imported Building Tax Payments From CSV.');
-                    \DB::statement("select taxpayment_info.fnc_taxpaymentstatus()");
-
-                    \DB::statement('select taxpayment_info.fnc_updonimprt_gridnward_tax()');
-
-                    return redirect('tax-payment')->with('success',$message);
+                    $message = __('Imported :total tax records. :matched matched an active building; :unmatched are unmatched. Unmatched records need the same Tax Code/Holding ID on an existing mapped building.', $result);
+                    return redirect('tax-payment')->with('success', $message);
 
                 }
                 else{
@@ -337,7 +337,9 @@ class TaxPaymentController extends Controller
         ];
 
         $query = DB::table('taxpayment_info.tax_payments AS tax')
-                 ->leftjoin('building_info.buildings as b', 'tax.tax_code', '=', 'b.tax_code')
+                 ->leftjoin('building_info.buildings as b', function ($join) {
+                     $join->on('tax.tax_code', '=', 'b.tax_code')->whereNull('b.deleted_at');
+                 })
                  ->select([
                      'tax.tax_code',
                      'tax.last_payment_date',

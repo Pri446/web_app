@@ -6,8 +6,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Imports\TaxImport;
-use Maatwebsite\Excel\Facades\Excel;
 
 class TaxPaymentDataImport extends Command
 {
@@ -61,12 +59,25 @@ class TaxPaymentDataImport extends Command
         // Windows backslashes intact prevents malformed paths such as E:folder.
         $filePath = $disk->path($filename);
         
-        \DB::statement('TRUNCATE TABLE taxpayment_info.tax_payments RESTART IDENTITY');
-        \DB::statement('ALTER SEQUENCE IF exists taxpayment_info.tax_payments_id_seq RESTART WITH 1');
-        // TaxImport constructs TaxPayment models, whose PII mutators encrypt
-        // owner_name and owner_contact before the rows are written in batches.
-        Excel::import(new TaxImport, $filePath);
-
+        try {
+            $result = app(\App\Services\TaxPaymentImportService::class)->import($filePath);
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            foreach (array_slice($e->failures(), 0, 20) as $failure) {
+                $this->error('CSV row ' . $failure->row() . ': invalid ' . $failure->attribute() . '.');
+            }
+            $this->error('Import cancelled. Previous data was preserved.');
+            return Command::FAILURE;
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            foreach ($e->errors() as $messages) {
+                foreach ($messages as $message) $this->error($message);
+            }
+            return Command::FAILURE;
+        } catch (\Throwable $e) {
+            Log::error('Property Tax command import failed.', ['exception_type' => get_class($e)]);
+            $this->error('Import failed. Previous data was preserved. Check database functions and PII encryption configuration.');
+            return Command::FAILURE;
+        }
+        $this->info("Imported {$result['total']} records: {$result['matched']} matched; {$result['unmatched']} unmatched.");
         $end_time=time();
         
         //check larave.log file to confirm all the queries has run successfully

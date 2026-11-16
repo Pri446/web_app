@@ -8,6 +8,9 @@
 </style>
 @endpush
 @section('content')
+<div class="alert alert-info">
+    {{ __('Imported tax records without a BIN are unmatched. Set the same Tax Code/Holding ID on the correct existing building and re-import to refresh the map status. Owner names require the separate Property Tax Owner PII unlock; Building owner records are maintained separately.') }}
+</div>
 @if (!$propertyTaxPiiUnlocked && $canUnlockPropertyTaxPii)
 <div class="modal fade" id="property-tax-pii-modal" tabindex="-1" role="dialog"
     aria-labelledby="property-tax-pii-title" aria-hidden="true">
