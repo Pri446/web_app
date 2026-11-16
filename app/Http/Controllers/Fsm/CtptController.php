@@ -79,7 +79,7 @@ class CtptController extends Controller
     public function create()
     {
         $page_title = __("Add Public / Community Toilets");
-        $bin = Building::whereHas('containments')->whereNull('deleted_at');
+        $bin = $this->buildingOptions(old('bin'));
         $ward = Ward::orderBy('ward')->pluck('ward','ward');
         $status = CtptStatus::asSelectArray();
         $operational = CtptStatusOperational::toEnumArray();
@@ -167,7 +167,7 @@ class CtptController extends Controller
         if ($ctpt) {
             $page_title = __("Edit Public / Community Toilets");
             $ward = Ward::orderBy('ward')->pluck('ward','ward');
-            $bin = Building::whereHas('containments')->whereNull('deleted_at');
+            $bin = $this->buildingOptions(old('bin', $ctpt->bin));
             $status = CtptStatus::asSelectArray();
             $operational = CtptStatusOperational::toEnumArray();
             return view('fsm.ct-pt.edit', compact('page_title','ctpt','ward', 'bin','status','operational'));
@@ -186,6 +186,20 @@ class CtptController extends Controller
     public function update(CtptRequest $request, $id)
     {
         return $this->ctptServiceClass->updateCtptData($request, $id);
+    }
+
+    private function buildingOptions($selectedBin): array
+    {
+        if (!is_string($selectedBin) || $selectedBin === '') {
+            return [];
+        }
+
+        return Building::query()->setEagerLoads([])
+            ->where('bin', $selectedBin)
+            ->pluck('house_number', 'bin')
+            ->map(function ($houseNumber, $bin) {
+                return $houseNumber ?: $bin;
+            })->all();
     }
 
     /**

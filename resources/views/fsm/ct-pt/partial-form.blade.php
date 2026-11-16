@@ -33,7 +33,13 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         <div class="form-group row required" id="bin" >
             {!! Form::label('bin', __('House Number / BIN'), ['class' => 'col-sm-3 control-label ']) !!}
             <div class=col-sm-4>
-                {!! Form::select('bin', $bin, null, ['class' => 'form-control col-sm-10 bin', 'placeholder' => __('House Number / BIN')]) !!}
+                {!! Form::select('bin', $bin, null, [
+                    'class' => 'form-control col-sm-10 bin',
+                    'placeholder' => __('House Number / BIN'),
+                    'data-lookup-url' => route('building.get-ctpt-house-numbers', [], false),
+                    'data-placeholder' => __('House Number / BIN'),
+                    'data-load-error' => __('Unable to load buildings. Please try again.'),
+                ]) !!}
             </div>
         </div>
 

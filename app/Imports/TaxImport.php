@@ -3,30 +3,22 @@
 namespace App\Imports;
 
 use App\Models\TaxPaymentInfo\TaxPayment;
-use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\Importable;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
-use Maatwebsite\Excel\Concerns\SkipsOnError;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Maatwebsite\Excel\Concerns\WithUpserts;
-use Maatwebsite\Excel\Concerns\WithUpsertColumns;
 use Maatwebsite\Excel\Concerns\RemembersChunkOffset; 
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\SkipsFailures;
 
-class TaxImport implements ToModel, WithHeadingRow, WithChunkReading,WithValidation, SkipsOnError, WithColumnFormatting, WithMapping, WithBatchInserts, SkipsOnFailure, ShouldQueue 
+// The caller rebuilds map status after all rows finish, in the same transaction.
+class TaxImport implements ToModel, WithHeadingRow, WithChunkReading, WithValidation, WithColumnFormatting, WithMapping, WithBatchInserts
 {
     use Importable;
     use RemembersChunkOffset;
-    use SkipsFailures;
 
     public function model(array $row)
     { 
@@ -65,7 +57,8 @@ class TaxImport implements ToModel, WithHeadingRow, WithChunkReading,WithValidat
             ],
             'owner_contact' => [
                 'nullable',
-                'integer',
+                'string',
+                'max:100',
             ],
             'last_payment_date' => [
                  'required',
@@ -78,10 +71,10 @@ class TaxImport implements ToModel, WithHeadingRow, WithChunkReading,WithValidat
     public function map($row): array
     {
         return [
-           "tax_code" => $row['tax_code'],
+           "tax_code" => trim((string) $row['tax_code']),
             "owner_name" => $row['owner_name'],
-            "owner_contact" => $row['owner_contact'],
-            "last_payment_date" => date('Y-m-d', strtotime($row['last_payment_date'])),
+            "owner_contact" => isset($row['owner_contact']) ? (string) $row['owner_contact'] : null,
+            "last_payment_date" => $this->normalizeDate($row['last_payment_date'] ?? ''),
         ];
     }
      /**
@@ -95,8 +88,17 @@ class TaxImport implements ToModel, WithHeadingRow, WithChunkReading,WithValidat
     }
 
 
-    public function onError(\Throwable $e) {
-        
+    private function normalizeDate($value): string
+    {
+        $value = trim((string) $value);
+        foreach (['Y-m-d', 'n/j/Y'] as $format) {
+            $parsed = \DateTimeImmutable::createFromFormat('!' . $format, $value);
+            $errors = \DateTimeImmutable::getLastErrors();
+            if ($parsed && (!$errors || (!$errors['warning_count'] && !$errors['error_count']))) {
+                return $parsed->format('Y-m-d');
+            }
+        }
+        return $value; // Let validation report the row instead of creating 1970-01-01.
     }
        
 }
