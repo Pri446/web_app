@@ -9,6 +9,19 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         max-width: calc(100vw - 48px);
         max-height: calc(100vh - 120px);
     }
+    #export-popup {
+        overflow: visible !important;
+    }
+    #export-popup .input-group-append {
+        position: relative;
+    }
+    #export-popup .dropdown-menu {
+        position: absolute;
+        top: 100% !important;
+        left: 0 !important;
+        transform: none !important;
+        z-index: 1060 !important;
+    }
     .summary-info-popup {
         box-sizing: border-box !important;
         width: 800px;
@@ -7134,23 +7147,58 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
 
             function displayExportPopup(geometry) {
                 $('#export_overlay').val('');
+                $('#export-popup .dropdown-menu').removeClass('show');
+                $('#export-popup .dropdown-toggle').attr('aria-expanded', 'false');
 
                 $('#export-csv-btn, #export-kml-btn, #export-shape-btn').off('click');
 
-                $('#export-csv-btn').on('click', function () {
-                    openExportLink(geometry, 'CSV')
+                $('#export-csv-btn').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('#export-popup .dropdown-menu').removeClass('show');
+                    $('#export-popup .dropdown-toggle').attr('aria-expanded', 'false');
+                    openExportLink(geometry, 'CSV');
                 });
 
-                $('#export-kml-btn').on('click', function () {
-                    openExportLink(geometry, 'KML')
+                $('#export-kml-btn').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('#export-popup .dropdown-menu').removeClass('show');
+                    $('#export-popup .dropdown-toggle').attr('aria-expanded', 'false');
+                    openExportLink(geometry, 'KML');
                 });
 
-                $('#export-shape-btn').on('click', function () {
-                    openExportLink(geometry, 'SHAPE-ZIP')
+                $('#export-shape-btn').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('#export-popup .dropdown-menu').removeClass('show');
+                    $('#export-popup .dropdown-toggle').attr('aria-expanded', 'false');
+                    openExportLink(geometry, 'SHAPE-ZIP');
                 });
 
                 exportPopupOverlay.setPosition(geometry.getInteriorPoint().getCoordinates());
             }
+
+            $(document).on('click', '#export-popup [data-toggle="dropdown"], #export-popup .dropdown-toggle', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var $btn = $(this);
+                var $menu = $btn.siblings('.dropdown-menu');
+                var isShown = $menu.hasClass('show');
+                $('#export-popup .dropdown-menu').removeClass('show');
+                $('#export-popup .dropdown-toggle').attr('aria-expanded', 'false');
+                if (!isShown) {
+                    $menu.addClass('show');
+                    $btn.attr('aria-expanded', 'true');
+                }
+            });
+
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('#export-popup .input-group-append').length) {
+                    $('#export-popup .dropdown-menu').removeClass('show');
+                    $('#export-popup .dropdown-toggle').attr('aria-expanded', 'false');
+                }
+            });
 
             function displayExportPopupTaxZone(geometry) {
 
@@ -9373,18 +9421,94 @@ $.ajax({
 
                        if (data && data.features && Array.isArray(data.features)) {
                             if (data.features.length > 0) {
-                                var html = '<div class="table-responsive">'+
-                                    '<table class="table table-striped table-hover table-sm">'+
-                                    '<thead class="table-info">'+
-                                    '<tr>'+
-                                    '<th>Attribute</th>'+
-                            '<th>Value</th>'+
-                            '</tr>'+
-                            '</thead>'+
-                            '<tbody>';
+                                window.lastFeatureInfoProperties = data.features[0].properties;
+                                window.lastFeatureInfoLayer = layer;
+                                renderFeatureInformation(data.features[0].properties, layer);
+                            } else {
+                                $('#feature_information').html('');
+                                $('#feature-info-popup-closer').click();
+                                displayAjaxErrorModal(@json(__('Feature Not Found')));
+                                removeAjaxLoader();
+                            }
+                        } else {
+                            displayAjaxError();
+                            removeAjaxLoader();
+                        }
+                    },
+                    error: function (data) {
+                        displayAjaxError();
+                        removeAjaxLoader();
+                    }
+                });
 
-                            $.each(data.features[0].properties, function (k, v) {
-                                    html += '<tr>';
+                featureInfoPopupOverlay.setPosition(evt.coordinate);
+            }
+
+            function renderFeatureInformation(properties, layer) {
+                var uncachedCiphers = [];
+                if (window.mapPiiUnlocked) {
+                    $.each(properties, function (k, v) {
+                        if (typeof v === 'string') {
+                            var cleanStr = v.trim();
+                            if ((cleanStr.startsWith('enc:v1:') || cleanStr.startsWith('enc:')) && (!window.decryptedPiiCache || !window.decryptedPiiCache[cleanStr])) {
+                                uncachedCiphers.push(cleanStr);
+                            }
+                        }
+                    });
+                }
+
+                if (window.mapPiiUnlocked && uncachedCiphers.length > 0) {
+                    $.ajax({
+                        url: "{{ route('maps.pii.decrypt') }}",
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                            'Accept': 'application/json'
+                        },
+                        data: {
+                            values: uncachedCiphers
+                        },
+                        success: function (res) {
+                            if (res && res.decrypted) {
+                                window.decryptedPiiCache = window.decryptedPiiCache || {};
+                                $.extend(window.decryptedPiiCache, res.decrypted);
+                            }
+                            buildFeatureInformationTable(properties, layer);
+                        },
+                        error: function (xhr) {
+                            if (xhr.status === 403 && typeof window.setMapPiiState === 'function') {
+                                window.setMapPiiState(false, 0);
+                            }
+                            buildFeatureInformationTable(properties, layer);
+                        }
+                    });
+                } else {
+                    buildFeatureInformationTable(properties, layer);
+                }
+            }
+
+            $(document).on('mapPiiStateChanged', function (e, isUnlocked) {
+                if (!isUnlocked) {
+                    window.decryptedPiiCache = {};
+                }
+                if (window.lastFeatureInfoProperties && $('#feature-info-popup').is(':visible')) {
+                    renderFeatureInformation(window.lastFeatureInfoProperties, window.lastFeatureInfoLayer);
+                }
+            });
+
+            function buildFeatureInformationTable(properties, layer) {
+                var html = '<div class="table-responsive">'+
+                    '<table class="table table-striped table-hover table-sm">'+
+                    '<thead class="table-info">'+
+                    '<tr>'+
+                    '<th>Attribute</th>'+
+            '<th>Value</th>'+
+            '</tr>'+
+            '</thead>'+
+            '<tbody>';
+
+            $.each(properties, function (k, v) {
+                html += '<tr>';
                                     if (k == 'bin'  && layer != 'buildings_layer') {
                                         kk = 'BIN';
                                     }
@@ -9393,9 +9517,15 @@ $.ajax({
                                     }else if (k == 'owner_gender') {
                                         kk = 'Owner Gender';
                                     }else if (k == 'owner_contact') {
-                                        kk = 'Owner Contact';
+                                        kk = 'Owner Contact Number';
                                     }else if (k == 'nid') {
                                         kk = 'NID';
+                                    }else if (k == 'customer_name') {
+                                        kk = 'Customer Name';
+                                    }else if (k == 'customer_gender') {
+                                        kk = 'Customer Gender';
+                                    }else if (k == 'customer_contact') {
+                                        kk = 'Customer Contact';
                                     }
                                     else if (k == 'male_population') {
                                         kk = 'Male Population';
@@ -9847,8 +9977,26 @@ $.ajax({
                                     else {
                                         kk = k;
                                     }
-                                    if (v == null) {
+                                    var piiKeys = ['owner_name', 'owner_gender', 'owner_contact', 'nid', 'customer_name', 'customer_gender', 'customer_contact'];
+                                    var cleanStr = typeof v === 'string' ? v.trim() : '';
+                                    var isCipher = typeof v === 'string' && (cleanStr.startsWith('enc:v1:') || cleanStr.startsWith('enc:'));
+                                    var isPiiKey = piiKeys.indexOf(k) !== -1;
+
+                                    if (v == null || (typeof v === 'string' && cleanStr === '')) {
                                         vv = '';
+                                    }
+                                    else if (isCipher || isPiiKey) {
+                                        if (window.mapPiiUnlocked) {
+                                            if (isCipher && window.decryptedPiiCache && window.decryptedPiiCache[cleanStr]) {
+                                                vv = window.decryptedPiiCache[cleanStr];
+                                            } else if (!isCipher) {
+                                                vv = v;
+                                            } else {
+                                                vv = '********';
+                                            }
+                                        } else {
+                                            vv = '********';
+                                        }
                                     }
                                     else {
                                         if(v === true) {
@@ -9871,7 +10019,7 @@ $.ajax({
                                         html += '<td><strong>' + vv + '</strong>@can('Edit Building Structure')<br>Click <a href="{{ url("building-info/buildings") }}/'+vv+'/edit">here</a> to edit building info @endcan</td>';
                                     }
                                 else if (k == 'house_image' && layer == 'buildings_layer') {
-                                        let vv = data.features[0].properties.bin; 
+                                        let vv = properties.bin; 
                                         let basePath = "{{ asset('') }}";
                                       
                                         let imagePathJpg = basePath + 'storage/emptyings/houses/' + vv + '.jpg';
@@ -9921,22 +10069,7 @@ $.ajax({
                                 html += '</tbody></table>';
                                 $('#feature_information').html(html);
                                 removeAjaxLoader();
-                            } else {
-                                $('#feature_information').html('');
-                                $('#feature-info-popup-closer').click();
-                                displayAjaxErrorModal(@json(__('Feature Not Found')));
                             }
-                        } else {
-                            displayAjaxError();
-                        }
-                    },
-                    error: function (data) {
-                        displayAjaxError();
-                    }
-                });
-
-                featureInfoPopupOverlay.setPosition(evt.coordinate);
-            }
             function checkImageExistence(imagePath) {
                 return $.ajax({
                     url: imagePath,
@@ -11111,7 +11244,6 @@ $.ajax({
                     filters.push('ward=' + value);
                 });
 
-                var outputFormat, propertyName;
                 var exportLink = gurl_wfs + "?request=GetFeature&service=WFS&version=1.0.0&typeName=" + workspace + ":" + selectedLayer + "&CQL_FILTER=deleted_at is null AND INTERSECTS(geom, collectGeometries(queryCollection('" + workspace + ":wards_layer', 'geom', '" + filters.join(' OR ') + "')))";
 
                 csvdata(outputFormat, selectedLayer, exportLink);
@@ -11185,8 +11317,8 @@ $.ajax({
                     }
                     fetch(exportLink)
                         .then(response => response.text())
-                        .then(csvData => {
-                            const transformedCSV = transformCSVAfterDownload(csvData);
+                        .then(csvData => transformCSVAfterDownload(csvData))
+                        .then(transformedCSV => {
                             const blob = new Blob([transformedCSV], { type: 'text/csv' });
                             const url = URL.createObjectURL(blob);
                             const downloadLink = document.createElement('a');
@@ -11210,6 +11342,40 @@ $.ajax({
             }
         }
 
+
+            // Helper functions to parse and escape CSV lines safely
+            function parseCSVLine(line) {
+                var cells = [];
+                var cur = '';
+                var inQuotes = false;
+                for (var i = 0; i < line.length; i++) {
+                    var c = line[i];
+                    if (c === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            cur += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (c === ',' && !inQuotes) {
+                        cells.push(cur);
+                        cur = '';
+                    } else {
+                        cur += c;
+                    }
+                }
+                cells.push(cur);
+                return cells;
+            }
+
+            function escapeCSVCell(cell) {
+                if (cell === null || cell === undefined) return '';
+                var str = String(cell);
+                if (str.indexOf(',') !== -1 || str.indexOf('"') !== -1 || str.indexOf('\n') !== -1 || str.indexOf('\r') !== -1) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            }
 
             // Function to transform CSV after download
             function transformCSVAfterDownload(csvData) {
@@ -11373,26 +11539,127 @@ $.ajax({
                     'utilitysize' : 'Width (mm)',
                     'status_name':'Status',
                     'disease_type':' Infected Disease ',
+                    'customer_name':'Customer Name',
+                    'customer_contact':'Customer Contact',
+                    'customer_gender':'Customer Gender',
                     //For Containment
                     'distance_closest_well':'Distance From the Closest Well(m)'
                     };
-                var lines = csvData.split('\n');
+                return new Promise(function (resolve, reject) {
+                    if (!csvData || typeof csvData !== 'string') {
+                        resolve(csvData);
+                        return;
+                    }
+                    var lines = csvData.split('\n');
+                    if (lines.length === 0) {
+                        resolve(csvData);
+                        return;
+                    }
 
-                // Process header line (assuming first line is headers)
-                var headers = lines[0].split(',');
-                headers = headers.map(header => {
-                    return nameMapping[header.trim()] || header.trim();
+                    // Process header line (assuming first line is headers)
+                    var rawHeaders = parseCSVLine(lines[0]);
+                    var piiKeys = ['owner_name', 'owner_gender', 'owner_contact', 'nid', 'customer_name', 'customer_gender', 'customer_contact'];
+                    var piiIndices = {};
+                    rawHeaders.forEach(function (header, idx) {
+                        var cleanHeader = header.replace(/^["']|["']$/g, '').trim().toLowerCase();
+                        if (piiKeys.indexOf(cleanHeader) !== -1) {
+                            piiIndices[idx] = true;
+                        }
+                    });
+
+                    var headers = rawHeaders.map(function (header) {
+                        var cleanHeader = header.replace(/^["']|["']$/g, '').trim();
+                        return escapeCSVCell(nameMapping[cleanHeader] || cleanHeader);
+                    });
+
+                    // Parse data lines and collect uncached ciphertexts
+                    var parsedDataLines = [];
+                    var uncachedCiphers = [];
+                    var uncachedSet = {};
+
+                    for (var i = 1; i < lines.length; i++) {
+                        var rawLine = lines[i];
+                        if (!rawLine.trim()) {
+                            continue;
+                        }
+                        var dataLine = parseCSVLine(rawLine);
+                        parsedDataLines.push(dataLine);
+
+                        if (window.mapPiiUnlocked) {
+                            for (var j = 0; j < dataLine.length; j++) {
+                                var val = dataLine[j];
+                                var cleanVal = typeof val === 'string' ? val.replace(/^["']|["']$/g, '').trim() : '';
+                                var isCipher = typeof cleanVal === 'string' && (cleanVal.startsWith('enc:v1:') || cleanVal.startsWith('enc:'));
+                                if (isCipher && (!window.decryptedPiiCache || !window.decryptedPiiCache[cleanVal])) {
+                                    if (!uncachedSet[cleanVal]) {
+                                        uncachedSet[cleanVal] = true;
+                                        uncachedCiphers.push(cleanVal);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    function assembleCSV() {
+                        var transformedLines = [headers.join(',')];
+                        for (var i = 0; i < parsedDataLines.length; i++) {
+                            var dataLine = parsedDataLines[i];
+                            for (var j = 0; j < dataLine.length; j++) {
+                                var val = dataLine[j];
+                                var cleanVal = typeof val === 'string' ? val.replace(/^["']|["']$/g, '').trim() : '';
+                                var isCipher = typeof cleanVal === 'string' && (cleanVal.startsWith('enc:v1:') || cleanVal.startsWith('enc:'));
+                                var isPiiCol = !!piiIndices[j];
+
+                                if (isCipher || isPiiCol) {
+                                    if (val === null || val === undefined || cleanVal === '') {
+                                        dataLine[j] = '';
+                                    } else if (window.mapPiiUnlocked) {
+                                        if (isCipher && window.decryptedPiiCache && window.decryptedPiiCache[cleanVal]) {
+                                            dataLine[j] = window.decryptedPiiCache[cleanVal];
+                                        } else if (!isCipher) {
+                                            dataLine[j] = cleanVal;
+                                        } else {
+                                            dataLine[j] = '********';
+                                        }
+                                    } else {
+                                        dataLine[j] = '********';
+                                    }
+                                }
+                            }
+                            transformedLines.push(dataLine.map(escapeCSVCell).join(','));
+                        }
+                        resolve(transformedLines.join('\n'));
+                    }
+
+                    if (window.mapPiiUnlocked && uncachedCiphers.length > 0) {
+                        $.ajax({
+                            url: "{{ route('maps.pii.decrypt') }}",
+                            type: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                                'Accept': 'application/json'
+                            },
+                            data: {
+                                values: uncachedCiphers
+                            },
+                            success: function (res) {
+                                if (res && res.decrypted) {
+                                    window.decryptedPiiCache = window.decryptedPiiCache || {};
+                                    $.extend(window.decryptedPiiCache, res.decrypted);
+                                }
+                                assembleCSV();
+                            },
+                            error: function (xhr) {
+                                if (xhr.status === 403 && typeof window.setMapPiiState === 'function') {
+                                    window.setMapPiiState(false, 0);
+                                }
+                                assembleCSV();
+                            }
+                        });
+                    } else {
+                        assembleCSV();
+                    }
                 });
-
-                // Process data lines
-                var transformedLines = [headers.join(',')];
-                for (var i = 1; i < lines.length; i++) {
-                    var dataLine = lines[i].split(',');
-                    transformedLines.push(dataLine.join(','));
-                }
-
-                var transformedCSV = transformedLines.join('\n');
-                return transformedCSV;
             }
 
 
@@ -11497,8 +11764,8 @@ $.ajax({
             if (format === 'csv') {
                 fetch(exportLink)
                     .then(response => response.text())
-                    .then(csvData => {
-                        const transformedCSV = transformCSVAfterDownload(csvData);
+                    .then(csvData => transformCSVAfterDownload(csvData))
+                    .then(transformedCSV => {
                         const blob = new Blob([transformedCSV], { type: 'text/csv' });
                         const url = URL.createObjectURL(blob);
                         const downloadLink = document.createElement('a');
@@ -11577,8 +11844,8 @@ $.ajax({
                 if (format === 'csv') {
                     fetch(exportLink)
                         .then(response => response.text())
-                        .then(csvData => {
-                            const transformedCSV = transformCSVAfterDownload(csvData);
+                        .then(csvData => transformCSVAfterDownload(csvData))
+                        .then(transformedCSV => {
                             const blob = new Blob([transformedCSV], { type: 'text/csv' });
                             const url = URL.createObjectURL(blob);
                             const downloadLink = document.createElement('a');
@@ -11658,8 +11925,8 @@ $.ajax({
                 if (format === 'csv') {
                     fetch(exportLink)
                         .then(response => response.text())
-                        .then(csvData => {
-                            const transformedCSV = transformCSVAfterDownload(csvData);
+                        .then(csvData => transformCSVAfterDownload(csvData))
+                        .then(transformedCSV => {
                             const blob = new Blob([transformedCSV], { type: 'text/csv' });
                             const url = URL.createObjectURL(blob);
                             const downloadLink = document.createElement('a');

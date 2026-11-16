@@ -1,3 +1,23 @@
+@php
+    $piiUnlocked = auth()->check() && (
+        app(\App\Services\PiiAccessService::class)->isUnlocked(auth()->user(), 'view') ||
+        app(\App\Services\PiiAccessService::class)->isUnlocked(auth()->user(), 'export')
+    );
+    $encryptionService = app(\App\Services\PiiEncryptionService::class);
+    $formatPii = function($val) use ($piiUnlocked, $encryptionService) {
+        if ($val === null || $val === '') {
+            return '';
+        }
+        if (!$piiUnlocked) {
+            return '********';
+        }
+        try {
+            return $encryptionService->decrypt($val);
+        } catch (\Throwable $e) {
+            return '********';
+        }
+    };
+@endphp
 <table>
     <thead>
     <tr>
@@ -52,10 +72,10 @@
     @foreach($buildingResults as $building)
         <tr>
             <td>{{ $building->bin }}</td>
-            <td>{{ $building->owner_name }}</td>
-            <td>{{ $building->nid }}</td>
-            <td>{{ $building->owner_gender }}</td>
-            <td>{{ $building->owner_contact }}</td>
+            <td>{{ $formatPii($building->owner_name ?? ($building->Owners->owner_name ?? null)) }}</td>
+            <td>{{ $formatPii($building->nid ?? ($building->Owners->nid ?? null)) }}</td>
+            <td>{{ $formatPii($building->owner_gender ?? ($building->Owners->owner_gender ?? null)) }}</td>
+            <td>{{ $formatPii($building->owner_contact ?? ($building->Owners->owner_contact ?? null)) }}</td>
             <td>{{ $building->building_associated_to }}</td>
             <td>{{ $building->ward }}</td>
             <td>{{ $building->road_code }}</td>

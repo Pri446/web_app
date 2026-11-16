@@ -645,6 +645,15 @@ Route::group([
  */
 Route::group(['middleware' => 'auth'], function () {
     Route::get('maps', 'MapsController@index');
+    Route::post('maps/pii/unlock', 'MapsPiiAccessController@unlock')
+        ->middleware('throttle:pii-unlock')
+        ->name('maps.pii.unlock');
+    Route::post('maps/pii/lock', 'MapsPiiAccessController@lock')
+        ->name('maps.pii.lock');
+    Route::get('maps/pii/status', 'MapsPiiAccessController@status')
+        ->name('maps.pii.status');
+    Route::post('maps/pii/decrypt', 'MapsPiiAccessController@decrypt')
+        ->name('maps.pii.decrypt');
     Route::get('maps/building-containment', 'MapsController@getBuildingToContainment');
     Route::get('maps/containment-buildings', 'MapsController@getContainmentToBuildings');
     Route::get('maps/getassociated-mainbuilding', 'MapsController@getAssociatedToMainbuilding');
