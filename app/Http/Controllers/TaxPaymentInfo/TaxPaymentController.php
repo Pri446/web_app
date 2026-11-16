@@ -205,11 +205,12 @@ class TaxPaymentController extends Controller
         if ($request->hasFile('csvfile')) {
 
                 $filename = 'building-tax-payments.' . $request->file('csvfile')->getClientOriginalExtension();
-                if (Storage::disk('importtax')->exists('/' . $filename)){
-                    Storage::disk('importtax')->delete('/' . $filename);
-                    //deletes if already exists
+                try {
+                    $stored = $request->file('csvfile')->storeAs('', $filename, 'importtax');
+                } catch (\Throwable $e) {
+                    \Log::error('Property Tax upload storage failed.', ['exception_type' => get_class($e)]);
+                    return back()->withErrors(['csvfile' => __('Unable to save the tax CSV. Ask the administrator to run php artisan storage:setup and make the configured tax upload directory writable by the PHP service user. Previous tax data was preserved.')]);
                 }
-                $stored = $request->file('csvfile')->storeAs('', $filename, 'importtax');
 
                 if ($stored)
                 {
