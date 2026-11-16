@@ -187,6 +187,110 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     const ownerPiiLookupUnlocked = @json((bool) ($ownerPiiLookupUnlocked ?? false));
     let ownerPiiRevealed = false;
 
+    if (isConfirm) {
+        $(function () {
+            const capacityUrl = @json(route('applications.create-capacity-by-date'));
+            const $date = $('#proposed_emptying_date');
+            const $form = $date.closest('form');
+            const $submit = $form.find('[type=submit]');
+            const $message = $('<small id="capacityMsg" class="form-text mt-1"></small>');
+            let capacityRequest = null;
+
+            $date.after($message);
+
+            function setCapacityState(ok, html) {
+                $message.removeClass('text-success text-danger').text('');
+                if (html) {
+                    $message.addClass(ok ? 'text-success' : 'text-danger').html(html);
+                }
+
+                $date[0].setCustomValidity(
+                    ok ? '' : ($('<div>').html(html).text() || @json(__('Invalid proposed emptying date.')))
+                );
+                $submit.prop('disabled', !ok);
+            }
+
+            function formatCapacity(value) {
+                return Number(value || 0).toFixed(2);
+            }
+
+            function checkCapacity() {
+                const selectedDate = $date.val();
+                if (!selectedDate) {
+                    setCapacityState(true, '');
+                    return;
+                }
+
+                const minimumDate = $date.attr('min');
+                if (minimumDate && selectedDate < minimumDate) {
+                    setCapacityState(false, @json(__('Date cannot be in the past.')));
+                    return;
+                }
+
+                if (capacityRequest) {
+                    capacityRequest.abort();
+                }
+
+                setCapacityState(true, @json(__('Checking capacity…')));
+                capacityRequest = $.ajax({
+                    url: capacityUrl,
+                    method: 'GET',
+                    data: {
+                        proposed_emptying_date: selectedDate,
+                        action_type: 'confirm'
+                    },
+                    dataType: 'json',
+                    headers: { 'Accept': 'application/json' }
+                }).done(function (response) {
+                    if (response.blocked || Number(response.available) <= 0) {
+                        if (response.can_fit === false && Number(response.available) > 0) {
+                            setCapacityState(
+                                false,
+                                @json(__('Not enough capacity for this application — needs')) +
+                                    ` <b>${formatCapacity(response.vehicle_size)} m³</b>, ` +
+                                    @json(__('only')) +
+                                    ` <b>${formatCapacity(response.available)} m³</b> ` +
+                                    @json(__('remains.'))
+                            );
+                        } else {
+                            setCapacityState(
+                                false,
+                                @json(__('Blocked — booked')) +
+                                    ` <b>${formatCapacity(response.booked_total)} m³</b> / ` +
+                                    @json(__('total')) +
+                                    ` <b>${formatCapacity(response.total_capacity)} m³</b>.`
+                            );
+                        }
+                        return;
+                    }
+
+                    setCapacityState(
+                        true,
+                        @json(__('Available treatment plant capacity:')) +
+                            ` <b>${formatCapacity(response.available)} m³</b>, ` +
+                            @json(__('After this application, the remaining capacity will be:')) +
+                            ` <b>${formatCapacity(response.remaining_after)} m³</b>.`
+                    );
+                }).fail(function (xhr, status) {
+                    if (status !== 'abort') {
+                        setCapacityState(false, @json(__('Could not check capacity.')));
+                    }
+                }).always(function () {
+                    capacityRequest = null;
+                });
+            }
+
+            $date.on('change input', function () {
+                clearTimeout(this.capacityCheckTimer);
+                this.capacityCheckTimer = setTimeout(checkCapacity, 200);
+            });
+
+            if ($date.val()) {
+                checkCapacity();
+            }
+        });
+    }
+
     function updateSameAsOwnerVisibility() {
         const hasOwnerName = $.trim(String($('#customer_name').val() || '')) !== '';
         const hasOwnerGender = $.trim(String($('#customer_gender').val() || '')) !== '';
@@ -985,6 +1089,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     document.addEventListener('DOMContentLoaded', () => {
   // 1) Grab your select by its id
   const sel = document.getElementById('desludging_vehicle_size');
+  if (!sel) return;
 
   // 2) Listen for changes
   sel.addEventListener('change', async () => {
@@ -1016,6 +1121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sizeSel = document.getElementById('desludging_vehicle_size');
     const nameInput = document.getElementById('service_provider_name');
     const idInput = document.getElementById('service_provider_id');
+    if (!sizeSel || !nameInput || !idInput) return;
 
     sizeSel.addEventListener('change', async () => {
         const capacity = sizeSel.value;

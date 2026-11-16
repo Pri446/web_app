@@ -509,6 +509,7 @@ Route::group([
     Route::get('application/export', 'ApplicationController@export')->name('application.export');
     Route::get('application/{id}/history', 'ApplicationController@history')->name('application.history');
     Route::get('application/getBuildingDetails', 'ApplicationController@buildingDetails')->name('application.get-building-details');
+    Route::get('application/capacity-by-date', [ApplicationController::class, 'checkCreateCapacityByDate'])->name('applications.create-capacity-by-date');
     Route::get('application/vehicles-by-provider', [ApplicationController::class, 'getVehiclesByServiceProvider'])->name('application.vehicles-by-provider');
     Route::get('application/pdf/{year}/{month}/monthly-report', 'ApplicationController@monthlyApplicationsPdf');
     Route::get('application/{id}/application-report', 'ApplicationController@applicationReport')->name('application.report');

@@ -46,7 +46,7 @@ class ApplicationController extends Controller
         $this->middleware('auth');
         $this->middleware('permission:List Applications', ['only' => ['index', 'getData']]);
         $this->middleware('permission:View Application', ['only' => ['show']]);
-        $this->middleware('permission:Add Application', ['only' => ['create', 'store']]);
+        $this->middleware('permission:Add Application', ['only' => ['create', 'store', 'checkCreateCapacityByDate']]);
         $this->middleware('permission:Edit Application', ['only' => ['edit', 'update', 'editScheduling', 'schedulingform', 'checkCapacityByDate', 'resolveAnf']]);
         $this->middleware('permission:Delete Application', ['only' => ['destroy', 'forceDelete']]);
         $this->middleware('permission:Export Applications', ['only' => ['export']]);
@@ -684,30 +684,64 @@ class ApplicationController extends Controller
             'proposed_emptying_date' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
-        $date = $validated['proposed_emptying_date'];
         $vehicleSize = (float) $application->desludging_vehicle_size;
 
+        return response()->json(array_merge(
+            [
+                'proposed_emptying_date' => $validated['proposed_emptying_date'],
+                'application_id' => $application->id,
+            ],
+            $this->capacityForDate($validated['proposed_emptying_date'], $vehicleSize)
+        ));
+    }
+
+    private function capacityForDate(string $date, float $vehicleSize): array
+    {
         $totalCapacity = (float) TreatmentPlant::where('status', true)->sum('capacity_per_day');
-
-        $totalBookedForDay = (float) Application::whereDate('proposed_emptying_date', $date)->sum(DB::raw('COALESCE(desludging_vehicle_size, 0)'));
-
+        $totalBookedForDay = (float) Application::whereDate('proposed_emptying_date', $date)
+            ->sum(DB::raw('COALESCE(desludging_vehicle_size, 0)'));
         $available = max($totalCapacity - $totalBookedForDay, 0.0);
         $totalIfAdded = $totalBookedForDay + $vehicleSize;
-        $remainingAfter = max($totalCapacity - $totalIfAdded, 0.0);
-        $canFit = ($vehicleSize <= $available);
-        $blocked = ($totalCapacity <= 0) || ($totalIfAdded > $totalCapacity);
 
-        return response()->json([
-            'proposed_emptying_date' => $date,
-            'application_id' => $application->id,
+        return [
             'vehicle_size' => $vehicleSize,
             'total_capacity' => $totalCapacity,
             'booked_total' => $totalBookedForDay,
             'available' => $available,
-            'remaining_after' => $remainingAfter,
-            'can_fit' => $canFit,
-            'blocked' => $blocked,
+            'remaining_after' => max($totalCapacity - $totalIfAdded, 0.0),
+            'can_fit' => $vehicleSize <= $available,
+            'blocked' => $totalCapacity <= 0 || $totalIfAdded > $totalCapacity,
+        ];
+    }
+
+    public function checkCreateCapacityByDate(Request $request)
+    {
+        abort_unless(
+            session('action_type') === 'confirm' || $request->input('action_type') === 'confirm',
+            404
+        );
+
+        $validated = $request->validate([
+            'proposed_emptying_date' => ['required', 'date', 'after_or_equal:today'],
+            'action_type' => ['nullable', 'in:confirm'],
         ]);
+
+        $scheduleAccept = session('schedule_accept', []);
+        $serviceProviderId = $scheduleAccept['service_provider_id']
+            ?? session('service_provider_id');
+
+        $vehicleSize = (float) (
+            VacutugType::where('service_provider_id', $serviceProviderId)
+                ->whereNotNull('capacity')
+                ->value('capacity')
+            ?? VacutugType::whereNotNull('capacity')->value('capacity')
+            ?? 0
+        );
+
+        return response()->json(array_merge(
+            ['proposed_emptying_date' => $validated['proposed_emptying_date']],
+            $this->capacityForDate($validated['proposed_emptying_date'], $vehicleSize)
+        ));
     }
 
     public function forceDelete($id)
