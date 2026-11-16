@@ -852,8 +852,12 @@ class ApplicationService
                     new FormField(
                         label: __('Owner Gender'),
                         labelFor: 'customer_gender',
-                        inputType: 'select',
+                        // A masked value cannot match Male/Female/Others. Render
+                        // the locked state as text so the fixed mask remains
+                        // visible; the unlocked state keeps the editable select.
+                        inputType: $revealCustomerPii ? 'select' : 'text',
                         inputId: 'customer_gender',
+                        inputValue: $customerPii['customer_gender'],
                         selectValues: ["Male" => "Male", "Female" => "Female", "Others" => "Others"],
                         selectedValue: $customerPii['customer_gender'],
                         placeholder: __('Owner Gender'),
