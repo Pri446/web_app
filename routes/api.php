@@ -46,7 +46,8 @@ use Illuminate\Support\Facades\Route;
 | An API route for logging in to the application.
 |
 */
-Route::get('get-Building-sewercode/{sewercode}',[BuildingSearchController::class,'getSewerCode']);
+Route::get('get-Building-sewercode/{sewercode}',[BuildingSearchController::class,'getSewerCode'])
+    ->middleware('pii.no-cache');
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:api-login');
 
@@ -92,7 +93,8 @@ Route::group([
     |
     */
     Route::group(['name' => 'apiService'],function (){
-        Route::get('/application/{id}',[ApiServiceController::class,'getApplicationDetails']);
+        Route::get('/application/{id}',[ApiServiceController::class,'getApplicationDetails'])
+            ->middleware('pii.no-cache');
         Route::get('/containment/{application_id}',[ApiServiceController::class,'getContainmentDetails']);
         Route::get('/service-providers',[ApiServiceController::class,'getServiceProviders']);
     });
@@ -154,7 +156,7 @@ Route::group([
     });
 
 
-    Route::prefix('revamp')->group(function() {
+    Route::prefix('revamp')->middleware('pii.no-cache')->group(function() {
         Route::get('/collection', [BuildingSearchController::class,'getAll']);
         Route::get('get-Building-bin/{bin}',[BuildingSearchController::class,'getBuildingBin']);
         Route::get('get-Building-roadcode/{roadcode}',[BuildingSearchController::class,'getBuildingRoadcode']);
@@ -166,7 +168,10 @@ Route::group([
 
         });
 
-        Route::group(['name' => 'building'], function () {
+        Route::group([
+            'name' => 'building',
+            'middleware' => 'pii.no-cache',
+        ], function () {
         Route::get('/buildings/form-fields', [BuildingApiController::class, 'getAddBuildingFormFields']);
         Route::post('/buildings/save', [BuildingApiController::class, 'storeBuildingDataMobile']);
         Route::get('/map/building-by-point', [BuildingSurveyController::class, 'locateBuildingByPoint']);
@@ -176,6 +181,7 @@ Route::group([
         'auth:sanctum',
         'force.json',
         'security.headers',
+        'pii.no-cache',
         'permission:Access Building Data API',
         'throttle:building-write',
     ])->group(function () {
@@ -279,7 +285,8 @@ Route::group([
     });
 
      Route::group(['name' => 'emptyingService'], function () {
-        Route::get('/assessed-applications', [EmptyingServiceController::class, 'getAssessedApplications']);
+        Route::get('/assessed-applications', [EmptyingServiceController::class, 'getAssessedApplications'])
+            ->middleware('pii.no-cache');
         Route::get('/treatment-plants', [EmptyingServiceController::class, 'getTreatmentPlants']);
         Route::get('/vacutugs', [EmptyingServiceController::class, 'getVacutugs']);
         Route::get('/drivers', [EmptyingServiceController::class, 'getDrivers']);

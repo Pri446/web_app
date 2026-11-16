@@ -13,6 +13,7 @@ use App\Models\SewerConnection\SewerConnection;
 use App\Models\BuildingInfo\BuildingSurvey;
 use App\Models\BuildingInfo\WmsLink;
 use App\Models\Fsm\ContainmentSurvey;
+use App\Services\Api\MobileBuildingPresenter;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
@@ -26,6 +27,14 @@ use Illuminate\Support\Facades\Validator;
 
 class BuildingSurveyController extends Controller
 {
+    private MobileBuildingPresenter $mobileBuildingPresenter;
+
+    public function __construct(
+        MobileBuildingPresenter $mobileBuildingPresenter
+    ) {
+        $this->mobileBuildingPresenter = $mobileBuildingPresenter;
+    }
+
     public function getBuildingWms(){
         return $this->getWmsLink("buildings");
     }
@@ -185,7 +194,8 @@ class BuildingSurveyController extends Controller
                 'lng' => (float) $lng,
                 'building' => [
                     'bin' => $building->bin,
-                    'owner_name' => $building->Owners->owner_name ?? null,
+                    'owner_name' => $this->mobileBuildingPresenter
+                        ->ownerName($building),
                     'ward' => $building->ward,
                     'house_number' => $building->house_number,
                     'road_code' => $building->road_code,

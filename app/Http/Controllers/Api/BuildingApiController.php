@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Helpers\KeywordMatcher;
 use App\Models\BuildingInfo\SanitationSystem;
 use App\Models\LayerInfo\Ward;
+use App\Services\Api\MobileBuildingPresenter;
 use App\Models\UtilityInfo\Roadline;
 use App\Models\BuildingInfo\StructureType;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -113,13 +114,16 @@ class BuildingApiController extends Controller
      */
     protected $buildingStructureService;
     protected ApplicationService $applicationService;
+    private MobileBuildingPresenter $mobileBuildingPresenter;
 
     public function __construct(
         BuildingStructureService $buildingStructureService,
-        ApplicationService $applicationService
+        ApplicationService $applicationService,
+        MobileBuildingPresenter $mobileBuildingPresenter
     ) {
         $this->buildingStructureService = $buildingStructureService;
         $this->applicationService = $applicationService;
+        $this->mobileBuildingPresenter = $mobileBuildingPresenter;
     }
 
     /**
@@ -266,7 +270,7 @@ class BuildingApiController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Building created successfully.',
-                'data' => $building,
+                'data' => $this->mobileBuildingPresenter->present($building),
                 'bin_generated' => $building->bin,
             ], 201);
 
@@ -398,14 +402,14 @@ class BuildingApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $flashError,
-                'data' => $building,
+                'data' => $this->mobileBuildingPresenter->present($building),
             ], 422);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Building Information updated successfully.',
-            'data' => $building,
+            'data' => $this->mobileBuildingPresenter->present($building),
         ], 200);
 
     } catch (Throwable $e) {
@@ -419,7 +423,7 @@ class BuildingApiController extends Controller
         return response()->json([
             'success' => false,
             'message' => 'Building could not be updated.',
-            'data' => Building::find($bin),
+            'data' => null,
         ], 500);
     }
 }
