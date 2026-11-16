@@ -61,8 +61,27 @@ class Owner extends Model
             ? null
             : (string) $value;
 
-        $this->attributes[$attribute] = app(
-            PiiEncryptionService::class
-        )->encrypt($normalizedValue);
+        $encryption = app(PiiEncryptionService::class);
+        $currentValue = $this->attributes[$attribute] ?? null;
+
+        /*
+         * AES-GCM intentionally produces different ciphertext every time the
+         * same plaintext is encrypted. Building edit forms submit all owner
+         * fields, so blindly encrypting an unchanged value makes Eloquent and
+         * Revisionable treat it as a real change. Preserve the current
+         * ciphertext when its decrypted value equals the submitted plaintext.
+         *
+         * Only already-encrypted current values may take this shortcut. Legacy
+         * plaintext must still pass through encrypt() during migration/write.
+         */
+        if ($normalizedValue !== null
+            && $encryption->isEncrypted($currentValue)
+            && $encryption->decrypt($currentValue) === $normalizedValue) {
+            $this->attributes[$attribute] = $currentValue;
+
+            return;
+        }
+
+        $this->attributes[$attribute] = $encryption->encrypt($normalizedValue);
     }
 }

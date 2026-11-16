@@ -83,10 +83,14 @@ class ApplicationCustomerPiiExportController extends Controller
         }
 
         $password = (string) $request->input('application_export_password', '');
+        $passwordIsValid = $password !== ''
+            && !empty($user->password)
+            && Hash::check($password, (string) $user->password);
 
-        if ($password === ''
-            || empty($user->password)
-            || !Hash::check($password, (string) $user->password)) {
+        $request->request->remove('application_export_password');
+        unset($password);
+
+        if (!$passwordIsValid) {
             $this->piiAccess->lock();
             $this->audit->record(
                 'application_pii_export_password_failed',

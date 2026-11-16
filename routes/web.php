@@ -126,10 +126,10 @@ Route::group([
     Route::get('buildings/{building:public_id}/history', 'BuildingController@history');
     Route::get('buildings/export', 'BuildingController@export');
     Route::post('owner-pii/unlock-list', 'OwnerPiiAccessController@unlockList')
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
         ->name('owner-pii.unlock-list');
     Route::post('owner-pii/export', 'OwnerPiiExportController@export')
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
         ->name('owner-pii.export');
     Route::post('owner-pii/lock', 'OwnerPiiAccessController@lock')->name('owner-pii.lock');
     Route::get('buildings/{building:public_id}/listContainments', 'BuildingController@listContainments')->name('buildings.listContainments');
@@ -187,7 +187,7 @@ Route::group([
     'middleware' => 'auth'
 ], function () {
     Route::post('tax-payment/owner-pii/unlock', 'PropertyTaxPiiAccessController@unlock')
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
         ->name('tax-payment-pii.unlock');
     Route::post('tax-payment/owner-pii/lock', 'PropertyTaxPiiAccessController@lock')
         ->name('tax-payment-pii.lock');
@@ -499,12 +499,12 @@ Route::group([
      */
     Route::get('application/getData', 'ApplicationController@getData')->name('application.get-data');
     Route::post('application/customer-pii/unlock-list', 'ApplicationPiiAccessController@unlockList')
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
         ->name('application-pii.unlock-list');
     Route::post('application/customer-pii/lock', 'ApplicationPiiAccessController@lock')
         ->name('application-pii.lock');
     Route::post('application/customer-pii/export', 'ApplicationCustomerPiiExportController@export')
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'pii.no-cache'])
         ->name('application-pii.export');
     Route::get('application/export', 'ApplicationController@export')->name('application.export');
     Route::get('application/{id}/history', 'ApplicationController@history')->name('application.history');
@@ -645,6 +645,15 @@ Route::group([
  */
 Route::group(['middleware' => 'auth'], function () {
     Route::get('maps', 'MapsController@index');
+    Route::post('maps/pii/unlock', 'MapsPiiAccessController@unlock')
+        ->middleware('throttle:pii-unlock')
+        ->name('maps.pii.unlock');
+    Route::post('maps/pii/lock', 'MapsPiiAccessController@lock')
+        ->name('maps.pii.lock');
+    Route::get('maps/pii/status', 'MapsPiiAccessController@status')
+        ->name('maps.pii.status');
+    Route::post('maps/pii/decrypt', 'MapsPiiAccessController@decrypt')
+        ->name('maps.pii.decrypt');
     Route::get('maps/building-containment', 'MapsController@getBuildingToContainment');
     Route::get('maps/containment-buildings', 'MapsController@getContainmentToBuildings');
     Route::get('maps/getassociated-mainbuilding', 'MapsController@getAssociatedToMainbuilding');

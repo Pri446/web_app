@@ -43,6 +43,7 @@ use App\Services\ApplicationPiiAccessService;
 use App\Services\Fsm\OperationalDataAccessService;
 use Illuminate\Support\Str;
 use App\Services\PiiAccessService;
+use App\Services\PiiHistoryPresenter;
 use Illuminate\Support\Facades\Auth;
 
 class BuildingController extends Controller
@@ -92,8 +93,12 @@ class BuildingController extends Controller
             ['only' => ['export']]
         );
         $this->middleware(
+            'permission:View Building Structures History',
+            ['only' => ['history']]
+        );
+        $this->middleware(
             'pii.no-cache',
-            ['only' => ['index', 'getData', 'show', 'edit', 'export', 'listContainments', 'mapLookup']]
+            ['only' => ['index', 'getData', 'show', 'edit', 'export', 'history', 'listContainments', 'mapLookup']]
         );
 
         $this->buildingStructureService = $buildingStructureService;
@@ -561,7 +566,34 @@ class BuildingController extends Controller
     {
         if ($building) {
             $page_title = __("Building History");
-            return view('building-info.buildings.history', compact('page_title', 'building'));
+            $piiRevealed = $this->piiAccessService->isUnlocked(
+                Auth::user(),
+                'view',
+                (string) $building->public_id
+            );
+            $piiHistoryFields = PiiHistoryPresenter::BUILDING_OWNER_FIELDS;
+
+            if ($piiRevealed) {
+                $this->ownerPiiAuditService->record(
+                    'building_owner_pii_history_viewed',
+                    true,
+                    Auth::user(),
+                    (string) $building->public_id,
+                    ['surface' => 'building_history'],
+                    $this->piiAccessService->authenticationMethod(
+                        Auth::user(),
+                        'view',
+                        (string) $building->public_id
+                    )
+                );
+            }
+
+            return view('building-info.buildings.history', compact(
+                'page_title',
+                'building',
+                'piiRevealed',
+                'piiHistoryFields'
+            ));
         } else {
             abort(404);
         }

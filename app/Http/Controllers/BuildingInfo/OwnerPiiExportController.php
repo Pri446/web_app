@@ -91,10 +91,14 @@ class OwnerPiiExportController extends Controller
 
         $password = (string) $request->input('export_password', '');
         $passwordHash = (string) ($user->password ?? '');
+        $passwordIsValid = $password !== ''
+            && $passwordHash !== ''
+            && Hash::check($password, $passwordHash);
 
-        if ($password === ''
-            || $passwordHash === ''
-            || !Hash::check($password, $passwordHash)) {
+        $request->request->remove('export_password');
+        unset($password, $passwordHash);
+
+        if (!$passwordIsValid) {
             $this->piiAccess->lock();
             $this->audit->record(
                 'pii_export_password_failed',

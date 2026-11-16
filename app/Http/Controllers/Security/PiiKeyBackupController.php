@@ -50,10 +50,17 @@ class PiiKeyBackupController extends Controller
         ]);
 
         $password = (string) $request->input('current_password', '');
+        $passwordIsValid = $password !== ''
+            && !empty($user->password)
+            && Hash::check($password, (string) $user->password);
 
-        if ($password === ''
-            || empty($user->password)
-            || !Hash::check($password, (string) $user->password)) {
+        // The parsed request is visible to exception reporters. Retain the
+        // password only long enough to verify it, then remove both references
+        // before key-file access or any operation that may be reported.
+        $request->request->remove('current_password');
+        unset($password);
+
+        if (!$passwordIsValid) {
             $this->audit->record(
                 'pii_key_backup_password_failed',
                 false,

@@ -28,10 +28,14 @@ class OwnerPiiAccessController extends Controller
         $user = $request->user();
         $password = (string) $request->input('current_password', '');
         $passwordHash = (string) ($user->password ?? '');
+        $passwordIsValid = $password !== ''
+            && $passwordHash !== ''
+            && Hash::check($password, $passwordHash);
 
-        if ($password === ''
-            || $passwordHash === ''
-            || !Hash::check($password, $passwordHash)) {
+        $request->request->remove('current_password');
+        unset($password, $passwordHash);
+
+        if (!$passwordIsValid) {
             $this->piiAccess->lock();
             $this->audit->record(
                 'pii_password_confirmation_failed',

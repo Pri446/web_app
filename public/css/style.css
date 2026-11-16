@@ -298,7 +298,7 @@ Disable anchor tags
 
 .global-loader-input-wrapper .global-loader-spinner {
   position: absolute;
-  top: 50%;
+  top: calc(50% - 5px);
   right: 0.65rem;
   margin: 0;
   pointer-events: none;

@@ -1,5 +1,6 @@
 <!-- Last Modified Date: 18-04-2024
 Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
+@inject('piiHistoryPresenter', 'App\Services\PiiHistoryPresenter')
 <!-- Main node for this component -->
 <div class="timeline">
     @foreach($revisions as $date=>$histories)
@@ -8,6 +9,23 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         <span class="bg-green">{{ $date }}</span>
     </div>
     @foreach($histories as $history)
+            @php
+                // Evaluate protected history before emitting timeline markup so
+                // a skipped no-op revision cannot leave unclosed HTML elements.
+                $isPiiHistoryField = in_array(
+                    (string) $history->key,
+                    $piiHistoryFields ?? [],
+                    true
+                );
+                $isMeaningfulHistoryChange = !$isPiiHistoryField
+                    || $piiHistoryPresenter->hasMeaningfulChange(
+                        $history->old_value,
+                        $history->new_value
+                    );
+            @endphp
+            @if(!$isMeaningfulHistoryChange)
+                @continue
+            @endif
             <div>
                 <!-- Before each timeline item corresponds to one icon on the left scale -->
                 <i class="fas fa-pen bg-blue"></i>
@@ -22,7 +40,19 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                         @endif
                     @else
                         @if($history->userResponsible())
-                            <h3 class="timeline-header">{{ $history->userResponsible()->name }} changed {{ $history->fieldName() }} from {{ $history->oldValue()??"null" }} to {{ $history->newValue() }}</h3>
+                            @php
+                                // Most modules using this shared timeline do
+                                // not provide PII fields. Application History
+                                // supplies the protected field list and its
+                                // module-specific temporary reveal state.
+                                $oldHistoryValue = $isPiiHistoryField
+                                    ? $piiHistoryPresenter->present($history->old_value, $piiRevealed ?? false)
+                                    : $history->oldValue();
+                                $newHistoryValue = $isPiiHistoryField
+                                    ? $piiHistoryPresenter->present($history->new_value, $piiRevealed ?? false)
+                                    : $history->newValue();
+                            @endphp
+                            <h3 class="timeline-header">{{ $history->userResponsible()->name }} changed {{ $history->fieldName() }} from {{ $oldHistoryValue ?? 'null' }} to {{ $newHistoryValue ?? 'null' }}</h3>
                         @endif
                     @endif
                     {{--<!-- Body -->

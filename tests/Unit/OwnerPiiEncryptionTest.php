@@ -155,4 +155,44 @@ class OwnerPiiEncryptionTest extends TestCase
             $owner->getAttributes()['owner_name']
         );
     }
+
+    public function test_unchanged_plaintext_preserves_existing_ciphertext(): void
+    {
+        $encryption = app(PiiEncryptionService::class);
+        $encryptedName = $encryption->encrypt('Same Owner');
+        $encryptedGender = $encryption->encrypt('Female');
+        $owner = new Owner();
+
+        // Simulate a model loaded from the database without requiring a live
+        // owner-table row in this unit test.
+        $owner->setRawAttributes([
+            'owner_name' => $encryptedName,
+            'owner_gender' => $encryptedGender,
+        ], true);
+        $owner->exists = true;
+
+        $owner->owner_name = 'Same Owner';
+        $owner->owner_gender = 'Female';
+
+        $this->assertSame($encryptedName, $owner->getAttributes()['owner_name']);
+        $this->assertSame($encryptedGender, $owner->getAttributes()['owner_gender']);
+        $this->assertFalse($owner->isDirty('owner_name'));
+        $this->assertFalse($owner->isDirty('owner_gender'));
+    }
+
+    public function test_changed_plaintext_generates_one_new_encrypted_value(): void
+    {
+        $encryption = app(PiiEncryptionService::class);
+        $original = $encryption->encrypt('Original Owner');
+        $owner = new Owner();
+        $owner->setRawAttributes(['owner_name' => $original], true);
+        $owner->exists = true;
+
+        $owner->owner_name = 'Updated Owner';
+
+        $updated = $owner->getAttributes()['owner_name'];
+        $this->assertNotSame($original, $updated);
+        $this->assertSame('Updated Owner', $encryption->decrypt($updated));
+        $this->assertTrue($owner->isDirty('owner_name'));
+    }
 }

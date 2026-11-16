@@ -19,6 +19,8 @@ class OwnerPiiAuditService
         'customer_contact',
         'current_password',
         'export_password',
+        'application_export_password',
+        'property_tax_export_password',
         'password',
         'pin',
         'pii_pin',

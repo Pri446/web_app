@@ -31,7 +31,9 @@ class BuildingsOwnerExport implements FromView
     {
         ini_set('memory_limit', '8192M');
          // Construct the SQL query to fetch building information along with owner details
-         $buildingQuery = "SELECT b.*, bo.owner_name, bo.owner_gender, bo.owner_contact, s.type as structure_type,"
+         $buildingQuery = "SELECT b.*, "
+         . " bo.owner_name, bo.owner_gender, bo.owner_contact,"
+         . " s.type as structure_type,"
          . " CASE"
          . " WHEN b.toilet_status = TRUE THEN 'Yes'"
          . " WHEN b.toilet_status = FALSE THEN 'No'"
