@@ -6,12 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Fsm\Application;
 use App\Models\Fsm\Containment;
 use App\Models\Fsm\ServiceProvider;
+use App\Services\Api\MobileApplicationPresenter;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ApiServiceController extends Controller
 {
+    private MobileApplicationPresenter $mobileApplicationPresenter;
+
+    public function __construct(
+        MobileApplicationPresenter $mobileApplicationPresenter
+    ) {
+        $this->mobileApplicationPresenter = $mobileApplicationPresenter;
+    }
+
     public function getApplicationDetails($application_id)
     {
         try {
@@ -50,7 +59,8 @@ class ApiServiceController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'application' => $application
+                'application' => $this->mobileApplicationPresenter
+                    ->present($application)
             ],
             'message' => __('Application Details')
         ]);

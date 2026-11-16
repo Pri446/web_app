@@ -3,16 +3,20 @@
 namespace App\Http\Controllers;
 use App\Models\BuildingInfo\Building;
 use App\Services\BuildingInfo\BuildingStructureService;
+use App\Services\Api\MobileBuildingPresenter;
 use App\Http\Requests\BuildingInfo\BuildingRequest;
 use Illuminate\Http\Request;
 
 class BuildingSearchController extends Controller
 {
     protected BuildingStructureService $buildingStructureService;
+    private MobileBuildingPresenter $mobileBuildingPresenter;
     private $points;
 
-    public function __construct(BuildingStructureService $buildingStructureService)
-    {
+    public function __construct(
+        BuildingStructureService $buildingStructureService,
+        MobileBuildingPresenter $mobileBuildingPresenter
+    ) {
         $this->middleware('auth');
         $this->middleware('permission:List Building Structures', ['only' => ['index']]);
         $this->middleware('permission:View Building Structure', ['only' => ['show']]);
@@ -24,6 +28,7 @@ class BuildingSearchController extends Controller
          * creating a service class instance
          */
         $this->buildingStructureService = $buildingStructureService;
+        $this->mobileBuildingPresenter = $mobileBuildingPresenter;
 
     }
     ///api to search building , bin , road by id and also get similar id//
@@ -33,7 +38,7 @@ class BuildingSearchController extends Controller
             'status' => 200,
             'code' => 'Fetched',
             'message' => __('User Records'),
-            'data' =>  $similarBuildings,
+            'data' => $this->presentBuildings($similarBuildings),
             'error' => null
         ]);
     }
@@ -45,7 +50,7 @@ class BuildingSearchController extends Controller
             'status' => 200,
             'code' => 'Fetched',
             'message' => __('User Records'),
-            'data' =>  $similarBuildings,
+            'data' => $this->presentBuildings($similarBuildings),
             'error' => null
         ]);
     }
@@ -56,7 +61,7 @@ class BuildingSearchController extends Controller
             'status' => 200,
             'code' => 'Fetched',
             'message' => __('User Records'),
-            'data' =>  $similarBuildings,
+            'data' => $this->presentBuildings($similarBuildings),
             'error' => null
         ]);
     }
@@ -68,7 +73,7 @@ class BuildingSearchController extends Controller
             'status' => 200,
             'code' => 'Fetched',
             'message' => __('User Records'),
-            'data' =>  $similarBuildings,
+            'data' => $this->presentBuildings($similarBuildings),
             'error' => null
         ]);
     }
@@ -79,7 +84,7 @@ class BuildingSearchController extends Controller
             'status' => 200,
             'code' => 'Fetched',
             'message' => __('User Records'),
-            'data' =>  $similarBuildings,
+            'data' => $this->presentBuildings($similarBuildings),
             'error' => null
         ]);
     }
@@ -90,7 +95,7 @@ class BuildingSearchController extends Controller
             'status' => 200,
             'code' => 'Fetched',
             'message' => __('User Records'),
-            'data' =>  $similarBuildings,
+            'data' => $this->presentBuildings($similarBuildings),
             'error' => null
         ]);
     }
@@ -98,6 +103,15 @@ class BuildingSearchController extends Controller
 
     public function buildingStore(BuildingRequest $request){
         return($this->buildingStructureService->storeBuildingData($request));
+    }
+
+    private function presentBuildings($buildings)
+    {
+        return $buildings
+            ->map(fn (Building $building) =>
+                $this->mobileBuildingPresenter->present($building)
+            )
+            ->values();
     }
 
 

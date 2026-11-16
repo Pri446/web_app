@@ -15,6 +15,7 @@ use App\Models\Fsm\Emptying;
 use App\Models\Fsm\TreatmentPlant;
 use App\Models\Fsm\VacutugType;
 use App\Services\Fsm\EmptyingService;
+use App\Services\Api\MobileApplicationPresenter;
 use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,10 +52,14 @@ use OpenApi\Annotations as OA;
 class EmptyingServiceController extends Controller
 {
     protected $emptyingService;
+    private MobileApplicationPresenter $mobileApplicationPresenter;
 
-    public function __construct(EmptyingService $emptyingService)
-    {
+    public function __construct(
+        EmptyingService $emptyingService,
+        MobileApplicationPresenter $mobileApplicationPresenter
+    ) {
         $this->emptyingService = $emptyingService;
+        $this->mobileApplicationPresenter = $mobileApplicationPresenter;
     }
 
     /**
@@ -244,7 +249,7 @@ class EmptyingServiceController extends Controller
 
             $application->can_add_emptying = !empty($application->emptying_add_mode) && !$application->is_anf ? "true" : "false";
 
-            return $application;
+            return $this->mobileApplicationPresenter->present($application);
         });
 
         return response()->json([
