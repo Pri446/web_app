@@ -1,5 +1,16 @@
 <?php
 
+// Resolve relative import paths against Laravel, never the PHP worker's cwd.
+// Older deployments used "taxpayment" or "storage/taxpayment". Keep those
+// settings working while putting raw owner CSVs outside public storage.
+$taxImportRoot = trim((string) env('FILE_SYSTEM_IMPORT_TAX', 'storage/app/taxpayment'));
+$normalizedTaxImportRoot = rtrim(str_replace('\\', '/', $taxImportRoot), '/');
+if (in_array($normalizedTaxImportRoot, ['', 'taxpayment', 'storage/taxpayment', 'storage/app/taxpayment'], true)) {
+    $taxImportRoot = storage_path('app/taxpayment');
+} elseif (!preg_match('~^(?:[A-Za-z]:[\\\\/]|[/\\\\])~', $taxImportRoot)) {
+    $taxImportRoot = base_path($taxImportRoot);
+}
+
 return [
 
     /*
@@ -44,7 +55,9 @@ return [
 
         'importtax' => [
             'driver' => 'local',
-            'root'   => env('FILE_SYSTEM_IMPORT_TAX', 'storage/taxpayment'),
+            'root' => $taxImportRoot,
+            'visibility' => 'private',
+            'throw' => true,
         ],
 
         'importwatersupply' => [
