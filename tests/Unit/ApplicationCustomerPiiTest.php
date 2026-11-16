@@ -83,6 +83,22 @@ class ApplicationCustomerPiiTest extends TestCase
         ], $presenter->presentPlaintext($application));
     }
 
+    public function test_locked_edit_renders_customer_gender_as_masked_text(): void
+    {
+        $source = file_get_contents(
+            app_path('Services/Fsm/ApplicationService.php')
+        );
+
+        $this->assertStringContainsString(
+            "inputType: \$revealCustomerPii ? 'select' : 'text'",
+            $source
+        );
+        $this->assertStringContainsString(
+            "inputValue: \$customerPii['customer_gender']",
+            $source
+        );
+    }
+
     public function test_customer_fields_are_not_double_encrypted(): void
     {
         $encryption = app(PiiEncryptionService::class);
