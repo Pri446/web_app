@@ -15,7 +15,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
         @can('Add Service Provider')
         <a href="{{ action('Fsm\ServiceProviderController@create') }}" class="btn btn-info">{{ __("Add Service Provider")}}</a>
         @endcan
-        @can('Export to CSV')
+        @can('Export Service Providers to CSV')
         <a href="{{ action('Fsm\ServiceProviderController@export') }}" id="export" class="btn btn-info">{{ __("Export to CSV")}}</a>
         @endcan
         <a href="#" class="btn btn-info float-right" id="headingOne" type="button" data-toggle="collapse"

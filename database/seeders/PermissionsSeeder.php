@@ -1723,6 +1723,10 @@ class PermissionsSeeder extends Seeder
                         "name" => "Edit CWIS"
                     ],
                     [
+                        "type" => "Approve",
+                        "name" => "Approve CWIS"
+                    ],
+                    [
                         "type" => "Export",
                         "name" => "Export CWIS"
                     ]

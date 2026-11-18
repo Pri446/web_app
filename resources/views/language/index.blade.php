@@ -16,7 +16,7 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
             @can('Add Language')
             <a href="{{ action('Language\LanguageController@create') }}" class="btn btn-info">{{ __('Add Language') }}</a>
             @endcan
-            @can('Export Translation CSV')
+            @can('Export CSV Template')
                 <a href="{{ action('Language\LanguageController@export_csv_format') }}" class="btn btn-info">{{ __('Download CSV Template for Import') }}</a>
             @endcan
         </div><!-- /.card-header -->
