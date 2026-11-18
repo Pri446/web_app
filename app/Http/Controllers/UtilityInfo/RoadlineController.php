@@ -19,7 +19,7 @@ class RoadlineController extends Controller
         $this->middleware('auth');
         $this->middleware('permission:List Roadlines', ['only' => ['index']]);
         $this->middleware('permission:View Roadline', ['only' => ['show']]);
-        $this->middleware('permission:Add Roadline', ['only' => ['create', 'store']]);
+        $this->middleware('permission:Add Road On Map', ['only' => ['create', 'store']]);
         $this->middleware('permission:Edit Roadline', ['only' => ['edit', 'update']]);
         $this->middleware('permission:Delete Roadline', ['only' => ['destroy']]);
         $this->middleware('permission:Import Roadlines to Shape', ['only' => ['importShp', 'importShpStore']]);

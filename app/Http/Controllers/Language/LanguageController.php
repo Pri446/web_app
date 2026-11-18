@@ -36,7 +36,7 @@ class LanguageController extends Controller
         $this->middleware('permission:Export Language', ['only' => ['export']]);
         $this->middleware('permission:View Language', ['only' => ['history']]);
         $this->middleware('permission:Generate Translation', ['only' => ['generate_translate']]);
-        $this->middleware('permission:Export Translation CSV', ['only' => ['export_csv_format']]);
+        $this->middleware('permission:Export CSV Template', ['only' => ['export_csv_format']]);
         $this->middleware('permission:Add Language', ['only' => ['create', 'store','import_translates']]);
 
 
