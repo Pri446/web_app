@@ -1469,6 +1469,10 @@ class PermissionsSeeder extends Seeder
                         "type" => "Export",
                         "name" => "Export Containment Report"
                     ],
+                    [
+                        "type" => "Export",
+                        "name" => "Export in KML Drag And Drop"
+                    ],
                 ],
 
             ],
