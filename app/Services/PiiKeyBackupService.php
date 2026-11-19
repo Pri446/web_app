@@ -23,11 +23,12 @@ class PiiKeyBackupService
             return false;
         }
 
-        // This is intentionally limited to the two roles approved for raw-key
-        // custody. Municipality - Super Admin is not included.
+        // Raw-key custody is limited to explicitly approved administrative
+        // roles. Password re-entry and risk acknowledgement are still required.
         return $user->hasAnyRole([
             'Super Admin',
             'Municipality - IT Admin',
+            'Municipality - Super Admin',
         ]);
     }
 

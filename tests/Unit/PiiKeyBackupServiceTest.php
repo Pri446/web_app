@@ -10,13 +10,17 @@ use Tests\TestCase;
 
 class PiiKeyBackupServiceTest extends TestCase
 {
-    public function test_super_admin_can_back_up_the_key(): void
+    public function test_approved_key_custodian_roles_can_back_up_the_key(): void
     {
         $service = $this->serviceWithKey(str_repeat('a', 32));
         $user = Mockery::mock(User::class)->makePartial();
         $user->shouldReceive('hasAnyRole')
             ->once()
-            ->with(['Super Admin', 'Municipality - IT Admin'])
+            ->with([
+                'Super Admin',
+                'Municipality - IT Admin',
+                'Municipality - Super Admin',
+            ])
             ->andReturn(true);
 
         $this->assertTrue($service->canBackup($user));
@@ -28,7 +32,11 @@ class PiiKeyBackupServiceTest extends TestCase
         $user = Mockery::mock(User::class)->makePartial();
         $user->shouldReceive('hasAnyRole')
             ->once()
-            ->with(['Super Admin', 'Municipality - IT Admin'])
+            ->with([
+                'Super Admin',
+                'Municipality - IT Admin',
+                'Municipality - Super Admin',
+            ])
             ->andReturn(false);
 
         $this->assertFalse($service->canBackup($user));
