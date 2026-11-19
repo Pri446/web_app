@@ -1441,9 +1441,9 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
     <footer class="main-footer" style="position:fixed;right:0;bottom:0;width: 100%;z-index:35;padding:7px;height:35px;">
         <!-- To the right -->
         <div class="float-right d-none d-sm-inline ">
-        	<strong>Developed by:</strong> <a href="http://www.innovativesolution.com.np">Innovative Solution Pvt. Ltd.</a>
+        	<strong>Developed by:</strong> <a href="https://innovativesolution.com.np/">Innovative Solution Pvt. Ltd.</a>
     	</div>
-        <strong> Base IMIS <i class="fa-regular fa-copyright"> </i>  2022-{{ \Carbon\Carbon::now()->format('Y') }} by <a href="http://www.innovativesolution.com.np">
+        <strong> Base IMIS <i class="fa-regular fa-copyright"> </i>  2022-{{ \Carbon\Carbon::now()->format('Y') }} by <a href="https://innovativesolution.com.np/">
     Innovative Solution Pvt. Ltd.</a> & <a href="https://www.gwsc.ait.ac.th/">Global Water & Sanitation Center-Asian Institute of Technology (GWSC-AIT)</a> is licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/?ref=chooser-v1">CC BY-NC-SA 4.0 </a>
 </strong>
 
@@ -4689,19 +4689,34 @@ Developed By: Innovative Solution Pvt. Ltd. (ISPL)   -->
                     $('#add-' + controlType + '-errors').empty();
                     let html = '<ul class="alert alert-danger">';
 
-                    if (data.responseText) {
-                        let errors = JSON.parse(data.responseText).errors;
-                        Object.entries(errors).forEach(function ([field, messages]) {
+                    // Validation failures are JSON, but authorization and
+                    // server errors may be HTML or JSON without an `errors`
+                    // object. Do not let the error handler throw a second
+                    // exception and hide the real response.
+                    let response = data.responseJSON;
+                    if (!response && data.responseText) {
+                        try {
+                            response = JSON.parse(data.responseText);
+                        } catch (e) {
+                            response = null;
+                        }
+                    }
+
+                    if (response && response.errors && typeof response.errors === 'object') {
+                        Object.entries(response.errors).forEach(function ([field, messages]) {
                             let fieldTitle = fieldNameMapping[field] || field;
-                            let message = messages[0]; // Get the first error message for this field
+                            let message = Array.isArray(messages) ? messages[0] : messages;
 
-                            // Optional: Customize message if needed
-                            let customMessage = `${fieldTitle} ` + `{{ __("is required")}}`;
+                            let customMessage = message || `${fieldTitle} ` + `{{ __("is required")}}`;
 
-                            html += `<li>${customMessage}</li>`;
+                            html += `<li>${fieldTitle}: ${customMessage}</li>`;
                         });
                     } else {
-                        html += "<li>Error</li>";
+                        let message = response && (response.message || response.error);
+                        if (!message && data.status === 403) {
+                            message = '{{ __("You are not authorized to add a road.") }}';
+                        }
+                        html += `<li>${message || data.statusText || '{{ __("An unexpected error occurred.") }}'}</li>`;
                     }
 
                     html += '</ul>';
